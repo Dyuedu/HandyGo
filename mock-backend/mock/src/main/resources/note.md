@@ -1,0 +1,1 @@
+file này để giữ folder resources ko trống khi lên git
