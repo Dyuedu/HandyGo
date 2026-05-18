@@ -32,6 +32,8 @@
 - [ ] T006 Implement login attempt tracking (lockout + rate limit) in mock-backend/mock/src/main/java/com/group/mock/service/LoginAttemptService.java
 - [ ] T007 [P] Wire login attempt filter for /api/auth/login in mock-backend/mock/src/main/java/com/group/mock/configuration/LoginAttemptFilter.java
 - [ ] T008 Add lockout/rate-limit config in mock-backend/mock/src/main/resources/application.yaml
+- [ ] T009 Add structured auth logging with requestId/traceId in mock-backend/mock/src/main/java/com/group/mock/configuration/RequestLoggingFilter.java
+- [ ] T010 [P] Add structured logging verification test in mock-backend/mock/src/test/java/com/group/mock/configuration/RequestLoggingFilterTest.java
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -45,18 +47,19 @@
 
 ### Tests for User Story 1 (REQUIRED) ⚠️
 
-- [ ] T009 [P] [US1] Add login endpoint integration test in mock-backend/mock/src/test/java/com/group/mock/controller/AuthControllerLoginTest.java
-- [ ] T010 [P] [US1] Add lockout behavior test in mock-backend/mock/src/test/java/com/group/mock/service/LoginAttemptServiceTest.java
+- [ ] T011 [P] [US1] Add login endpoint integration test in mock-backend/mock/src/test/java/com/group/mock/controller/AuthControllerLoginTest.java
+- [ ] T012 [P] [US1] Add lockout behavior test in mock-backend/mock/src/test/java/com/group/mock/service/LoginAttemptServiceTest.java
+- [ ] T013 [P] [US1] Add response envelope contract test in mock-backend/mock/src/test/java/com/group/mock/controller/AuthControllerResponseSchemaTest.java
 
 ### Implementation for User Story 1
 
-- [ ] T011 [US1] Add validation annotations to LoginRequest in mock-backend/mock/src/main/java/com/group/mock/entity/DTO/request/LoginRequest.java
-- [ ] T012 [US1] Update AuthController login to use ApiResponse and lockout checks in mock-backend/mock/src/main/java/com/group/mock/controller/AuthController.java
-- [ ] T013 [US1] Ensure AuthTokenResponse uses response schema and includes expiry fields in mock-backend/mock/src/main/java/com/group/mock/entity/DTO/response/AuthTokenResponse.java
-- [ ] T014 [P] [US1] Build login page UI in mock-frontend/src/pages/Login.jsx
-- [ ] T015 [P] [US1] Add login validation helpers in mock-frontend/src/utils/validation.js
-- [ ] T016 [US1] Implement login API call in mock-frontend/src/api/auth.js
-- [ ] T017 [US1] Add token storage and session bootstrap in mock-frontend/src/state/authStore.js
+- [ ] T014 [US1] Add validation annotations to LoginRequest in mock-backend/mock/src/main/java/com/group/mock/entity/DTO/request/LoginRequest.java
+- [ ] T015 [US1] Update AuthController login to use ApiResponse and lockout checks in mock-backend/mock/src/main/java/com/group/mock/controller/AuthController.java
+- [ ] T016 [US1] Ensure AuthTokenResponse uses response schema and includes expiry fields in mock-backend/mock/src/main/java/com/group/mock/entity/DTO/response/AuthTokenResponse.java
+- [ ] T017 [P] [US1] Build login page UI in mock-frontend/src/pages/Login.jsx
+- [ ] T018 [P] [US1] Add login validation helpers in mock-frontend/src/utils/validation.js
+- [ ] T019 [US1] Implement login API call in mock-frontend/src/api/auth.js
+- [ ] T020 [US1] Add token storage and session bootstrap in mock-frontend/src/state/authStore.js
 
 **Checkpoint**: User Story 1 should be fully functional and testable independently
 
@@ -70,17 +73,19 @@
 
 ### Tests for User Story 2 (REQUIRED) ⚠️
 
-- [ ] T018 [P] [US2] Add user registration integration test in mock-backend/mock/src/test/java/com/group/mock/controller/AuthControllerRegisterUserTest.java
-- [ ] T019 [P] [US2] Add user registration service test in mock-backend/mock/src/test/java/com/group/mock/service/AccountServiceUserRegisterTest.java
+- [ ] T021 [P] [US2] Add user registration integration test in mock-backend/mock/src/test/java/com/group/mock/controller/AuthControllerRegisterUserTest.java
+- [ ] T022 [P] [US2] Add user registration service test in mock-backend/mock/src/test/java/com/group/mock/service/AccountServiceUserRegisterTest.java
+- [ ] T023 [P] [US2] Add duplicate username/phone test in mock-backend/mock/src/test/java/com/group/mock/service/AccountServiceDuplicateCheckTest.java
 
 ### Implementation for User Story 2
 
-- [ ] T020 [P] [US2] Create RegisterRequest + UserProfile payload in mock-backend/mock/src/main/java/com/group/mock/entity/DTO/request/RegisterRequest.java
-- [ ] T021 [US2] Implement user registration in mock-backend/mock/src/main/java/com/group/mock/service/Impl/AccountServiceImpl.java
-- [ ] T022 [US2] Update AuthController register for USER flow in mock-backend/mock/src/main/java/com/group/mock/controller/AuthController.java
-- [ ] T023 [P] [US2] Build user registration UI in mock-frontend/src/pages/RegisterUser.jsx
-- [ ] T024 [US2] Implement user register API call in mock-frontend/src/api/auth.js
-- [ ] T025 [US2] Add Vietnamese auth messages in mock-frontend/src/constants/authMessages.js
+- [ ] T024 [P] [US2] Create RegisterRequest + UserProfile payload in mock-backend/mock/src/main/java/com/group/mock/entity/DTO/request/RegisterRequest.java
+- [ ] T025 [US2] Add validation annotations for registration payload in mock-backend/mock/src/main/java/com/group/mock/entity/DTO/request/RegisterRequest.java
+- [ ] T026 [US2] Implement user registration in mock-backend/mock/src/main/java/com/group/mock/service/Impl/AccountServiceImpl.java
+- [ ] T027 [US2] Update AuthController register for USER flow in mock-backend/mock/src/main/java/com/group/mock/controller/AuthController.java
+- [ ] T028 [P] [US2] Build user registration UI in mock-frontend/src/pages/RegisterUser.jsx
+- [ ] T029 [US2] Implement user register API call in mock-frontend/src/api/auth.js
+- [ ] T030 [US2] Add Vietnamese auth messages in mock-frontend/src/constants/authMessages.js
 
 **Checkpoint**: User Stories 1 and 2 should be independently functional
 
@@ -94,18 +99,37 @@
 
 ### Tests for User Story 3 (REQUIRED) ⚠️
 
-- [ ] T026 [P] [US3] Add worker registration integration test in mock-backend/mock/src/test/java/com/group/mock/controller/AuthControllerRegisterWorkerTest.java
-- [ ] T027 [P] [US3] Add worker registration service test in mock-backend/mock/src/test/java/com/group/mock/service/AccountServiceWorkerRegisterTest.java
+- [ ] T031 [P] [US3] Add worker registration integration test in mock-backend/mock/src/test/java/com/group/mock/controller/AuthControllerRegisterWorkerTest.java
+- [ ] T032 [P] [US3] Add worker registration service test in mock-backend/mock/src/test/java/com/group/mock/service/AccountServiceWorkerRegisterTest.java
 
 ### Implementation for User Story 3
 
-- [ ] T028 [P] [US3] Extend RegisterRequest for WorkerProfile fields in mock-backend/mock/src/main/java/com/group/mock/entity/DTO/request/RegisterRequest.java
-- [ ] T029 [US3] Implement worker registration in mock-backend/mock/src/main/java/com/group/mock/service/Impl/AccountServiceImpl.java
-- [ ] T030 [US3] Add worker verification status field to login response in mock-backend/mock/src/main/java/com/group/mock/entity/DTO/response/AuthTokenResponse.java
-- [ ] T031 [US3] Update auth contract with worker status field in specs/001-login-register/contracts/auth-api.md
-- [ ] T032 [P] [US3] Build worker registration UI in mock-frontend/src/pages/RegisterWorker.jsx
-- [ ] T033 [US3] Implement worker register API call in mock-frontend/src/api/auth.js
-- [ ] T034 [US3] Render worker verification status after login in mock-frontend/src/pages/Login.jsx
+- [ ] T033 [P] [US3] Extend RegisterRequest for WorkerProfile fields in mock-backend/mock/src/main/java/com/group/mock/entity/DTO/request/RegisterRequest.java
+- [ ] T034 [US3] Implement worker registration in mock-backend/mock/src/main/java/com/group/mock/service/Impl/AccountServiceImpl.java
+- [ ] T035 [US3] Add worker verification status field to login response in mock-backend/mock/src/main/java/com/group/mock/entity/DTO/response/AuthTokenResponse.java
+- [ ] T036 [US3] Update auth contract with worker status field in specs/001-login-register/contracts/auth-api.md
+- [ ] T037 [P] [US3] Build worker registration UI in mock-frontend/src/pages/RegisterWorker.jsx
+- [ ] T038 [US3] Implement worker register API call in mock-frontend/src/api/auth.js
+- [ ] T039 [US3] Render worker verification status after login in mock-frontend/src/pages/Login.jsx
+
+---
+
+## Phase 5b: User Story 1 - Refresh and Logout (Priority: P1)
+
+**Goal**: Users can refresh access sessions and logout securely.
+
+**Independent Test**: Refresh a token to rotate it and logout to revoke sessions.
+
+### Tests for Refresh/Logout (REQUIRED) ⚠️
+
+- [ ] T040 [P] [US1] Add refresh endpoint integration test in mock-backend/mock/src/test/java/com/group/mock/controller/AuthControllerRefreshTest.java
+- [ ] T041 [P] [US1] Add logout endpoint integration test in mock-backend/mock/src/test/java/com/group/mock/controller/AuthControllerLogoutTest.java
+
+### Implementation for Refresh/Logout
+
+- [ ] T042 [US1] Update AuthController refresh to use ApiResponse in mock-backend/mock/src/main/java/com/group/mock/controller/AuthController.java
+- [ ] T043 [US1] Update AuthController logout to use ApiResponse in mock-backend/mock/src/main/java/com/group/mock/controller/AuthController.java
+- [ ] T044 [US1] Implement refresh/logout API calls in mock-frontend/src/api/auth.js
 
 **Checkpoint**: All user stories should now be independently functional
 
@@ -115,8 +139,9 @@
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T035 [P] Update quickstart smoke steps if endpoints or payloads changed in specs/001-login-register/quickstart.md
-- [ ] T036 Run quickstart smoke test steps from specs/001-login-register/quickstart.md
+- [ ] T045 [P] Add lightweight perf check note in specs/001-login-register/quickstart.md
+- [ ] T046 [P] Update quickstart smoke steps if endpoints or payloads changed in specs/001-login-register/quickstart.md
+- [ ] T047 Run quickstart smoke test steps from specs/001-login-register/quickstart.md
 
 ---
 

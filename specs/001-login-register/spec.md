@@ -73,9 +73,13 @@ As a service provider, I want to create a worker account so I can offer services
 - **FR-006**: System MUST issue an access session and a refresh session upon successful sign-in.
 - **FR-007**: System MUST support refreshing an access session using a refresh session and MUST invalidate the prior refresh session after successful use.
 - **FR-008**: System MUST support logout that invalidates the active access session and any provided refresh session.
-- **FR-009**: System MUST throttle repeated failed sign-in attempts and lock access for a limited time after a defined threshold.
-- **FR-010**: System MUST present user-facing authentication messages in Vietnamese.
-- **FR-011**: System MUST show a worker verification status after worker sign-in until verification is completed.
+- **FR-009**: System MUST throttle repeated failed sign-in attempts and lock access for 10 minutes after 5 failed attempts within 10 minutes, per username.
+- **FR-010**: System MUST present user-facing authentication messages in Vietnamese for both frontend UI and backend error responses.
+- **FR-011**: System MUST show a worker verification status after worker sign-in until verification is completed, and restrict access to worker-only actions that require verification (creating job offers, accepting bookings, and withdrawing wallet balance).
+- **FR-012**: All auth endpoints MUST return a consistent response envelope with `success`, `data`, `error`, `timestamp`, and `requestId`.
+- **FR-013**: Auth error responses MUST include `error.code`, `error.message`, and optional `error.details`.
+- **FR-014**: Auth events MUST be logged with `requestId`/`traceId` and without PII or secrets.
+- **FR-015**: Registration validation MUST enforce: username 4-50 chars, no spaces; password min 8 chars with upper/lower/number/special; phone matches VN format when provided.
 
 ## Constitution Alignment *(mandatory)*
 
