@@ -1,0 +1,17 @@
+.notice {
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  border-radius: 8px;
+}
+
+.notice.success {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+.notice.error {
+  background: #fff1f2;
+  color: #be123c;
+  border: 1px solid #fecdd3;
+}

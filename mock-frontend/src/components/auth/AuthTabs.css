@@ -1,0 +1,44 @@
+.tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  padding: 5px;
+  margin-bottom: 28px;
+  border: 1px solid #dbe3ee;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.tabs button {
+  min-height: 44px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  color: #526173;
+  background: transparent;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 750;
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.tabs button:hover {
+  color: #0f172a;
+  background: #ffffff;
+}
+
+.tabs button.active {
+  color: #0f172a;
+  background: #ffffff;
+  border-color: #d5deeb;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+}
+
+@media (max-width: 640px) {
+  .tabs {
+    grid-template-columns: 1fr;
+  }
+}

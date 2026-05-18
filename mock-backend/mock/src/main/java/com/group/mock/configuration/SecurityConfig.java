@@ -150,7 +150,7 @@ public class SecurityConfig {
                 .securityMatcher("/api/auth/**")
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/refresh").permitAll()
-                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/auth/logout").authenticated()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer((oauth2) -> oauth2
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAccountAuthenticationConverter)))

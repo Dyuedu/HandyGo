@@ -46,8 +46,7 @@ public class Account implements UserDetails {
 
     @Override
     public boolean isAccountNonLocked() {
-        // TODO Auto-generated method stub
-        return UserDetails.super.isAccountNonLocked();
+        return status != Status.BLOCKED;
     }
 
     @Override
@@ -58,7 +57,6 @@ public class Account implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        // TODO Auto-generated method stub
-        return UserDetails.super.isEnabled();
+        return status == null || status == Status.ACTIVE;
     }
 }
