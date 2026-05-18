@@ -105,6 +105,16 @@ public class AccountServiceImpl implements AccountService {
     }
 
     @Override
+    public String getAccountRole(String username) {
+        Account account = getAccountByUsername(username);
+        if (account.getRole() == null || account.getRole().getName() == null) {
+            return null;
+        }
+
+        return account.getRole().getName().replaceFirst("^ROLE_", "");
+    }
+
+    @Override
     public String getWorkerVerificationStatus(String username) {
         return workerProfileRepository.findByAccountUsername(username)
                 .map(profile -> profile.isVerified() ? "VERIFIED" : "PENDING")

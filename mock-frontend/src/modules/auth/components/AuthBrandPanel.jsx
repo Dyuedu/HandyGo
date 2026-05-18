@@ -1,4 +1,4 @@
-import { authHighlights } from '../../pages/auth/authContent'
+import { authHighlights } from '../pages/authContent'
 import './AuthBrandPanel.css'
 
 export function AuthBrandPanel() {

@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { login, logout, registerUser, registerWorker } from '../api/auth'
-import { authMessages } from '../constants/authMessages'
-import { clearSession, loadSession, saveSession } from '../state/authStore'
-import { validatePassword, validatePhone, validateUsername } from '../utils/validation'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../../../hooks/useAuth'
+import { registerUser, registerWorker } from '../../../services/authService'
+import { authMessages } from '../../../constants/authMessages'
+import { validatePassword, validatePhone, validateUsername } from '../../../utils/validation'
 
 const initialLogin = { username: '', password: '' }
 const initialUser = { username: '', password: '', fullName: '', phone: '' }
@@ -14,11 +15,12 @@ const initialWorker = {
 }
 
 export function useAuthForms() {
+  const { session, signIn, signOut, clearAuthSession } = useAuth()
+  const navigate = useNavigate()
   const [mode, setMode] = useState('login')
   const [loginForm, setLoginForm] = useState(initialLogin)
   const [userForm, setUserForm] = useState(initialUser)
   const [workerForm, setWorkerForm] = useState(initialWorker)
-  const [session, setSession] = useState(loadSession)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -29,11 +31,10 @@ export function useAuthForms() {
     if (validation) return setError(validation)
 
     await submit(async () => {
-      const response = await login(loginForm)
-      saveSession(response.data)
-      setSession(response.data)
+      await signIn(loginForm)
       setMessage(authMessages.loginSuccess)
       setLoginForm(initialLogin)
+      navigate('/app', { replace: true })
     })
   }
 
@@ -73,15 +74,12 @@ export function useAuthForms() {
 
   async function handleLogout() {
     if (!session?.accessToken) {
-      clearSession()
-      setSession(null)
+      clearAuthSession()
       return
     }
 
     await submit(async () => {
-      await logout(session.accessToken, session.refreshToken)
-      clearSession()
-      setSession(null)
+      await signOut()
       setMessage('Đã đăng xuất')
     })
   }

@@ -1,10 +1,7 @@
-import { request } from './httpClient'
+import axiosClient from '../api/axiosClient'
 
 export function login(credentials) {
-  return request('/api/auth/login', {
-    method: 'POST',
-    body: JSON.stringify(credentials),
-  })
+  return axiosClient.post('/api/auth/login', credentials)
 }
 
 export function registerUser(payload) {
@@ -15,10 +12,7 @@ export function registerUser(payload) {
   formData.append('fullName', payload.fullName)
   formData.append('phone', payload.phone)
 
-  return request('/api/auth/register', {
-    method: 'POST',
-    body: formData,
-  })
+  return axiosClient.post('/api/auth/register', formData)
 }
 
 export function registerWorker(payload) {
@@ -31,18 +25,9 @@ export function registerWorker(payload) {
     formData.append('professionalCertificate', payload.professionalCertificate)
   }
 
-  return request('/api/auth/register', {
-    method: 'POST',
-    body: formData,
-  })
+  return axiosClient.post('/api/auth/register', formData)
 }
 
-export function logout(accessToken, refreshToken) {
-  return request('/api/auth/logout', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify({ refreshToken }),
-  })
+export function logout(refreshToken) {
+  return axiosClient.post('/api/auth/logout', { refreshToken })
 }

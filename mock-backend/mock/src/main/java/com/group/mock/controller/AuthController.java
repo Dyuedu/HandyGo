@@ -83,6 +83,7 @@ public class AuthController {
                 "Bearer",
                 jwtProvider.getAccessTokenExpirationSeconds(),
                 jwtProvider.getRefreshTokenExpirationSeconds(),
+                accountService.getAccountRole(authentication.getName()),
                 accountService.getWorkerVerificationStatus(authentication.getName())
         );
         return ResponseEntity.ok(ApiResponse.success(response, requestId(httpRequest)));
@@ -100,6 +101,7 @@ public class AuthController {
                 "Bearer",
                 jwtProvider.getAccessTokenExpirationSeconds(),
                 jwtProvider.getRefreshTokenExpirationSeconds(),
+                accountService.getAccountRole(rotationResult.subject()),
                 accountService.getWorkerVerificationStatus(rotationResult.subject())
         );
         return ResponseEntity.ok(ApiResponse.success(response, requestId(httpRequest)));

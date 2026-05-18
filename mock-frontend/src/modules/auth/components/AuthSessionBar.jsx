@@ -1,4 +1,4 @@
-import { authMessages } from '../../constants/authMessages'
+import { authMessages } from '../../../constants/authMessages'
 import './AuthSessionBar.css'
 
 export function AuthSessionBar({ session, submitting, onLogout }) {
