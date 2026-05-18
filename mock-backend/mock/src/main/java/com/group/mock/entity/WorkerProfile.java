@@ -27,12 +27,8 @@ public class WorkerProfile {
     @Column(name = "job_type", nullable = false, length = 50)
     private String jobType; // DIEN, NUOC, DIEU_HOA...
 
-    // Tọa độ GPS phục vụ thuật toán tìm kiếm thợ ở gần
-    private Double latitude;
-    private Double longitude;
-
-    @Column(name = "business_license_url")
-    private String businessLicenseUrl;
+    @Column(name = "professional_certificate_url")
+    private String professionalCertificateUrl;
 
     @Column(name = "is_verified", nullable = false)
     private boolean isVerified = false; // Mặc định chờ Admin duyệt GPKD

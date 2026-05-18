@@ -9,8 +9,8 @@
 ## Requirement Completeness
 
 - [ ] CHK001 Are required login inputs (username, password) explicitly specified? [Completeness, Spec §FR-001]
-- [ ] CHK002 Are required registration inputs for User explicitly specified (full name, phone, avatar optional)? [Completeness, Spec §FR-002]
-- [ ] CHK003 Are required registration inputs for Worker explicitly specified (job type, license URL optional, location optional)? [Completeness, Spec §FR-003]
+- [ ] CHK002 Are required registration inputs for User explicitly specified (full name, phone)? [Completeness, Spec §FR-002]
+- [ ] CHK003 Are required registration inputs for Worker explicitly specified (job type, professional certificate PDF/image upload)? [Completeness, Spec §FR-003]
 - [ ] CHK004 Are required validation rules for username, password, and phone specified in the requirements? [Gap]
 - [ ] CHK005 Are duplicate-constraint requirements specified for both username and phone? [Completeness, Spec §FR-005]
 - [ ] CHK006 Are refresh and logout behaviors fully specified as requirements (issue, rotate, revoke)? [Completeness, Spec §FR-006, Spec §FR-007, Spec §FR-008]

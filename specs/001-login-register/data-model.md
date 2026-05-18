@@ -27,7 +27,6 @@ Fields:
 - id: UUID (same as Account.id)
 - fullName: string (required)
 - phone: string (unique)
-- avatar: string (optional)
 - createdAt: datetime
 
 Relationships:
@@ -39,9 +38,7 @@ Represents worker profile and verification state.
 Fields:
 - id: UUID (same as Account.id)
 - jobType: string (required)
-- latitude: number (optional)
-- longitude: number (optional)
-- businessLicenseUrl: string (optional)
+- professionalCertificateUrl: string (required; Cloudinary URL for uploaded PDF/image certificate)
 - isVerified: boolean (default false)
 - tierType: string (default FREE)
 - tierExpiredAt: datetime (optional)

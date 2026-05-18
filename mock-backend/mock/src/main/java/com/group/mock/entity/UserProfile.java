@@ -30,8 +30,6 @@ public class UserProfile {
     @Column(unique = true, length = 20)
     private String phone;
 
-    private String avatar;
-
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 

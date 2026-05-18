@@ -7,7 +7,7 @@
 
 ## Summary
 
-Deliver login and registration flows for User and Worker roles with JWT access/refresh sessions, refresh rotation, lockout throttling, and consistent API response schema. Frontend provides Vietnamese UI with validation and explicit error states; backend aligns auth endpoints with shared response/error format.
+Deliver login and registration flows for User and Worker roles with JWT access/refresh sessions, refresh rotation, lockout throttling, Cloudinary-backed worker professional certificate upload, and consistent API response schema. Frontend provides Vietnamese UI with validation and explicit error states; backend aligns auth endpoints with shared response/error format.
 
 ## Technical Context
 
@@ -18,8 +18,8 @@ Deliver login and registration flows for User and Worker roles with JWT access/r
 -->
 
 **Language/Version**: Java 17 (backend), JavaScript ES6 (frontend)  
-**Primary Dependencies**: Spring Boot 4.0.2, Spring Security, Spring Data JPA, Spring Data Redis, React 19, Vite 8  
-**Storage**: PostgreSQL, Redis  
+**Primary Dependencies**: Spring Boot 4.0.2, Spring Security, Spring Data JPA, Spring Data Redis, React 19, Vite 8, Cloudinary Upload API  
+**Storage**: PostgreSQL, Redis, Cloudinary for worker professional certificate PDF/image files  
 **Testing**: JUnit 5 (backend). Frontend tests not configured; rely on manual QA + eslint.  
 **Target Platform**: Linux server (backend), modern browsers (frontend)  
 **Project Type**: Web application (backend + frontend)  

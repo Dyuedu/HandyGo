@@ -28,3 +28,10 @@ Date: 2026-05-18
 - Rationale: Required by constitution; ensures consistent error handling.
 - Alternatives considered:
   - Leave current direct responses: faster but non-compliant.
+
+### Worker professional certificate upload
+- Decision: Worker registration accepts a PDF/image professional certificate file and uploads it to Cloudinary before persisting the worker profile URL.
+- Rationale: Keeps uploaded files outside the application server and stores only a durable URL in PostgreSQL.
+- Alternatives considered:
+  - Store only a user-entered URL: simpler but does not satisfy the file upload requirement.
+  - Store files on local disk: easier for development but not portable for deployment.

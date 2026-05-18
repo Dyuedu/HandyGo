@@ -5,6 +5,16 @@ public record AuthTokenResponse(
         String refreshToken,
         String tokenType,
         long accessTokenExpiresIn,
-        long refreshTokenExpiresIn
+        long refreshTokenExpiresIn,
+        String workerVerificationStatus
 ) {
+    public AuthTokenResponse(
+            String accessToken,
+            String refreshToken,
+            String tokenType,
+            long accessTokenExpiresIn,
+            long refreshTokenExpiresIn
+    ) {
+        this(accessToken, refreshToken, tokenType, accessTokenExpiresIn, refreshTokenExpiresIn, null);
+    }
 }

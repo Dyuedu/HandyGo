@@ -35,33 +35,24 @@ Errors:
 
 ## POST /register
 
+Content-Type: `multipart/form-data`
+
 Request (User):
-```json
-{
-  "role": "USER",
-  "username": "string",
-  "password": "string",
-  "profile": {
-    "fullName": "string",
-    "phone": "string",
-    "avatar": "string"
-  }
-}
+```text
+role=USER
+username=string
+password=string
+fullName=string
+phone=string
 ```
 
 Request (Worker):
-```json
-{
-  "role": "WORKER",
-  "username": "string",
-  "password": "string",
-  "profile": {
-    "jobType": "string",
-    "businessLicenseUrl": "string",
-    "latitude": 10.123,
-    "longitude": 106.456
-  }
-}
+```text
+role=WORKER
+username=string
+password=string
+jobType=string
+professionalCertificate=<PDF or image file>
 ```
 
 Response 200:
@@ -79,7 +70,9 @@ Response 200:
 
 Errors:
 - 400 validation failed
+- 400 professional certificate missing, too large, or not PDF/image
 - 409 username or phone exists
+- 502 Cloudinary upload failed
 
 ## POST /refresh
 

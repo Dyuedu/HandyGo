@@ -79,7 +79,7 @@
 
 ### Implementation for User Story 2
 
-- [ ] T024 [P] [US2] Create RegisterRequest + UserProfile payload in mock-backend/mock/src/main/java/com/group/mock/entity/DTO/request/RegisterRequest.java
+- [ ] T024 [P] [US2] Create RegisterRequest + UserProfile payload without avatar in mock-backend/mock/src/main/java/com/group/mock/entity/DTO/request/RegisterRequest.java
 - [ ] T025 [US2] Add validation annotations for registration payload in mock-backend/mock/src/main/java/com/group/mock/entity/DTO/request/RegisterRequest.java
 - [ ] T026 [US2] Implement user registration in mock-backend/mock/src/main/java/com/group/mock/service/Impl/AccountServiceImpl.java
 - [ ] T027 [US2] Update AuthController register for USER flow in mock-backend/mock/src/main/java/com/group/mock/controller/AuthController.java
@@ -104,8 +104,8 @@
 
 ### Implementation for User Story 3
 
-- [ ] T033 [P] [US3] Extend RegisterRequest for WorkerProfile fields in mock-backend/mock/src/main/java/com/group/mock/entity/DTO/request/RegisterRequest.java
-- [ ] T034 [US3] Implement worker registration in mock-backend/mock/src/main/java/com/group/mock/service/Impl/AccountServiceImpl.java
+- [ ] T033 [P] [US3] Extend RegisterRequest for WorkerProfile job type and professional certificate upload fields in mock-backend/mock/src/main/java/com/group/mock/entity/DTO/request/RegisterRequest.java
+- [ ] T034 [US3] Implement worker registration with Cloudinary professional certificate upload in mock-backend/mock/src/main/java/com/group/mock/service/Impl/AccountServiceImpl.java
 - [ ] T035 [US3] Add worker verification status field to login response in mock-backend/mock/src/main/java/com/group/mock/entity/DTO/response/AuthTokenResponse.java
 - [ ] T036 [US3] Update auth contract with worker status field in specs/001-login-register/contracts/auth-api.md
 - [ ] T037 [P] [US3] Build worker registration UI in mock-frontend/src/pages/RegisterWorker.jsx

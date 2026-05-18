@@ -1,0 +1,28 @@
+.session-bar {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  border: 1px solid #b8e4d7;
+  border-radius: 8px;
+  background: #effaf7;
+}
+
+.session-bar strong {
+  color: #0f172a;
+}
+
+.session-bar span {
+  display: block;
+  margin-top: 2px;
+  color: #0f766e;
+  font-size: 14px;
+}
+
+@media (max-width: 640px) {
+  .session-bar {
+    display: grid;
+  }
+}

@@ -92,8 +92,8 @@ As a service provider, I want to create a worker account so I can offer services
 ### Key Entities *(include if feature involves data)*
 
 - **Account**: Login identity with username, password, status, and role.
-- **User Profile**: User-facing profile including full name, phone, and avatar.
-- **Worker Profile**: Worker-facing profile including job type, license reference, location, and verification status.
+- **User Profile**: User-facing profile including full name and phone.
+- **Worker Profile**: Worker-facing profile including job type, professional certificate file stored in Cloudinary, and verification status.
 - **Session Credential**: Access session and refresh session issued on sign-in.
 
 ## Success Criteria *(mandatory)*
