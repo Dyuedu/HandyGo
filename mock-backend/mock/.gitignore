@@ -16,6 +16,8 @@ target/
 /nbdist/
 /.nb-gradle/
 build/
+.env
 
 application.yaml
+application.yml
 application.properties
