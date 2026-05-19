@@ -1,0 +1,53 @@
+spring:
+  config:
+    import: optional:file:.env[.local]
+  datasource:
+    url: "jdbc:postgresql://aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres?sslmode=require&options=reference%3Dprqowmqmkeqhpkkxqfdz"
+    username: postgres.prqowmqmkeqhpkkxqfdz
+    password: tdJtSnYhVeCR6BQA
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  data:
+    redis:
+      host: localhost
+      port: 6379
+server:
+  port: 8080
+
+# VNPAY configuration
+vnpay:
+  tmn-code: 2MC6Z5TR
+  secret-key: TJNPYQFBG7GCCJQDDR4P5U7011TMYXA0
+  pay-url: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
+  return-url: https://frugality-creation-concrete.ngrok-free.dev/api/v1/payment/vnpay-callback
+  api-url: https://api.sandbox.vnpayment.vn
+
+# JWT configuration
+app:
+  cache:
+    account-ttl-seconds: 300
+    wallet-balance-ttl-seconds: 300
+    wallet-history-ttl-seconds: 120
+  jwt:
+    expiration-ms: 480000000000
+    refresh-expiration-ms: 604800000
+    secret: dhfjkahsdjhkjdfhksfksfhklfjklfjksl@111
+
+auth:
+  login-attempt:
+    max-attempts: 5
+    window-minutes: 10
+    block-duration-minutes: 10
+
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:diq6fckpj}
+  api-key: ${CLOUDINARY_API_KEY:822636379414482}
+  api-secret: ${CLOUDINARY_API_SECRET:bYmZ8csd0R72SSXzcEWsJ7-ateY}
+  folder: ${CLOUDINARY_FOLDER:mock/professional-certificates}
