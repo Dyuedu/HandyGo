@@ -18,4 +18,5 @@ target/
 build/
 
 application.yaml
+application.yml
 application.properties
