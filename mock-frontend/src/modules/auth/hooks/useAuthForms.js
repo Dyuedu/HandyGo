@@ -15,7 +15,7 @@ const initialWorker = {
 }
 
 export function useAuthForms() {
-  const { session, signIn, signOut, clearAuthSession } = useAuth()
+  const { session, signIn, signInWithGoogle, signOut, clearAuthSession } = useAuth()
   const navigate = useNavigate()
   const [mode, setMode] = useState('login')
   const [loginForm, setLoginForm] = useState(initialLogin)
@@ -34,6 +34,14 @@ export function useAuthForms() {
       await signIn(loginForm)
       setMessage(authMessages.loginSuccess)
       setLoginForm(initialLogin)
+      navigate('/app', { replace: true })
+    })
+  }
+
+  async function handleGoogleLogin(accessToken) {
+    await submit(async () => {
+      await signInWithGoogle(accessToken)
+      setMessage(authMessages.loginSuccess)
       navigate('/app', { replace: true })
     })
   }
@@ -111,6 +119,7 @@ export function useAuthForms() {
     error,
     submitting,
     handleLogin,
+    handleGoogleLogin,
     handleRegisterUser,
     handleRegisterWorker,
     handleLogout,

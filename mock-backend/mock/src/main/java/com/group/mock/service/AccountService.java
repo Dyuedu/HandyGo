@@ -14,5 +14,5 @@ public interface AccountService extends UserDetailsService {
     void deleteAccount();
     void updateAccount();
     Account getAccountByUsername(String username);
-
+    Account loginOrRegisterGoogleUser(String supabaseAccessToken);
 }

@@ -4,6 +4,10 @@ export function login(credentials) {
   return axiosClient.post('/api/auth/login', credentials)
 }
 
+export function googleLogin(accessToken) {
+  return axiosClient.post('/api/auth/google-login', { accessToken })
+}
+
 export function registerUser(payload) {
   const formData = new FormData()
   formData.append('role', 'USER')

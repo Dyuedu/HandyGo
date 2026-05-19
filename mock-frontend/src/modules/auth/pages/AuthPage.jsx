@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { AlertMessage } from '../components/AlertMessage'
 import { AuthBrandPanel } from '../components/AuthBrandPanel'
 import { AuthSessionBar } from '../components/AuthSessionBar'
@@ -13,6 +14,18 @@ import './AuthPage.css'
 export function AuthPage() {
   const auth = useAuthForms()
   const currentMode = authModes[auth.mode]
+
+  useEffect(() => {
+    const hash = window.location.hash
+    if (hash) {
+      const params = new URLSearchParams(hash.substring(1))
+      const accessToken = params.get('access_token')
+      if (accessToken) {
+        window.history.replaceState(null, null, window.location.pathname)
+        auth.handleGoogleLogin(accessToken)
+      }
+    }
+  }, [])
 
   return (
     <main className="auth-shell">

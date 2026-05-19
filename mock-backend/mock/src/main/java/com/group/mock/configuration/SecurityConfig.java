@@ -149,7 +149,7 @@ public class SecurityConfig {
                 // các endpoint khác sẽ sử dụng security filter chain chung ở trên.
                 .securityMatcher("/api/auth/**")
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/refresh").permitAll()
+                        .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/refresh", "/api/auth/google-login").permitAll()
                         .requestMatchers("/api/auth/logout").authenticated()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer((oauth2) -> oauth2

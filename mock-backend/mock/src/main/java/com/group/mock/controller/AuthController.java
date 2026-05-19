@@ -19,12 +19,14 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.group.mock.configuration.JwtProvider;
 import com.group.mock.configuration.RequestIdFilter;
+import com.group.mock.entity.DTO.request.GoogleLoginRequest;
 import com.group.mock.entity.DTO.request.LoginRequest;
 import com.group.mock.entity.DTO.request.LogoutRequest;
 import com.group.mock.entity.DTO.request.RefreshTokenRequest;
 import com.group.mock.entity.DTO.request.RegisterRequest;
 import com.group.mock.entity.DTO.response.ApiResponse;
 import com.group.mock.entity.DTO.response.AuthTokenResponse;
+import com.group.mock.entity.Account;
 import com.group.mock.service.AccountService;
 import com.group.mock.service.LoginAttemptService;
 import com.group.mock.service.RefreshTokenService;
@@ -85,6 +87,31 @@ public class AuthController {
                 jwtProvider.getRefreshTokenExpirationSeconds(),
                 accountService.getAccountRole(authentication.getName()),
                 accountService.getWorkerVerificationStatus(authentication.getName())
+        );
+        return ResponseEntity.ok(ApiResponse.success(response, requestId(httpRequest)));
+    }
+
+    @PostMapping("/google-login")
+    public ResponseEntity<ApiResponse<AuthTokenResponse>> googleLogin(@Valid @RequestBody GoogleLoginRequest request, HttpServletRequest httpRequest) {
+        Account account = accountService.loginOrRegisterGoogleUser(request.getAccessToken());
+        
+        Authentication authentication = new UsernamePasswordAuthenticationToken(
+                account.getUsername(), 
+                null, 
+                account.getAuthorities()
+        );
+        
+        String accessToken = jwtProvider.generateAccessToken(authentication);
+        String refreshToken = refreshTokenService.issueAndStoreRefreshToken(account.getUsername());
+
+        AuthTokenResponse response = new AuthTokenResponse(
+                accessToken,
+                refreshToken,
+                "Bearer",
+                jwtProvider.getAccessTokenExpirationSeconds(),
+                jwtProvider.getRefreshTokenExpirationSeconds(),
+                accountService.getAccountRole(account.getUsername()),
+                accountService.getWorkerVerificationStatus(account.getUsername())
         );
         return ResponseEntity.ok(ApiResponse.success(response, requestId(httpRequest)));
     }

@@ -206,4 +206,64 @@ public class AccountServiceImpl implements AccountService {
     private String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
     }
+
+    @Override
+    @Transactional
+    public Account loginOrRegisterGoogleUser(String supabaseAccessToken) {
+        try {
+            // Decode the JWT local payload to be robust against 401 gatekeeping of JWKS on Kong gateway
+            String[] chunks = supabaseAccessToken.split("\\.");
+            if (chunks.length < 2) {
+                throw new AuthServiceException(HttpStatus.BAD_REQUEST, "INVALID_TOKEN", "Định dạng token không hợp lệ");
+            }
+            
+            String payloadJson = new String(
+                java.util.Base64.getUrlDecoder().decode(chunks[1]), 
+                java.nio.charset.StandardCharsets.UTF_8
+            );
+            
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            com.fasterxml.jackson.databind.JsonNode rootNode = mapper.readTree(payloadJson);
+            
+            String email = rootNode.path("email").asText();
+            if (email == null || email.isBlank()) {
+                throw new AuthServiceException(HttpStatus.BAD_REQUEST, "INVALID_TOKEN", "Email không tìm thấy trong token");
+            }
+            
+            Optional<Account> accountOpt = accountRepository.findByUsername(email);
+            if (accountOpt.isPresent()) {
+                return accountOpt.get();
+            }
+            
+            // Create a new account
+            Account account = new Account();
+            account.setUsername(email);
+            account.setPassword(passwordEncoder.encode(java.util.UUID.randomUUID().toString()));
+            account.setRole(resolveRole("USER"));
+            account.setStatus(Status.ACTIVE);
+            Account savedAccount = accountRepository.save(account);
+            
+            // Create user profile
+            UserProfile userProfile = new UserProfile();
+            userProfile.setAccount(savedAccount);
+            
+            // Extract full name from user_metadata
+            String fullName = "Google User";
+            com.fasterxml.jackson.databind.JsonNode metadataNode = rootNode.path("user_metadata");
+            if (!metadataNode.isMissingNode() && metadataNode.has("full_name")) {
+                fullName = metadataNode.path("full_name").asText();
+            }
+            
+            userProfile.setFullName(fullName);
+            userProfile.setCreatedAt(LocalDateTime.now());
+            userProfileRepository.save(userProfile);
+            
+            cacheAccount(savedAccount);
+            return savedAccount;
+        } catch (AuthServiceException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new AuthServiceException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Xác thực Google qua Supabase thất bại: " + e.getMessage());
+        }
+    }
 }

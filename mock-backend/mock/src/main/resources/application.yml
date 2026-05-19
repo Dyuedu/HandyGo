@@ -2,7 +2,7 @@ spring:
   config:
     import: optional:file:.env[.local]
   datasource:
-    url: "jdbc:postgresql://aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres?sslmode=require&options=reference%3Dprqowmqmkeqhpkkxqfdz"
+    url: "jdbc:postgresql://aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres?sslmode=require&options=reference%3Dprqowmqmkeqhpkkxqfdz&prepareThreshold=0"
     username: postgres.prqowmqmkeqhpkkxqfdz
     password: tdJtSnYhVeCR6BQA
     driver-class-name: org.postgresql.Driver

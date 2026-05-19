@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { login as loginRequest, logout as logoutRequest } from '../services/authService'
+import { login as loginRequest, logout as logoutRequest, googleLogin as googleLoginRequest } from '../services/authService'
 import { clearSession, loadSession, saveSession } from '../state/authStore'
 import { AuthContext } from './authContextObject'
 
@@ -14,6 +14,14 @@ export function AuthProvider({ children }) {
 
   async function signIn(credentials) {
     const response = await loginRequest(credentials)
+    saveSession(response.data)
+    setSession(response.data)
+    setMode(resolveInitialMode(response.data))
+    return response
+  }
+
+  async function signInWithGoogle(accessToken) {
+    const response = await googleLoginRequest(accessToken)
     saveSession(response.data)
     setSession(response.data)
     setMode(resolveInitialMode(response.data))
@@ -41,6 +49,7 @@ export function AuthProvider({ children }) {
     role: mode,
     mode,
     signIn,
+    signInWithGoogle,
     signOut,
     clearAuthSession,
   }
