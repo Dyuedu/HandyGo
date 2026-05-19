@@ -33,6 +33,12 @@ public class UserProfile {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
+    @Column(name = "latitude")
+    private Double latitude;
+
+    @Column(name = "longitude")
+    private Double longitude;
+
     // Liên kết 1:1 bảo mật với Account
     @OneToOne(fetch = FetchType.LAZY)
     @MapsId // Khóa chính 'id' sẽ đóng vai trò là Khóa ngoại tham chiếu sang account(id)

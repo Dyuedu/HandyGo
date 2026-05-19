@@ -28,6 +28,8 @@ CREATE TABLE user_profile (
     id UUID PRIMARY KEY,
     full_name VARCHAR(100) NOT NULL,
     phone VARCHAR(20) UNIQUE,
+    latitude DOUBLE PRECISION,
+    longitude DOUBLE PRECISION,
     created_at TIMESTAMP NOT NULL,
     CONSTRAINT fk_user_account FOREIGN KEY (id) REFERENCES account(id)
 );
