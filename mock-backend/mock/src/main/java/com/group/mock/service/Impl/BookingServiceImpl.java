@@ -4,6 +4,7 @@ import com.group.mock.entity.Account;
 import com.group.mock.entity.Booking;
 import com.group.mock.entity.BookingStatusHistory;
 import com.group.mock.entity.DTO.request.CreateBookingRequest;
+import com.group.mock.entity.DTO.request.UpdateBookingPaymentRequest;
 import com.group.mock.entity.UserProfile;
 import com.group.mock.entity.Voucher;
 import com.group.mock.entity.VoucherUsage;
@@ -183,6 +184,41 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
+    @Transactional
+    public Booking updatePayment(String username, UUID bookingId, UpdateBookingPaymentRequest request) {
+        Account account = loadAccount(username);
+        Booking booking =
+                bookingRepository.findDetailById(bookingId).orElseThrow(bookingNotFound());
+        assertWorker(account, booking);
+
+        if (booking.getStatus() == BookingStatus.DECLINED
+                || booking.getStatus() == BookingStatus.CANCELLED
+                || booking.getStatus() == BookingStatus.FINISHED) {
+            throw new AuthServiceException(
+                    HttpStatus.CONFLICT,
+                    "BOOKING_PAYMENT_LOCKED",
+                    "Cannot update payment for a closed booking");
+        }
+
+        BigDecimal total = request.getTotalAmount().setScale(4, RoundingMode.HALF_UP);
+        BigDecimal discount = calculateDiscount(booking.getVoucherUsage(), total);
+        BigDecimal finalAmount = total.subtract(discount).max(BigDecimal.ZERO).setScale(4, RoundingMode.HALF_UP);
+
+        booking.setTotalAmount(total);
+        booking.setDiscountAmount(discount);
+        booking.setFinalAmount(finalAmount);
+
+        VoucherUsage usage = booking.getVoucherUsage();
+        if (usage != null) {
+            usage.setAppliedDiscountAmount(discount);
+            voucherUsageRepository.save(usage);
+        }
+
+        bookingRepository.save(booking);
+        return bookingRepository.findDetailById(bookingId).orElse(booking);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<Booking> getBookings(String username, Collection<BookingStatus> statusFilter) {
         Account account = loadAccount(username);
@@ -292,5 +328,12 @@ public class BookingServiceImpl implements BookingService {
         if (voucher.getExpiryDate() != null && voucher.getExpiryDate().isBefore(LocalDateTime.now())) {
             throw new AuthServiceException(HttpStatus.BAD_REQUEST, "VOUCHER_EXPIRED", "Voucher has expired");
         }
+    }
+
+    private BigDecimal calculateDiscount(VoucherUsage usage, BigDecimal total) {
+        if (usage == null || usage.getVoucher() == null) {
+            return BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP);
+        }
+        return usage.getVoucher().getValue().min(total).setScale(4, RoundingMode.HALF_UP);
     }
 }

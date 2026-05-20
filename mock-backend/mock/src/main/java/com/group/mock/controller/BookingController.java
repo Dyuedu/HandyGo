@@ -2,6 +2,7 @@ package com.group.mock.controller;
 
 import com.group.mock.entity.Booking;
 import com.group.mock.entity.DTO.request.CreateBookingRequest;
+import com.group.mock.entity.DTO.request.UpdateBookingPaymentRequest;
 import com.group.mock.entity.enums.BookingStatus;
 import com.group.mock.service.BookingService;
 import jakarta.validation.Valid;
@@ -52,6 +53,14 @@ public class BookingController {
     @PatchMapping("/{id}/complete")
     public ResponseEntity<Booking> markCompleted(Authentication authentication, @PathVariable("id") UUID id) {
         return ResponseEntity.ok(bookingService.markCompleted(authentication.getName(), id));
+    }
+
+    @PatchMapping("/{id}/payment")
+    public ResponseEntity<Booking> updatePayment(
+            Authentication authentication,
+            @PathVariable("id") UUID id,
+            @Valid @RequestBody UpdateBookingPaymentRequest request) {
+        return ResponseEntity.ok(bookingService.updatePayment(authentication.getName(), id, request));
     }
 
     @PatchMapping("/{id}/confirm")

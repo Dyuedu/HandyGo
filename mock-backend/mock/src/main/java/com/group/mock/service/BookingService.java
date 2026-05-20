@@ -2,6 +2,7 @@ package com.group.mock.service;
 
 import com.group.mock.entity.Booking;
 import com.group.mock.entity.DTO.request.CreateBookingRequest;
+import com.group.mock.entity.DTO.request.UpdateBookingPaymentRequest;
 import com.group.mock.entity.enums.BookingStatus;
 import java.util.Collection;
 import java.util.List;
@@ -20,6 +21,8 @@ public interface BookingService {
     Booking markCompleted(String username, UUID bookingId);
 
     Booking confirmCompletion(String username, UUID bookingId);
+
+    Booking updatePayment(String username, UUID bookingId, UpdateBookingPaymentRequest request);
 
     /** Returns bookings for the current customer or technician, optionally filtered by status. */
     List<Booking> getBookings(String username, Collection<BookingStatus> statusFilter);
