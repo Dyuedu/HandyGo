@@ -29,7 +29,9 @@ export function MainLayout() {
   const { mode, session, signOut } = useAuth()
   const location = useLocation()
   const navigation = mode === 'TECHNICIAN' ? technicianNav : customerNav
-  const activeSection = sectionNames[location.pathname] || 'Dashboard'
+  const activeSection = location.pathname.startsWith('/app/bookings/')
+    ? 'Booking'
+    : sectionNames[location.pathname] || 'Dashboard'
 
   return (
     <div className="main-layout">
