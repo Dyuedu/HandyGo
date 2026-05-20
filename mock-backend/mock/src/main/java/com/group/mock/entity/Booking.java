@@ -48,6 +48,9 @@ public class Booking {
     @Column(name = "booking_date")
     private LocalDateTime bookingDate;
 
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
+
     @Column(name = "address", columnDefinition = "TEXT")
     private String address;
 

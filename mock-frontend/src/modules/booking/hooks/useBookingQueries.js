@@ -68,8 +68,8 @@ export function useMarkCompleted() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (bookingId) => markCompleted(bookingId),
-    onSuccess: (_data, bookingId) => {
+    mutationFn: ({ bookingId, totalAmount }) => markCompleted(bookingId, { totalAmount }),
+    onSuccess: (_data, { bookingId }) => {
       queryClient.invalidateQueries({ queryKey: [bookingsKeyRoot] })
       queryClient.invalidateQueries({ queryKey: bookingDetailKey(bookingId) })
     },

@@ -10,4 +10,6 @@ import org.springframework.stereotype.Repository;
 public interface VoucherUsageRepository extends JpaRepository<VoucherUsage, Long> {
 
     Optional<VoucherUsage> findByBooking_Id(UUID bookingId);
+
+    long countByVoucher_Id(Long voucherId);
 }

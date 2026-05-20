@@ -18,7 +18,7 @@ public interface BookingService {
 
     Booking startProcessing(String username, UUID bookingId);
 
-    Booking markCompleted(String username, UUID bookingId);
+    Booking markCompleted(String username, UUID bookingId, UpdateBookingPaymentRequest request);
 
     Booking confirmCompletion(String username, UUID bookingId);
 

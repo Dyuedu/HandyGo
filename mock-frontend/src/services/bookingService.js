@@ -5,10 +5,12 @@ const BOOKINGS_BASE = '/api/v1/bookings'
 /**
  * @param {object} payload
  * @param {string} payload.workerId - UUID
- * @param {string} [payload.serviceCode]
  * @param {string} payload.address
+ * @param {string} [payload.bookingDate] - ISO local date-time
+ * @param {string} [payload.description]
+ * @param {string} [payload.serviceCode]
  * @param {number} [payload.voucherId]
- * @param {number|string} payload.totalAmount
+ * @param {number} [payload.totalAmount] - set later by technician on complete
  */
 export function createBooking(payload) {
   return axiosClient.post(BOOKINGS_BASE, payload)
@@ -55,8 +57,12 @@ export function startProcessing(bookingId) {
   return axiosClient.patch(`${BOOKINGS_BASE}/${bookingId}/processing`)
 }
 
-export function markCompleted(bookingId) {
-  return axiosClient.patch(`${BOOKINGS_BASE}/${bookingId}/complete`)
+/**
+ * @param {string} bookingId
+ * @param {{ totalAmount: number }} payload
+ */
+export function markCompleted(bookingId, payload) {
+  return axiosClient.patch(`${BOOKINGS_BASE}/${bookingId}/complete`, payload)
 }
 
 export function confirmCompletion(bookingId) {

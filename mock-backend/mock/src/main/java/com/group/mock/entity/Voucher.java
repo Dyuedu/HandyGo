@@ -49,6 +49,10 @@ public class Voucher {
     @Column(name = "is_used", nullable = false)
     private boolean isUsed = false;
 
+    /** Max redemptions; null = unlimited (legacy is_used may still apply). */
+    @Column(name = "max_uses")
+    private Integer maxUses;
+
     @JsonIgnore
     @OneToMany(mappedBy = "voucher", fetch = FetchType.LAZY)
     private List<VoucherUsage> usages = new ArrayList<>();

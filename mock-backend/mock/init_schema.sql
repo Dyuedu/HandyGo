@@ -106,9 +106,18 @@ CREATE TABLE vouchers (
     id BIGSERIAL PRIMARY KEY,
     code VARCHAR(100) NOT NULL UNIQUE,
     value NUMERIC(19, 4) NOT NULL,
+    discount_type VARCHAR(30) DEFAULT 'FIXED_AMOUNT',
+    discount_percent NUMERIC(5, 2),
+    max_discount_amount NUMERIC(19, 4),
     expiry_date TIMESTAMP,
-    is_used BOOLEAN NOT NULL DEFAULT FALSE
+    is_used BOOLEAN NOT NULL DEFAULT FALSE,
+    max_uses INTEGER
 );
+
+-- Voucher demo: giảm 30.000 VND, tối đa 20 lượt dùng
+INSERT INTO vouchers (code, value, discount_type, is_used, max_uses)
+VALUES ('GIAM30K', 30000, 'FIXED_AMOUNT', FALSE, 20)
+ON CONFLICT (code) DO NOTHING;
 
 -- Bảng bookings
 CREATE TABLE bookings (
@@ -116,6 +125,7 @@ CREATE TABLE bookings (
     customer_id UUID NOT NULL,
     worker_id UUID NOT NULL,
     service_code VARCHAR(100),
+    description TEXT,
     address TEXT,
     status VARCHAR(40) NOT NULL,
     total_amount NUMERIC(19, 4),

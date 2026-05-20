@@ -26,6 +26,7 @@ import com.group.mock.repository.WalletRepository;
 import com.group.mock.repository.WorkerProfileRepository;
 import com.group.mock.service.BookingService;
 import com.group.mock.service.BookingStateTransitionValidator;
+import com.group.mock.service.VoucherAvailabilityHelper;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.ZoneId;
@@ -70,15 +71,9 @@ public class BookingServiceImpl implements BookingService {
         Account account = loadAccount(username);
         requireRole(account, ROLE_USER, "Only customers can create bookings");
 
-        if (request.getWorkerId() == null || request.getTotalAmount() == null) {
+        if (request.getWorkerId() == null) {
             throw new AuthServiceException(
-                    HttpStatus.BAD_REQUEST,
-                    "INVALID_REQUEST",
-                    "workerId and totalAmount are required");
-        }
-        if (request.getTotalAmount().signum() <= 0) {
-            throw new AuthServiceException(
-                    HttpStatus.BAD_REQUEST, "INVALID_AMOUNT", "totalAmount must be positive");
+                    HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "workerId is required");
         }
 
         UserProfile customer = userProfileRepository
@@ -91,8 +86,8 @@ public class BookingServiceImpl implements BookingService {
                 .orElseThrow(() -> new AuthServiceException(
                         HttpStatus.NOT_FOUND, "WORKER_NOT_FOUND", "Technician not found"));
 
-        BigDecimal total = request.getTotalAmount().setScale(4, RoundingMode.HALF_UP);
-        BigDecimal discount = BigDecimal.ZERO;
+        BigDecimal total = BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP);
+        BigDecimal discount = BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP);
         Voucher appliedVoucher = null;
 
         if (request.getVoucherId() != null) {
@@ -101,20 +96,19 @@ public class BookingServiceImpl implements BookingService {
                     .orElseThrow(() -> new AuthServiceException(
                             HttpStatus.NOT_FOUND, "VOUCHER_NOT_FOUND", "Voucher not found"));
             assertVoucherUsable(appliedVoucher);
-            discount = calculateDiscount(appliedVoucher, total);
         }
-
-        BigDecimal finalAmount = total.subtract(discount).max(BigDecimal.ZERO).setScale(4, RoundingMode.HALF_UP);
 
         Booking booking = new Booking();
         booking.setCustomer(customer);
         booking.setWorker(worker);
         booking.setServiceCode(request.getServiceCode());
         booking.setAddress(request.getAddress());
+        booking.setBookingDate(request.getBookingDate());
+        booking.setDescription(request.getDescription());
         booking.setStatus(BookingStatus.PENDING);
         booking.setTotalAmount(total);
         booking.setDiscountAmount(discount);
-        booking.setFinalAmount(finalAmount);
+        booking.setFinalAmount(BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP));
 
         booking = bookingRepository.save(booking);
         recordHistory(booking, null, BookingStatus.PENDING, "Booking created");
@@ -166,12 +160,24 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     @Transactional
-    public Booking markCompleted(String username, UUID bookingId) {
+    public Booking markCompleted(String username, UUID bookingId, UpdateBookingPaymentRequest request) {
         Account account = loadAccount(username);
         Booking booking =
-                bookingRepository.findById(bookingId).orElseThrow(bookingNotFound());
+                bookingRepository.findDetailById(bookingId).orElseThrow(bookingNotFound());
         assertWorker(account, booking);
-        transition(booking, BookingStatus.WAITING_CUSTOMER_CONFIRMATION, "Work reported complete; awaiting customer");
+
+        if (booking.getStatus() != BookingStatus.PROCESSING) {
+            throw new AuthServiceException(
+                    HttpStatus.CONFLICT,
+                    "INVALID_BOOKING_STATE",
+                    "Service fee can only be submitted while booking is PROCESSING");
+        }
+
+        applyServiceFee(booking, request.getTotalAmount());
+        transition(
+                booking,
+                BookingStatus.WAITING_CUSTOMER_CONFIRMATION,
+                "Work complete; service fee set; awaiting customer cash payment and confirmation");
         return bookingRepository.findDetailById(bookingId).orElse(booking);
     }
 
@@ -182,6 +188,14 @@ public class BookingServiceImpl implements BookingService {
         Booking booking =
                 bookingRepository.findDetailById(bookingId).orElseThrow(bookingNotFound());
         assertCustomer(account, booking);
+
+        if (booking.getStatus() != BookingStatus.WAITING_CUSTOMER_CONFIRMATION) {
+            throw new AuthServiceException(
+                    HttpStatus.CONFLICT,
+                    "INVALID_BOOKING_STATE",
+                    "Booking is not waiting for customer confirmation");
+        }
+        assertServiceFeeSet(booking);
 
         VoucherUsage usage = booking.getVoucherUsage();
 
@@ -205,16 +219,25 @@ public class BookingServiceImpl implements BookingService {
                 bookingRepository.findDetailById(bookingId).orElseThrow(bookingNotFound());
         assertWorker(account, booking);
 
-        if (booking.getStatus() == BookingStatus.DECLINED
-                || booking.getStatus() == BookingStatus.CANCELLED
-                || booking.getStatus() == BookingStatus.FINISHED) {
+        if (booking.getStatus() != BookingStatus.PROCESSING) {
             throw new AuthServiceException(
                     HttpStatus.CONFLICT,
                     "BOOKING_PAYMENT_LOCKED",
-                    "Cannot update payment for a closed booking");
+                    "Payment can only be updated while booking is PROCESSING");
         }
 
-        BigDecimal total = request.getTotalAmount().setScale(4, RoundingMode.HALF_UP);
+        applyServiceFee(booking, request.getTotalAmount());
+        bookingRepository.save(booking);
+        return bookingRepository.findDetailById(bookingId).orElse(booking);
+    }
+
+    private void applyServiceFee(Booking booking, BigDecimal totalAmount) {
+        if (totalAmount == null || totalAmount.signum() <= 0) {
+            throw new AuthServiceException(
+                    HttpStatus.BAD_REQUEST, "INVALID_AMOUNT", "totalAmount must be positive");
+        }
+
+        BigDecimal total = totalAmount.setScale(4, RoundingMode.HALF_UP);
         BigDecimal discount = calculateDiscount(booking.getVoucherUsage(), total);
         BigDecimal finalAmount = total.subtract(discount).max(BigDecimal.ZERO).setScale(4, RoundingMode.HALF_UP);
 
@@ -227,9 +250,15 @@ public class BookingServiceImpl implements BookingService {
             usage.setAppliedDiscountAmount(discount);
             voucherUsageRepository.save(usage);
         }
+    }
 
-        bookingRepository.save(booking);
-        return bookingRepository.findDetailById(bookingId).orElse(booking);
+    private void assertServiceFeeSet(Booking booking) {
+        if (booking.getTotalAmount() == null || booking.getTotalAmount().signum() <= 0) {
+            throw new AuthServiceException(
+                    HttpStatus.CONFLICT,
+                    "SERVICE_FEE_NOT_SET",
+                    "Technician must set the service fee before customer confirmation");
+        }
     }
 
     @Override
@@ -339,9 +368,7 @@ public class BookingServiceImpl implements BookingService {
     }
 
     private void assertVoucherUsable(Voucher voucher) {
-        if (voucher.getExpiryDate() != null && voucher.getExpiryDate().isBefore(LocalDateTime.now())) {
-            throw new AuthServiceException(HttpStatus.BAD_REQUEST, "VOUCHER_EXPIRED", "Voucher has expired");
-        }
+        VoucherAvailabilityHelper.assertUsable(voucher, voucherUsageRepository);
         if (voucher.getDiscountType() == VoucherDiscountType.PERCENTAGE) {
             BigDecimal percent = voucher.getDiscountPercent();
             if (percent == null

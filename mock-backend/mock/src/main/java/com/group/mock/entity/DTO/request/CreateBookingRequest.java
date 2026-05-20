@@ -2,8 +2,8 @@ package com.group.mock.entity.DTO.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.UUID;
 import lombok.Data;
 
@@ -20,11 +20,13 @@ public class CreateBookingRequest {
     @NotBlank(message = "address is required")
     private String address;
 
+    private LocalDateTime bookingDate;
+
+    private String description;
+
     /** Optional voucher catalog id. */
     private Long voucherId;
 
-    /** Service fee (e.g. 300000). */
-    @NotNull
-    @Positive(message = "totalAmount must be positive")
+    /** Set by technician when marking work complete; optional at booking creation. */
     private BigDecimal totalAmount;
 }

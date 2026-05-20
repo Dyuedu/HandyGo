@@ -267,3 +267,83 @@
 .booking-modal-actions--confirm .confirm {
   min-width: 200px;
 }
+
+.booking-modal--form {
+  max-width: 440px;
+}
+
+.booking-modal-hint {
+  margin: 0 0 16px;
+  color: #64748b;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.booking-modal-field-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #475569;
+  margin-bottom: 6px;
+}
+
+.booking-modal-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-family: inherit;
+}
+
+.booking-modal-preview {
+  margin: 10px 0 0;
+  font-size: 0.88rem;
+  color: #334155;
+}
+
+.booking-payment-summary {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 12px;
+}
+
+.booking-payment-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.9rem;
+  color: #475569;
+}
+
+.booking-payment-row.highlight {
+  padding-top: 10px;
+  border-top: 1px dashed #cbd5e1;
+  color: #0f172a;
+  font-weight: 650;
+}
+
+.booking-payment-row.highlight strong {
+  color: #1d4ed8;
+  font-size: 1.05rem;
+}
+
+.booking-cash-note,
+.booking-cash-instruction {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.booking-payment-card {
+  border-color: #93c5fd;
+  background: linear-gradient(180deg, #eff6ff 0%, #ffffff 40%);
+}

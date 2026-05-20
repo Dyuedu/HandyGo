@@ -1,8 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { useCreateBooking } from '../modules/booking/hooks'
 import { getUserLocations } from '../services/userService'
+import { getAvailableVouchers } from '../services/voucherService'
 import './WorkerProfile.css'
+
+function buildBookingDateTime(date, time) {
+  if (!date || !time) return null
+  const normalizedTime = time.length === 5 ? `${time}:00` : time
+  return `${date}T${normalizedTime}`
+}
 
 const translateJobType = (job) => {
   if (!job) return 'Chưa xác định'
@@ -55,8 +63,10 @@ const generateMockReviews = (workerId) => {
 export function WorkerProfile() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { session } = useAuth()
+  const { session, mode } = useAuth()
+  const createBookingMutation = useCreateBooking()
   const currentUserId = session?.id || localStorage.getItem('my_user_id')
+  const isCustomer = mode === 'CUSTOMER'
 
   const [worker, setWorker] = useState(null)
   const [currentUser, setCurrentUser] = useState(null)
@@ -68,8 +78,11 @@ export function WorkerProfile() {
     time: '',
     address: '',
     description: '',
+    voucherId: '',
   })
-  const [bookingSubmitted, setBookingSubmitted] = useState(false)
+  const [bookingError, setBookingError] = useState('')
+  const [vouchers, setVouchers] = useState([])
+  const [vouchersLoading, setVouchersLoading] = useState(false)
   const miniMapRef = useRef(null)
   const miniMapInstanceRef = useRef(null)
 
@@ -89,6 +102,29 @@ export function WorkerProfile() {
     }
     fetchWorker()
   }, [id, currentUserId])
+
+  useEffect(() => {
+    if (!bookingOpen || !isCustomer) return
+
+    let cancelled = false
+    setVouchersLoading(true)
+    getAvailableVouchers()
+      .then((data) => {
+        if (!cancelled) setVouchers(Array.isArray(data) ? data : [])
+      })
+      .catch(() => {
+        if (!cancelled) setVouchers([])
+      })
+      .finally(() => {
+        if (!cancelled) setVouchersLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [bookingOpen, isCustomer])
+
+  const selectedVoucher = vouchers.find((v) => String(v.id) === String(bookingData.voucherId))
 
   // Mini map for worker location
   useEffect(() => {
@@ -145,8 +181,31 @@ export function WorkerProfile() {
 
   const handleBookingSubmit = (e) => {
     e.preventDefault()
-    setBookingSubmitted(true)
-    // In production: POST to booking API
+    setBookingError('')
+
+    const voucherId = bookingData.voucherId ? Number(bookingData.voucherId) : undefined
+
+    const payload = {
+      workerId: id,
+      address: bookingData.address.trim(),
+      bookingDate: buildBookingDateTime(bookingData.date, bookingData.time),
+      description: bookingData.description.trim() || undefined,
+      serviceCode: worker.jobType || undefined,
+      ...(voucherId != null ? { voucherId } : {}),
+    }
+
+    createBookingMutation.mutate(payload, {
+      onSuccess: (booking) => {
+        if (booking?.id) {
+          navigate(`/app/bookings/${booking.id}`)
+        } else {
+          navigate('/app/activity')
+        }
+      },
+      onError: (err) => {
+        setBookingError(err?.message || 'Không thể tạo đặt lịch. Vui lòng thử lại.')
+      },
+    })
   }
 
   const renderStars = (rating, size = 16) => {
@@ -268,26 +327,22 @@ export function WorkerProfile() {
         <div className="wp-right">
           {/* Book Button */}
           <div className="wp-book-section">
-            {!bookingOpen && !bookingSubmitted && (
-              <button className="wp-book-btn" onClick={() => setBookingOpen(true)}>
+            {!isCustomer && (
+              <p className="wp-book-hint">Chỉ tài khoản khách hàng mới có thể đặt lịch.</p>
+            )}
+
+            {isCustomer && !bookingOpen && (
+              <button className="wp-book-btn" onClick={() => { setBookingOpen(true); setBookingError('') }}>
                 📅 Đặt lịch với {worker.fullName?.split(' ').pop() || 'thợ'}
               </button>
             )}
 
-            {bookingSubmitted && (
-              <div className="wp-booking-success">
-                <span className="wp-success-icon">✅</span>
-                <h3>Đặt lịch thành công!</h3>
-                <p>Yêu cầu của bạn đã được gửi đến <strong>{worker.fullName}</strong>. Thợ sẽ liên hệ xác nhận sớm.</p>
-                <button className="wp-book-another" onClick={() => { setBookingSubmitted(false); setBookingOpen(false); setBookingData({ date: '', time: '', address: '', description: '' }) }}>
-                  Đặt lịch mới
-                </button>
-              </div>
-            )}
-
-            {bookingOpen && !bookingSubmitted && (
+            {isCustomer && bookingOpen && (
               <form className="wp-booking-form" onSubmit={handleBookingSubmit}>
                 <h3 className="wp-form-title">📅 Đặt lịch hẹn</h3>
+                {bookingError && (
+                  <div className="wp-form-error" role="alert">{bookingError}</div>
+                )}
                 <div className="wp-form-row">
                   <label>Ngày</label>
                   <input
@@ -326,9 +381,52 @@ export function WorkerProfile() {
                     onChange={(e) => setBookingData(prev => ({ ...prev, description: e.target.value }))}
                   />
                 </div>
+                <div className="wp-form-row">
+                  <label>Voucher (tùy chọn)</label>
+                  <select
+                    value={bookingData.voucherId}
+                    onChange={(e) => setBookingData((prev) => ({ ...prev, voucherId: e.target.value }))}
+                    className="wp-form-select"
+                    disabled={vouchersLoading}
+                  >
+                    <option value="">Không dùng voucher</option>
+                    {vouchers.map((v) => (
+                      <option key={v.id} value={String(v.id)}>
+                        {v.code} — {v.discountPreview || 'Giảm giá'}
+                      </option>
+                    ))}
+                  </select>
+                  {vouchersLoading && (
+                    <p className="wp-voucher-hint">Đang tải danh sách voucher…</p>
+                  )}
+                  {!vouchersLoading && vouchers.length === 0 && (
+                    <p className="wp-voucher-hint">Không có voucher khả dụng.</p>
+                  )}
+                  {selectedVoucher && (
+                    <p className="wp-voucher-preview">
+                      Ưu đãi: <strong>{selectedVoucher.discountPreview}</strong>
+                      <span className="wp-voucher-preview-note">
+                        {' '}— áp dụng khi thợ nhập phí dịch vụ
+                      </span>
+                    </p>
+                  )}
+                </div>
                 <div className="wp-form-actions">
-                  <button type="button" className="wp-form-cancel" onClick={() => setBookingOpen(false)}>Hủy</button>
-                  <button type="submit" className="wp-form-submit">Xác nhận đặt lịch</button>
+                  <button
+                    type="button"
+                    className="wp-form-cancel"
+                    disabled={createBookingMutation.isPending}
+                    onClick={() => { setBookingOpen(false); setBookingError('') }}
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    className="wp-form-submit"
+                    disabled={createBookingMutation.isPending}
+                  >
+                    {createBookingMutation.isPending ? 'Đang gửi…' : 'Xác nhận đặt lịch'}
+                  </button>
                 </div>
               </form>
             )}

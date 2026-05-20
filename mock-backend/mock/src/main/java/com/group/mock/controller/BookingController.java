@@ -51,8 +51,11 @@ public class BookingController {
     }
 
     @PatchMapping("/{id}/complete")
-    public ResponseEntity<Booking> markCompleted(Authentication authentication, @PathVariable("id") UUID id) {
-        return ResponseEntity.ok(bookingService.markCompleted(authentication.getName(), id));
+    public ResponseEntity<Booking> markCompleted(
+            Authentication authentication,
+            @PathVariable("id") UUID id,
+            @Valid @RequestBody UpdateBookingPaymentRequest request) {
+        return ResponseEntity.ok(bookingService.markCompleted(authentication.getName(), id, request));
     }
 
     @PatchMapping("/{id}/payment")

@@ -2,11 +2,11 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../../../hooks/useAuth'
 import { CustomerConfirmationModal } from '../components/CustomerConfirmationModal'
+import { WorkerServiceFeeModal } from '../components/WorkerServiceFeeModal'
 import {
   useAcceptBooking,
   useBookingDetail,
   useDeclineBooking,
-  useMarkCompleted,
   useStartProcessing,
 } from '../hooks'
 import './BookingPages.css'
@@ -23,17 +23,22 @@ function sameId(a, b) {
   return String(a) === String(b)
 }
 
+function hasServiceFee(booking) {
+  const total = Number(booking?.totalAmount)
+  return Number.isFinite(total) && total > 0
+}
+
 export function BookingDetailPage() {
   const { bookingId } = useParams()
   const { mode, session } = useAuth()
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [feeModalOpen, setFeeModalOpen] = useState(false)
 
   const { data: booking, isLoading, isError, error } = useBookingDetail(bookingId)
 
   const acceptMutation = useAcceptBooking()
   const declineMutation = useDeclineBooking()
   const startMutation = useStartProcessing()
-  const completeMutation = useMarkCompleted()
 
   const isCustomer = mode === 'CUSTOMER'
   const isTechnician = mode === 'TECHNICIAN'
@@ -46,8 +51,9 @@ export function BookingDetailPage() {
   const busy =
     acceptMutation.isPending ||
     declineMutation.isPending ||
-    startMutation.isPending ||
-    completeMutation.isPending
+    startMutation.isPending
+
+  const feeReady = hasServiceFee(booking)
 
   if (isLoading) {
     return (
@@ -151,19 +157,51 @@ export function BookingDetailPage() {
             <dt>Mã / tên dịch vụ (tạm)</dt>
             <dd>{serviceLabel}</dd>
           </div>
-          <div className="booking-detail-row">
-            <dt>Phí dịch vụ</dt>
-            <dd>{formatVnd(booking.totalAmount)}</dd>
-          </div>
-          <div className="booking-detail-row">
-            <dt>Giảm giá</dt>
-            <dd>{formatVnd(booking.discountAmount)}</dd>
-          </div>
-          <div className="booking-detail-row">
-            <dt>Khách trả (tiền mặt)</dt>
-            <dd>{formatVnd(booking.finalAmount)}</dd>
-          </div>
+          {feeReady ? (
+            <>
+              <div className="booking-detail-row">
+                <dt>Phí dịch vụ</dt>
+                <dd>{formatVnd(booking.totalAmount)}</dd>
+              </div>
+              <div className="booking-detail-row">
+                <dt>Giảm giá (voucher)</dt>
+                <dd>{formatVnd(booking.discountAmount)}</dd>
+              </div>
+              <div className="booking-detail-row">
+                <dt>Khách trả tiền mặt</dt>
+                <dd>{formatVnd(booking.finalAmount)}</dd>
+              </div>
+            </>
+          ) : (
+            <p className="muted">Phí dịch vụ sẽ do thợ nhập khi hoàn thành công việc.</p>
+          )}
         </article>
+
+        {isCustomerParty && st === 'WAITING_CUSTOMER_CONFIRMATION' && feeReady && (
+          <article className="booking-detail-card booking-payment-card">
+            <h2>Thanh toán tiền mặt</h2>
+            <p className="booking-cash-instruction">
+              Vui lòng thanh toán <strong>{formatVnd(booking.finalAmount)}</strong> trực tiếp cho thợ
+              sau khi kiểm tra công việc. Sau đó bấm xác nhận hoàn thành.
+            </p>
+            <div className="booking-payment-summary">
+              <div className="booking-payment-row">
+                <span>Phí dịch vụ</span>
+                <strong>{formatVnd(booking.totalAmount)}</strong>
+              </div>
+              {Number(booking.discountAmount) > 0 && (
+                <div className="booking-payment-row">
+                  <span>Voucher</span>
+                  <strong>-{formatVnd(booking.discountAmount)}</strong>
+                </div>
+              )}
+              <div className="booking-payment-row highlight">
+                <span>Tiền mặt trả thợ</span>
+                <strong>{formatVnd(booking.finalAmount)}</strong>
+              </div>
+            </div>
+          </article>
+        )}
 
         <article className="booking-detail-card">
           <h2>Voucher</h2>
@@ -225,7 +263,7 @@ export function BookingDetailPage() {
               type="button"
               className="primary"
               disabled={busy}
-              onClick={() => completeMutation.mutate(bookingId)}
+              onClick={() => setFeeModalOpen(true)}
             >
               Mark Completed
             </button>
@@ -246,9 +284,16 @@ export function BookingDetailPage() {
         </div>
       )}
 
+      <WorkerServiceFeeModal
+        open={feeModalOpen}
+        bookingId={bookingId}
+        onClose={() => setFeeModalOpen(false)}
+      />
+
       <CustomerConfirmationModal
         open={confirmOpen}
         bookingId={bookingId}
+        booking={booking}
         onClose={() => setConfirmOpen(false)}
       />
     </section>
