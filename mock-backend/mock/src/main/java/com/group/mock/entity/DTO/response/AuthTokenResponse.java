@@ -1,5 +1,7 @@
 package com.group.mock.entity.DTO.response;
 
+import java.util.UUID;
+
 public record AuthTokenResponse(
         String accessToken,
         String refreshToken,
@@ -7,7 +9,8 @@ public record AuthTokenResponse(
         long accessTokenExpiresIn,
         long refreshTokenExpiresIn,
         String role,
-        String workerVerificationStatus
+        String workerVerificationStatus,
+        UUID id
 ) {
     public AuthTokenResponse(
             String accessToken,
@@ -16,6 +19,6 @@ public record AuthTokenResponse(
             long accessTokenExpiresIn,
             long refreshTokenExpiresIn
     ) {
-        this(accessToken, refreshToken, tokenType, accessTokenExpiresIn, refreshTokenExpiresIn, null, null);
+        this(accessToken, refreshToken, tokenType, accessTokenExpiresIn, refreshTokenExpiresIn, null, null, null);
     }
 }

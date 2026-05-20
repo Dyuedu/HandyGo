@@ -81,7 +81,7 @@ public class AccountServiceImpl implements AccountService {
         }
 
         String role = registerRequest.getRole().toUpperCase(Locale.ROOT);
-        if ("USER".equals(role) && registerRequest.getPhone() != null && !registerRequest.getPhone().isBlank()
+        if (registerRequest.getPhone() != null && !registerRequest.getPhone().isBlank()
                 && userProfileRepository.existsByPhone(registerRequest.getPhone())) {
             throw new AuthServiceException(HttpStatus.CONFLICT, "PHONE_EXISTS", "Số điện thoại đã được sử dụng");
         }
@@ -96,6 +96,7 @@ public class AccountServiceImpl implements AccountService {
         if ("USER".equals(role)) {
             createUserProfile(savedAccount, registerRequest);
         } else if ("WORKER".equals(role)) {
+            createUserProfile(savedAccount, registerRequest);
             createWorkerProfile(savedAccount, registerRequest);
         } else {
             throw new AuthServiceException(HttpStatus.BAD_REQUEST, "INVALID_ROLE", "Vai trò không hợp lệ");

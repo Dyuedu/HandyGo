@@ -5,6 +5,7 @@ import { BookingDetailPage } from '../modules/booking/pages/BookingDetailPage'
 import { AccessDenied } from '../pages/AccessDenied'
 import { Auth } from '../pages/Auth'
 import { DashboardHome } from '../pages/DashboardHome'
+import { WorkerProfile } from '../pages/WorkerProfile'
 import { Landing } from '../pages/Landing'
 import { PrivateRoute } from './PrivateRoute'
 
@@ -25,6 +26,7 @@ export function AppRoutes() {
           <Route path="/app/chat" element={<DashboardHome section="Chat" />} />
           <Route path="/app/wallet" element={<DashboardHome section="Wallet" />} />
           <Route path="/app/profile" element={<DashboardHome section="Profile" />} />
+          <Route path="/app/worker/:id" element={<WorkerProfile />} />
         </Route>
       </Route>
 
@@ -32,3 +34,4 @@ export function AppRoutes() {
     </Routes>
   )
 }
+

@@ -24,6 +24,8 @@ export function registerWorker(payload) {
   formData.append('role', 'WORKER')
   formData.append('username', payload.username)
   formData.append('password', payload.password)
+  formData.append('fullName', payload.fullName)
+  formData.append('phone', payload.phone)
   formData.append('jobType', payload.jobType)
   if (payload.professionalCertificate) {
     formData.append('professionalCertificate', payload.professionalCertificate)

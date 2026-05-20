@@ -11,8 +11,15 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+
 @Entity
 @Table(name = "worker_locations")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class WorkerLocation {
     @Id
     @Column(name = "worker_id")
