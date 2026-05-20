@@ -10,6 +10,8 @@ const initialUser = { username: '', password: '', fullName: '', phone: '' }
 const initialWorker = {
   username: '',
   password: '',
+  fullName: '',
+  phone: '',
   jobType: '',
   professionalCertificate: null,
 }
@@ -68,6 +70,8 @@ export function useAuthForms() {
     const validation =
       validateUsername(workerForm.username) ||
       validatePassword(workerForm.password) ||
+      (!workerForm.fullName.trim() ? 'Vui lòng nhập họ tên' : '') ||
+      validatePhone(workerForm.phone) ||
       (!workerForm.jobType.trim() ? 'Vui lòng nhập loại công việc' : '') ||
       (!workerForm.professionalCertificate ? 'Vui lòng tải lên chứng chỉ hành nghề' : '')
     if (validation) return setError(validation)

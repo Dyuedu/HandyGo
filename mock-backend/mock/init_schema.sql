@@ -46,6 +46,16 @@ CREATE TABLE worker_profile (
     CONSTRAINT fk_worker_account FOREIGN KEY (id) REFERENCES account(id)
 );
 
+-- Bảng worker_locations (1:1 với worker_profile, lưu vị trí GPS thời gian thực)
+CREATE TABLE worker_locations (
+    worker_id UUID PRIMARY KEY,
+    latitude DOUBLE PRECISION NOT NULL,
+    longitude DOUBLE PRECISION NOT NULL,
+    last_update TIMESTAMP NOT NULL,
+    is_available BOOLEAN NOT NULL DEFAULT TRUE,
+    CONSTRAINT fk_worker_location_profile FOREIGN KEY (worker_id) REFERENCES worker_profile(id)
+);
+
 -- Bảng wallets
 CREATE TABLE wallets (
     id BIGSERIAL PRIMARY KEY,

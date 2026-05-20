@@ -6,7 +6,12 @@ import com.group.mock.entity.DTO.request.UpdateLocationRequest;
 import com.group.mock.entity.DTO.response.UserLocationResponse;
 import com.group.mock.repository.AccountRepository;
 import com.group.mock.repository.UserProfileRepository;
+import com.group.mock.repository.WorkerProfileRepository;
+import com.group.mock.repository.WorkerLocationRepository;
+import com.group.mock.entity.WorkerProfile;
+import com.group.mock.entity.WorkerLocation;
 import com.group.mock.exception.AuthServiceException;
+import java.time.LocalDateTime;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -25,6 +30,8 @@ public class UserController {
 
     private final AccountRepository accountRepository;
     private final UserProfileRepository userProfileRepository;
+    private final WorkerProfileRepository workerProfileRepository;
+    private final WorkerLocationRepository workerLocationRepository;
 
     @PutMapping("/location")
     @Transactional
@@ -47,13 +54,36 @@ public class UserController {
         profile.setLongitude(request.getLongitude());
         UserProfile savedProfile = userProfileRepository.save(profile);
 
+        String roleName = account.getRole() != null ? account.getRole().getName() : "ROLE_USER";
+        String jobType = null;
+        if ("ROLE_WORKER".equals(roleName)) {
+            WorkerProfile workerProfile = workerProfileRepository.findById(account.getId())
+                    .orElseThrow(() -> new AuthServiceException(HttpStatus.NOT_FOUND, "WORKER_PROFILE_NOT_FOUND", "Không tìm thấy hồ sơ thợ"));
+            
+            WorkerLocation workerLoc = workerLocationRepository.findById(account.getId())
+                    .orElseGet(() -> {
+                        WorkerLocation newLoc = new WorkerLocation();
+                        newLoc.setWorkerId(account.getId());
+                        newLoc.setWorkerProfile(workerProfile);
+                        return newLoc;
+                    });
+            workerLoc.setLatitude(request.getLatitude());
+            workerLoc.setLongitude(request.getLongitude());
+            workerLoc.setLastUpdate(LocalDateTime.now());
+            workerLoc.setAvailable(true);
+            workerLocationRepository.save(workerLoc);
+            
+            jobType = workerProfile.getJobType();
+        }
+
         UserLocationResponse response = new UserLocationResponse(
                 savedProfile.getId(),
                 savedProfile.getFullName(),
                 savedProfile.getPhone(),
-                account.getRole().getName(),
+                mapRole(roleName),
                 savedProfile.getLatitude(),
-                savedProfile.getLongitude()
+                savedProfile.getLongitude(),
+                jobType
         );
 
         return ResponseEntity.ok(response);
@@ -65,23 +95,80 @@ public class UserController {
             throw new AuthServiceException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Bạn cần đăng nhập để xem danh sách tọa độ");
         }
 
-        List<UserProfile> profiles = userProfileRepository.findByLatitudeIsNotNullAndLongitudeIsNotNull();
-        List<UserLocationResponse> responses = profiles.stream()
-                .map(profile -> {
-                    String roleName = profile.getAccount() != null && profile.getAccount().getRole() != null 
-                            ? profile.getAccount().getRole().getName() 
-                            : "USER";
+        // Collect worker IDs to avoid duplicates later
+        java.util.Set<java.util.UUID> workerIds = new java.util.HashSet<>();
+
+        // Fetch ALL worker profiles (not just those with worker_locations)
+        List<WorkerProfile> allWorkers = workerProfileRepository.findAll();
+        List<UserLocationResponse> workerResponses = allWorkers.stream()
+                .map(wp -> {
+                    workerIds.add(wp.getId());
+                    Account acc = wp.getAccount();
+                    UserProfile up = userProfileRepository.findById(wp.getId()).orElse(null);
+                    
+                    // Try worker_locations first for real-time location
+                    WorkerLocation wl = workerLocationRepository.findById(wp.getId()).orElse(null);
+                    
+                    Double lat = null;
+                    Double lng = null;
+                    
+                    if (wl != null && wl.getLatitude() != null && wl.getLongitude() != null) {
+                        // Use worker_locations (real-time tracking)
+                        lat = wl.getLatitude();
+                        lng = wl.getLongitude();
+                    } else if (up != null && up.getLatitude() != null && up.getLongitude() != null) {
+                        // Fallback to user_profile location
+                        lat = up.getLatitude();
+                        lng = up.getLongitude();
+                    }
+                    
+                    String fullName = up != null ? up.getFullName() : (acc != null ? acc.getUsername() : "Thợ sửa chữa");
+                    String phone = up != null ? up.getPhone() : null;
+                    
                     return new UserLocationResponse(
-                            profile.getId(),
-                            profile.getFullName(),
-                            profile.getPhone(),
-                            roleName,
-                            profile.getLatitude(),
-                            profile.getLongitude()
+                            wp.getId(),
+                            fullName,
+                            phone,
+                            "TECHNICIAN",
+                            lat,
+                            lng,
+                            wp.getJobType()
                     );
                 })
                 .collect(Collectors.toList());
 
-        return ResponseEntity.ok(responses);
+        // Fetch non-worker user profiles (filtering out workers to avoid duplicates)
+        List<UserProfile> profiles = userProfileRepository.findByLatitudeIsNotNullAndLongitudeIsNotNull();
+        List<UserLocationResponse> userResponses = profiles.stream()
+                .filter(p -> !workerIds.contains(p.getId()))
+                .map(profile -> {
+                    String roleName = profile.getAccount() != null && profile.getAccount().getRole() != null 
+                            ? profile.getAccount().getRole().getName() 
+                            : "ROLE_USER";
+                    return new UserLocationResponse(
+                            profile.getId(),
+                            profile.getFullName(),
+                            profile.getPhone(),
+                            mapRole(roleName),
+                            profile.getLatitude(),
+                            profile.getLongitude(),
+                            null
+                    );
+                })
+                .collect(Collectors.toList());
+
+        // Combine both lists
+        workerResponses.addAll(userResponses);
+
+        return ResponseEntity.ok(workerResponses);
+    }
+
+    private String mapRole(String rawRole) {
+        if ("ROLE_WORKER".equals(rawRole)) {
+            return "TECHNICIAN";
+        } else if (rawRole != null) {
+            return rawRole.replaceFirst("^ROLE_", "");
+        }
+        return "USER";
     }
 }

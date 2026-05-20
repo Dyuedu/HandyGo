@@ -79,6 +79,7 @@ public class AuthController {
         String accessToken = jwtProvider.generateAccessToken(authentication);
         String refreshToken = refreshTokenService.issueAndStoreRefreshToken(authentication.getName());
 
+        Account account = accountService.getAccountByUsername(authentication.getName());
         AuthTokenResponse response = new AuthTokenResponse(
                 accessToken,
                 refreshToken,
@@ -86,7 +87,8 @@ public class AuthController {
                 jwtProvider.getAccessTokenExpirationSeconds(),
                 jwtProvider.getRefreshTokenExpirationSeconds(),
                 accountService.getAccountRole(authentication.getName()),
-                accountService.getWorkerVerificationStatus(authentication.getName())
+                accountService.getWorkerVerificationStatus(authentication.getName()),
+                account.getId()
         );
         return ResponseEntity.ok(ApiResponse.success(response, requestId(httpRequest)));
     }
@@ -111,7 +113,8 @@ public class AuthController {
                 jwtProvider.getAccessTokenExpirationSeconds(),
                 jwtProvider.getRefreshTokenExpirationSeconds(),
                 accountService.getAccountRole(account.getUsername()),
-                accountService.getWorkerVerificationStatus(account.getUsername())
+                accountService.getWorkerVerificationStatus(account.getUsername()),
+                account.getId()
         );
         return ResponseEntity.ok(ApiResponse.success(response, requestId(httpRequest)));
     }
@@ -122,6 +125,7 @@ public class AuthController {
                 refreshTokenService.validateAndRotate(request.getRefreshToken());
 
         String accessToken = jwtProvider.generateAccessToken(rotationResult.subject());
+        Account account = accountService.getAccountByUsername(rotationResult.subject());
         AuthTokenResponse response = new AuthTokenResponse(
                 accessToken,
                 rotationResult.refreshToken(),
@@ -129,7 +133,8 @@ public class AuthController {
                 jwtProvider.getAccessTokenExpirationSeconds(),
                 jwtProvider.getRefreshTokenExpirationSeconds(),
                 accountService.getAccountRole(rotationResult.subject()),
-                accountService.getWorkerVerificationStatus(rotationResult.subject())
+                accountService.getWorkerVerificationStatus(rotationResult.subject()),
+                account.getId()
         );
         return ResponseEntity.ok(ApiResponse.success(response, requestId(httpRequest)));
     }
