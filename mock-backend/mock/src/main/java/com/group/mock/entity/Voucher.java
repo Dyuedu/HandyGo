@@ -1,8 +1,11 @@
 package com.group.mock.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.group.mock.entity.enums.VoucherDiscountType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -27,8 +30,18 @@ public class Voucher {
     @Column(name = "code", nullable = false, length = 100, unique = true)
     private String code;
 
-    @Column(name = "value", precision = 19, scale = 4, nullable = false)
+    @Column(name = "value", precision = 19, scale = 4)
     private BigDecimal value;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "discount_type", length = 30)
+    private VoucherDiscountType discountType = VoucherDiscountType.FIXED_AMOUNT;
+
+    @Column(name = "discount_percent", precision = 5, scale = 2)
+    private BigDecimal discountPercent;
+
+    @Column(name = "max_discount_amount", precision = 19, scale = 4)
+    private BigDecimal maxDiscountAmount;
 
     @Column(name = "expiry_date")
     private LocalDateTime expiryDate;

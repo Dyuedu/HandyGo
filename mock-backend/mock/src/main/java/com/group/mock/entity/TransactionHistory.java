@@ -88,7 +88,9 @@ public class TransactionHistory {
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
-        this.status = "PENDING"; // Mặc định là đang chờ
+        if (this.status == null) {
+            this.status = "PENDING"; // Mặc định là đang chờ
+        }
     }
 
     @PreUpdate

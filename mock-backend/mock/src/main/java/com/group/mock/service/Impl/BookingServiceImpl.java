@@ -5,31 +5,41 @@ import com.group.mock.entity.Booking;
 import com.group.mock.entity.BookingStatusHistory;
 import com.group.mock.entity.DTO.request.CreateBookingRequest;
 import com.group.mock.entity.DTO.request.UpdateBookingPaymentRequest;
+import com.group.mock.entity.TransactionHistory;
 import com.group.mock.entity.UserProfile;
 import com.group.mock.entity.Voucher;
 import com.group.mock.entity.VoucherUsage;
+import com.group.mock.entity.Wallet;
 import com.group.mock.entity.WorkerProfile;
 import com.group.mock.entity.enums.BookingStatus;
+import com.group.mock.entity.enums.VoucherDiscountType;
 import com.group.mock.entity.enums.VoucherUsageStatus;
 import com.group.mock.exception.AuthServiceException;
 import com.group.mock.repository.AccountRepository;
 import com.group.mock.repository.BookingRepository;
 import com.group.mock.repository.BookingStatusHistoryRepository;
+import com.group.mock.repository.TransactionHistoryRepository;
 import com.group.mock.repository.UserProfileRepository;
 import com.group.mock.repository.VoucherRepository;
 import com.group.mock.repository.VoucherUsageRepository;
+import com.group.mock.repository.WalletRepository;
 import com.group.mock.repository.WorkerProfileRepository;
 import com.group.mock.service.BookingService;
 import com.group.mock.service.BookingStateTransitionValidator;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.LocalDateTime;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,6 +49,8 @@ public class BookingServiceImpl implements BookingService {
 
     private static final String ROLE_USER = "ROLE_USER";
     private static final String ROLE_WORKER = "ROLE_WORKER";
+    private static final String BALANCE_CACHE_KEY_PREFIX = "cache:wallet:balance:";
+    private static final String HISTORY_CACHE_KEY_PREFIX = "cache:wallet:history:";
 
     private final BookingRepository bookingRepository;
     private final BookingStatusHistoryRepository bookingStatusHistoryRepository;
@@ -47,6 +59,9 @@ public class BookingServiceImpl implements BookingService {
     private final UserProfileRepository userProfileRepository;
     private final WorkerProfileRepository workerProfileRepository;
     private final AccountRepository accountRepository;
+    private final WalletRepository walletRepository;
+    private final TransactionHistoryRepository transactionHistoryRepository;
+    private final StringRedisTemplate stringRedisTemplate;
     private final BookingStateTransitionValidator transitionValidator;
 
     @Override
@@ -86,7 +101,7 @@ public class BookingServiceImpl implements BookingService {
                     .orElseThrow(() -> new AuthServiceException(
                             HttpStatus.NOT_FOUND, "VOUCHER_NOT_FOUND", "Voucher not found"));
             assertVoucherUsable(appliedVoucher);
-            discount = appliedVoucher.getValue().min(total).setScale(4, RoundingMode.HALF_UP);
+            discount = calculateDiscount(appliedVoucher, total);
         }
 
         BigDecimal finalAmount = total.subtract(discount).max(BigDecimal.ZERO).setScale(4, RoundingMode.HALF_UP);
@@ -176,9 +191,8 @@ public class BookingServiceImpl implements BookingService {
             usage.setStatus(VoucherUsageStatus.REDEEMED);
             usage.setRedeemedAt(LocalDateTime.now());
             voucherUsageRepository.save(usage);
+            reimburseVoucherDiscountToWorker(booking, usage);
         }
-
-        System.out.println("reward technician wallet");
 
         return bookingRepository.findDetailById(bookingId).orElse(booking);
     }
@@ -328,12 +342,101 @@ public class BookingServiceImpl implements BookingService {
         if (voucher.getExpiryDate() != null && voucher.getExpiryDate().isBefore(LocalDateTime.now())) {
             throw new AuthServiceException(HttpStatus.BAD_REQUEST, "VOUCHER_EXPIRED", "Voucher has expired");
         }
+        if (voucher.getDiscountType() == VoucherDiscountType.PERCENTAGE) {
+            BigDecimal percent = voucher.getDiscountPercent();
+            if (percent == null
+                    || percent.compareTo(BigDecimal.ZERO) <= 0
+                    || percent.compareTo(BigDecimal.valueOf(100)) > 0) {
+                throw new AuthServiceException(
+                        HttpStatus.BAD_REQUEST,
+                        "INVALID_VOUCHER",
+                        "Percentage voucher must have discountPercent between 0 and 100");
+            }
+            if (voucher.getMaxDiscountAmount() != null
+                    && voucher.getMaxDiscountAmount().compareTo(BigDecimal.ZERO) <= 0) {
+                throw new AuthServiceException(
+                        HttpStatus.BAD_REQUEST,
+                        "INVALID_VOUCHER",
+                        "Percentage voucher maxDiscountAmount must be positive");
+            }
+            return;
+        }
+        if (voucher.getValue() == null || voucher.getValue().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new AuthServiceException(
+                    HttpStatus.BAD_REQUEST,
+                    "INVALID_VOUCHER",
+                    "Fixed amount voucher must have a positive value");
+        }
     }
 
     private BigDecimal calculateDiscount(VoucherUsage usage, BigDecimal total) {
         if (usage == null || usage.getVoucher() == null) {
             return BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP);
         }
-        return usage.getVoucher().getValue().min(total).setScale(4, RoundingMode.HALF_UP);
+        return calculateDiscount(usage.getVoucher(), total);
+    }
+
+    private BigDecimal calculateDiscount(Voucher voucher, BigDecimal total) {
+        BigDecimal discount;
+        if (voucher.getDiscountType() == VoucherDiscountType.PERCENTAGE) {
+            BigDecimal percent = voucher.getDiscountPercent();
+            if (percent == null || percent.compareTo(BigDecimal.ZERO) <= 0) {
+                return BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP);
+            }
+            discount = total.multiply(percent)
+                    .divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP);
+            if (voucher.getMaxDiscountAmount() != null) {
+                discount = discount.min(voucher.getMaxDiscountAmount());
+            }
+        } else {
+            discount = voucher.getValue();
+        }
+
+        if (discount == null || discount.compareTo(BigDecimal.ZERO) <= 0) {
+            return BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP);
+        }
+        return discount.min(total).setScale(4, RoundingMode.HALF_UP);
+    }
+
+    private void reimburseVoucherDiscountToWorker(Booking booking, VoucherUsage usage) {
+        BigDecimal discount = usage.getAppliedDiscountAmount();
+        if (discount == null || discount.compareTo(BigDecimal.ZERO) <= 0) {
+            return;
+        }
+
+        Wallet wallet = walletRepository.findByUserId(booking.getWorker().getId()).orElseGet(() -> {
+            Wallet created = new Wallet();
+            created.setUserId(booking.getWorker().getId());
+            created.setBalance(BigDecimal.ZERO);
+            return walletRepository.save(created);
+        });
+
+        BigDecimal balanceBefore = wallet.getBalance();
+        BigDecimal balanceAfter = balanceBefore.add(discount).setScale(4, RoundingMode.HALF_UP);
+        wallet.setBalance(balanceAfter);
+        walletRepository.save(wallet);
+
+        TransactionHistory history = new TransactionHistory();
+        history.setWallet(wallet);
+        history.setVnpTxnRef("VOUCHER-" + booking.getId());
+        history.setAmount(discount);
+        history.setVnpOrderInfo("Voucher reimbursement for booking " + booking.getId());
+        history.setVnpOrderType("VOUCHER_REIMBURSEMENT");
+        history.setVnpCreateDate(ZonedDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"))
+                .format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+        history.setStatus("SUCCESS");
+        history.setBalanceBefore(balanceBefore);
+        history.setBalanceAfter(balanceAfter);
+        transactionHistoryRepository.save(history);
+
+        updateWalletCache(wallet);
+    }
+
+    private void updateWalletCache(Wallet wallet) {
+        stringRedisTemplate.opsForValue().set(
+                BALANCE_CACHE_KEY_PREFIX + wallet.getUserId(),
+                String.valueOf(wallet.getBalance().movePointRight(4).longValueExact()),
+                Duration.ofSeconds(300));
+        stringRedisTemplate.delete(HISTORY_CACHE_KEY_PREFIX + wallet.getId());
     }
 }
