@@ -45,6 +45,7 @@ public class ReviewController {
         ReviewResponse response = new ReviewResponse();
         response.setId(review.getId());
         response.setBookingId(review.getBooking().getId());
+        response.setReviewerName(review.getBooking().getCustomer() != null ? review.getBooking().getCustomer().getFullName() : null);
         response.setRating(review.getRating());
         response.setComment(review.getComment());
         response.setCreatedAt(review.getCreatedAt());

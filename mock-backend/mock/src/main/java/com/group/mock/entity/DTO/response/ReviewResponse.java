@@ -8,6 +8,7 @@ import lombok.Data;
 public class ReviewResponse {
     private Long id;
     private UUID bookingId;
+    private String reviewerName;
     private int rating;
     private String comment;
     private LocalDateTime createdAt;

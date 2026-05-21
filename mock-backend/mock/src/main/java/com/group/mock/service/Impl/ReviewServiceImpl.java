@@ -11,6 +11,7 @@ import com.group.mock.repository.BookingRepository;
 import com.group.mock.repository.ReviewRepository;
 import com.group.mock.repository.WorkerProfileRepository;
 import com.group.mock.service.ReviewService;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -71,6 +72,12 @@ public class ReviewServiceImpl implements ReviewService {
 
         return reviewRepository.findByBooking_Id(bookingId)
                 .orElseThrow(() -> new AuthServiceException(HttpStatus.NOT_FOUND, "REVIEW_NOT_FOUND", "Review not found for this booking"));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Review> getReviewsByWorkerId(UUID workerId) {
+        return reviewRepository.findByBooking_Worker_IdOrderByCreatedAtDesc(workerId);
     }
 
     private void refreshWorkerAverageRating(WorkerProfile worker) {
