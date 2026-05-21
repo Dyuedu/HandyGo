@@ -1,5 +1,6 @@
 package com.group.mock.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import jakarta.persistence.Column;
@@ -43,6 +44,7 @@ public class WorkerProfile {
     private Double avgRating = 0.0;
 
     // Liên kết 1:1 bảo mật với Account
+    @JsonIgnore
     @OneToOne(fetch = FetchType.LAZY)
     @MapsId
     @JoinColumn(name = "id")

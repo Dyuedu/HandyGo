@@ -15,4 +15,5 @@ public class UserLocationResponse {
     private String role;
     private Double latitude;
     private Double longitude;
+    private String jobType;
 }

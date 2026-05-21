@@ -14,16 +14,19 @@ import com.group.mock.entity.DTO.cache.AccountCache;
 import com.group.mock.entity.DTO.request.LoginRequest;
 import com.group.mock.entity.DTO.request.RegisterRequest;
 import com.group.mock.entity.UserProfile;
+import com.group.mock.entity.Wallet;
 import com.group.mock.entity.WorkerProfile;
 import com.group.mock.entity.enums.Status;
 import com.group.mock.exception.AuthServiceException;
 import com.group.mock.repository.AccountRepository;
 import com.group.mock.repository.RoleRepository;
 import com.group.mock.repository.UserProfileRepository;
+import com.group.mock.repository.WalletRepository;
 import com.group.mock.repository.WorkerProfileRepository;
 import com.group.mock.service.AccountService;
 import com.group.mock.service.CloudinaryUploadService;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.Duration;
 import java.util.Locale;
@@ -37,6 +40,7 @@ public class AccountServiceImpl implements AccountService {
     private final RoleRepository roleRepository;
     private final UserProfileRepository userProfileRepository;
     private final WorkerProfileRepository workerProfileRepository;
+    private final WalletRepository walletRepository;
     private final CloudinaryUploadService cloudinaryUploadService;
     private final PasswordEncoder passwordEncoder;
     private final RedisTemplate<String, AccountCache> accountCacheTemplate;
@@ -49,6 +53,7 @@ public class AccountServiceImpl implements AccountService {
             RoleRepository roleRepository,
             UserProfileRepository userProfileRepository,
             WorkerProfileRepository workerProfileRepository,
+            WalletRepository walletRepository,
             CloudinaryUploadService cloudinaryUploadService,
             PasswordEncoder passwordEncoder,
             RedisTemplate<String, AccountCache> accountCacheTemplate) {
@@ -56,6 +61,7 @@ public class AccountServiceImpl implements AccountService {
         this.roleRepository = roleRepository;
         this.userProfileRepository = userProfileRepository;
         this.workerProfileRepository = workerProfileRepository;
+        this.walletRepository = walletRepository;
         this.cloudinaryUploadService = cloudinaryUploadService;
         this.passwordEncoder = passwordEncoder;
         this.accountCacheTemplate = accountCacheTemplate;
@@ -81,7 +87,7 @@ public class AccountServiceImpl implements AccountService {
         }
 
         String role = registerRequest.getRole().toUpperCase(Locale.ROOT);
-        if ("USER".equals(role) && registerRequest.getPhone() != null && !registerRequest.getPhone().isBlank()
+        if (registerRequest.getPhone() != null && !registerRequest.getPhone().isBlank()
                 && userProfileRepository.existsByPhone(registerRequest.getPhone())) {
             throw new AuthServiceException(HttpStatus.CONFLICT, "PHONE_EXISTS", "Số điện thoại đã được sử dụng");
         }
@@ -96,7 +102,9 @@ public class AccountServiceImpl implements AccountService {
         if ("USER".equals(role)) {
             createUserProfile(savedAccount, registerRequest);
         } else if ("WORKER".equals(role)) {
+            createUserProfile(savedAccount, registerRequest);
             createWorkerProfile(savedAccount, registerRequest);
+            createWorkerWallet(savedAccount);
         } else {
             throw new AuthServiceException(HttpStatus.BAD_REQUEST, "INVALID_ROLE", "Vai trò không hợp lệ");
         }
@@ -201,6 +209,17 @@ public class AccountServiceImpl implements AccountService {
         workerProfile.setTierType("FREE");
         workerProfile.setAvgRating(0.0);
         workerProfileRepository.save(workerProfile);
+    }
+
+    private void createWorkerWallet(Account account) {
+        if (walletRepository.findByUserId(account.getId()).isPresent()) {
+            return;
+        }
+
+        Wallet wallet = new Wallet();
+        wallet.setUserId(account.getId());
+        wallet.setBalance(BigDecimal.ZERO);
+        walletRepository.save(wallet);
     }
 
     private String blankToNull(String value) {

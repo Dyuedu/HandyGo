@@ -1,0 +1,195 @@
+.admin-dashboard {
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.admin-header {
+  margin-bottom: 24px;
+}
+
+.admin-header h1 {
+  font-size: 24px;
+  color: #111827;
+  margin: 0 0 8px 0;
+}
+
+.admin-header p {
+  color: #6b7280;
+  margin: 0;
+}
+
+.admin-table-container {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow-x: auto;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.admin-table th,
+.admin-table td {
+  padding: 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.admin-table th {
+  background: #f9fafb;
+  font-weight: 600;
+  color: #374151;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.admin-table td {
+  color: #4b5563;
+  font-size: 14px;
+  vertical-align: middle;
+}
+
+.admin-table .col-id {
+  font-family: monospace;
+  color: #9ca3af;
+}
+
+.badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.job-badge {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+.tier-badge {
+  background: #fffbeb;
+  color: #d97706;
+}
+
+.verify-badge.verified {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.verify-badge.unverified {
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.status-badge.active {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-badge.blocked {
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.actions-cell {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-action {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-verify.approve {
+  background: #3b82f6;
+  color: white;
+}
+
+.btn-verify.approve:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+.btn-verify.revoke {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+.btn-verify.revoke:hover:not(:disabled) {
+  background: #e5e7eb;
+}
+
+.btn-status.block {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.btn-status.block:hover:not(:disabled) {
+  background: #fca5a5;
+}
+
+.btn-status.unblock {
+  background: #10b981;
+  color: white;
+}
+
+.btn-status.unblock:hover:not(:disabled) {
+  background: #059669;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 48px;
+  color: #6b7280;
+}
+
+.worker-detail-link {
+  color: #3b82f6;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.worker-detail-link:hover {
+  text-decoration: underline;
+  color: #2563eb;
+}
+
+.btn-view {
+  background: #f3f4f6;
+  color: #374151;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-view:hover {
+  background: #e5e7eb;
+}
+
+.admin-loading,
+.admin-error {
+  padding: 48px;
+  text-align: center;
+  color: #4b5563;
+  font-size: 16px;
+}
+
+.admin-error {
+  color: #ef4444;
+}
