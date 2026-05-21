@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { updateLocation, getUserLocations } from '../services/userService'
+import ChatContainer from '../modules/chat/components/ChatContainer'
 import './DashboardHome.css'
 import './MapDashboard.css'
 
@@ -29,6 +31,7 @@ const content = {
 
 export function DashboardHome({ section = 'Home' }) {
   const { mode, session } = useAuth()
+  const navigate = useNavigate()
   const page = content[section]
   
   // Geolocation & OpenStreetMap (Leaflet) State
@@ -97,6 +100,15 @@ export function DashboardHome({ section = 'Home' }) {
       const isMeTag = isMe ? ' (Bạn)' : ''
       const roleText = user.role === 'TECHNICIAN' ? 'Thợ sửa chữa' : 'Khách hàng'
       
+      const chatButtonHtml = !isMe ? `
+        <div style="margin-top: 8px;">
+          <a href="/app/chat?contactId=${user.id}&name=${encodeURIComponent(user.fullName)}&role=${user.role}" 
+             style="display: inline-block; font-size: 11px; font-weight: bold; color: #ffffff; background: #3b82f6; padding: 5px 10px; border-radius: 4px; text-decoration: none; text-align: center; width: 100%; box-sizing: border-box; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);">
+            Nhắn tin
+          </a>
+        </div>
+      ` : ''
+
       marker.bindPopup(`
         <div style="padding: 5px; font-family: sans-serif; color: #1e293b; min-width: 150px;">
           <strong style="display: block; font-size: 14px;">${user.fullName}${isMeTag}</strong>
@@ -104,6 +116,7 @@ export function DashboardHome({ section = 'Home' }) {
           <span style="display: inline-block; font-size: 10px; font-weight: bold; background: #eff6ff; color: #1e40af; padding: 2px 6px; border-radius: 4px; margin-top: 6px; text-transform: uppercase;">
             ${roleText}
           </span>
+          ${chatButtonHtml}
         </div>
       `)
 
@@ -236,10 +249,36 @@ export function DashboardHome({ section = 'Home' }) {
                   <div className="user-avatar-circle">
                     {user.fullName ? user.fullName.substring(0, 2).toUpperCase() : 'US'}
                   </div>
-                  <div className="user-info-text">
+                  <div className="user-info-text" style={{ display: 'flex', flexDirection: 'column' }}>
                     <strong>{user.fullName} {user.id === session?.id ? '(Bạn)' : ''}</strong>
                     <span>{user.phone || 'Không có SĐT'}</span>
                     <span className={`role-tag ${user.role?.toLowerCase()}`}>{user.role}</span>
+                    {user.id === activeUserId && user.id !== session?.id && (
+                      <button
+                        type="button"
+                        className="chat-now-btn"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          navigate(`/app/chat?contactId=${user.id}&name=${encodeURIComponent(user.fullName)}&role=${user.role}`)
+                        }}
+                        style={{
+                          marginTop: '8px',
+                          padding: '6px 12px',
+                          background: '#3b82f6',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '0.75rem',
+                          fontWeight: 'bold',
+                          cursor: 'pointer',
+                          display: 'inline-block',
+                          boxShadow: '0 2px 4px rgba(59, 130, 246, 0.2)',
+                          width: 'fit-content'
+                        }}
+                      >
+                        Nhắn tin
+                      </button>
+                    )}
                   </div>
                 </div>
               ))
@@ -254,6 +293,14 @@ export function DashboardHome({ section = 'Home' }) {
             <p>Sử dụng các cử chỉ kéo, cuộn để khám phá khu vực xung quanh. Bản đồ tự động cập nhật markers khi có tài khoản mới hoạt động.</p>
           </div>
         </div>
+      </div>
+    )
+  }
+
+  if (section === 'Chat') {
+    return (
+      <div className="chat-section-wrapper" style={{ padding: '24px' }}>
+        <ChatContainer />
       </div>
     )
   }
