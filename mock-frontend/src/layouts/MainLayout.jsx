@@ -17,18 +17,23 @@ const technicianNav = [
   { path: '/app/profile', icon: '◎', label: 'Profile' },
 ]
 
+const adminNav = [
+  { path: '/app/admin/workers', icon: '👥', label: 'Workers' },
+]
+
 const sectionNames = {
   '/app/home': 'Home',
   '/app/activity': 'Activity',
   '/app/chat': 'Chat',
   '/app/wallet': 'Wallet',
   '/app/profile': 'Profile',
+  '/app/admin/workers': 'Workers Management',
 }
 
 export function MainLayout() {
   const { mode, session, signOut } = useAuth()
   const location = useLocation()
-  const navigation = mode === 'TECHNICIAN' ? technicianNav : customerNav
+  const navigation = mode === 'ADMIN' ? adminNav : mode === 'TECHNICIAN' ? technicianNav : customerNav
   const activeSection = sectionNames[location.pathname] || 'Dashboard'
 
   return (
@@ -49,7 +54,7 @@ export function MainLayout() {
         <header className="main-header">
           <div>
             <strong>HomeGo</strong>
-            <span>{activeSection} · {mode === 'TECHNICIAN' ? 'Worker' : 'User'}</span>
+            <span>{activeSection} · {mode === 'ADMIN' ? 'Admin' : mode === 'TECHNICIAN' ? 'Worker' : 'User'}</span>
           </div>
           <div className="header-tools">
             <div className="role-switch" aria-label="Account role">
