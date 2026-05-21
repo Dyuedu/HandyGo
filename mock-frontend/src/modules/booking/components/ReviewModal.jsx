@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import '../pages/BookingPages.css'
+import '../pages/BookingDetailPage'
 
 const STAR_COUNT = 5
 
