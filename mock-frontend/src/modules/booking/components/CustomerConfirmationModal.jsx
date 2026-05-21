@@ -19,7 +19,7 @@ function formatVnd(value) {
 /**
  * Customer confirms after paying cash to the technician.
  */
-export function CustomerConfirmationModal({ open, bookingId, booking, onClose }) {
+export function CustomerConfirmationModal({ open, bookingId, booking, onClose, onConfirmed }) {
   const queryClient = useQueryClient()
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
@@ -37,6 +37,9 @@ export function CustomerConfirmationModal({ open, bookingId, booking, onClose })
       await confirmCompletion(bookingId)
       queryClient.invalidateQueries({ queryKey: [bookingsKeyRoot] })
       queryClient.invalidateQueries({ queryKey: bookingDetailKey(bookingId) })
+      if (onConfirmed) {
+        onConfirmed()
+      }
       onClose()
     } catch (err) {
       setError(err?.message || 'Không thể xác nhận hoàn thành.')
