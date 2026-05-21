@@ -100,14 +100,22 @@ public class UserController {
 
         // Fetch ALL worker profiles (not just those with worker_locations)
         List<WorkerProfile> allWorkers = workerProfileRepository.findAll();
+        List<java.util.UUID> workerIdsList = allWorkers.stream().map(WorkerProfile::getId).collect(Collectors.toList());
+        
+        java.util.Map<java.util.UUID, UserProfile> upMap = userProfileRepository.findAllById(workerIdsList).stream()
+                .collect(Collectors.toMap(UserProfile::getId, up -> up));
+        
+        java.util.Map<java.util.UUID, WorkerLocation> wlMap = workerLocationRepository.findAllById(workerIdsList).stream()
+                .collect(Collectors.toMap(WorkerLocation::getWorkerId, wl -> wl));
+
         List<UserLocationResponse> workerResponses = allWorkers.stream()
                 .map(wp -> {
                     workerIds.add(wp.getId());
                     Account acc = wp.getAccount();
-                    UserProfile up = userProfileRepository.findById(wp.getId()).orElse(null);
+                    UserProfile up = upMap.get(wp.getId());
                     
                     // Try worker_locations first for real-time location
-                    WorkerLocation wl = workerLocationRepository.findById(wp.getId()).orElse(null);
+                    WorkerLocation wl = wlMap.get(wp.getId());
                     
                     Double lat = null;
                     Double lng = null;

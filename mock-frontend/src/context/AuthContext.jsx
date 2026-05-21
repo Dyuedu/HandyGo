@@ -5,6 +5,7 @@ import { AuthContext } from './authContextObject'
 
 function resolveInitialMode(session) {
   if (!session?.accessToken) return 'CUSTOMER'
+  if (session.role === 'ADMIN') return 'ADMIN'
   return session.role === 'WORKER' ? 'TECHNICIAN' : 'CUSTOMER'
 }
 

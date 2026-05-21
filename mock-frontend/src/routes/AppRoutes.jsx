@@ -7,6 +7,8 @@ import { Auth } from '../pages/Auth'
 import { DashboardHome } from '../pages/DashboardHome'
 import { WorkerProfile } from '../pages/WorkerProfile'
 import { Landing } from '../pages/Landing'
+import { AdminDashboard } from '../pages/AdminDashboard'
+import { AdminWorkerDetail } from '../pages/AdminWorkerDetail'
 import { PrivateRoute } from './PrivateRoute'
 
 export function AppRoutes() {
@@ -27,6 +29,8 @@ export function AppRoutes() {
           <Route path="/app/wallet" element={<DashboardHome section="Wallet" />} />
           <Route path="/app/profile" element={<DashboardHome section="Profile" />} />
           <Route path="/app/worker/:id" element={<WorkerProfile />} />
+          <Route path="/app/admin/workers" element={<AdminDashboard />} />
+          <Route path="/app/admin/workers/:id" element={<AdminWorkerDetail />} />
         </Route>
       </Route>
 
