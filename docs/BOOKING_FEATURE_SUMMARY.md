@@ -2,7 +2,7 @@
 
 **Date:** May 20, 2026  
 **Status:** In Progress  
-**Last Updated:** Current Session
+**Last Updated:** May 21, 2026
 
 ---
 
@@ -25,7 +25,7 @@
 The **Booking Feature** is the core transaction system that connects customers (users) with technicians (workers) to schedule and manage service tasks. It enables:
 - Creation of service booking requests
 - Status management throughout the booking lifecycle
-- Discount/voucher application
+- Discount/voucher application after the technician sets the service fee
 - Customer confirmation workflows
 - Integration with payment and notification systems
 
@@ -34,7 +34,7 @@ The **Booking Feature** is the core transaction system that connects customers (
 - **BookingStatusHistory**: Audit trail of status transitions
 - **Customer** (UserProfile): Person requesting the service
 - **Worker** (WorkerProfile): Technician/service provider
-- **Voucher**: Discount codes applied at booking creation
+- **Voucher**: Discount codes selected at booking creation and calculated when the service fee is known
 
 ---
 
@@ -46,14 +46,13 @@ The **Booking Feature** is the core transaction system that connects customers (
 - **Endpoint:** `POST /api/v1/bookings`
 - **Features:**
   - Create new booking with customer, worker, address, and service code
-  - Apply voucher discount at creation time
-  - Automatic calculation of: total amount → discount → final amount
+  - Store selected voucher as a pending usage record when `voucherId` is provided
+  - Initialize booking money fields to zero until the technician enters the service fee
   - Precision handling: BigDecimal with HALF_UP rounding (4 decimal places)
   - Comprehensive validation:
     - User must have ROLE_USER to create booking
     - Worker must exist
-    - Total amount must be positive
-    - Voucher must be valid and applicable
+    - Voucher must be valid and available when selected
   - Response: `201 CREATED` with full Booking object
 
 #### 2. **Status Transition Management**
@@ -73,6 +72,7 @@ The **Booking Feature** is the core transaction system that connects customers (
 - **Decline Booking:** `PATCH /api/v1/bookings/{id}/decline` → PENDING → DECLINED
 - **Start Processing:** `PATCH /api/v1/bookings/{id}/processing` → ACCEPTED → PROCESSING
 - **Mark Completed:** `PATCH /api/v1/bookings/{id}/complete` → PROCESSING → WAITING_CUSTOMER_CONFIRMATION
+- **Update Payment:** `PATCH /api/v1/bookings/{id}/payment` while PROCESSING, recalculates voucher discount without changing status
 - **Confirm Completion:** `PATCH /api/v1/bookings/{id}/confirm` → WAITING_CUSTOMER_CONFIRMATION → FINISHED
 
 #### 4. **Booking Retrieval & Filtering**
@@ -88,7 +88,7 @@ The **Booking Feature** is the core transaction system that connects customers (
   - `created_at`: Auto-populated at creation
   - `updated_at`: Auto-updated on any modification
   - `id`: UUID (auto-generated, searchable, non-sequential)
-- **Stored Relationships:** Customer, Worker, Voucher relationships maintained
+- **Stored Relationships:** Customer, Worker, and per-booking voucher usage relationships maintained
 - **Transactional Integrity:** All operations are `@Transactional`
 
 #### 6. **Status History Tracking**
@@ -113,6 +113,7 @@ The **Booking Feature** is the core transaction system that connects customers (
   - `acceptBooking(bookingId)`: Accept pending booking
   - `declineBooking(bookingId)`: Decline pending booking
   - `startProcessing(bookingId)`: Begin work
+  - `updatePayment(bookingId, payload)`: Technician updates the service fee and recalculates voucher discount
   - `markCompleted(bookingId)`: Technician marks work done
   - `confirmCompletion(bookingId)`: Customer confirms completion
 
@@ -125,6 +126,7 @@ The **Booking Feature** is the core transaction system that connects customers (
   - `useAcceptBooking()`: Mutation for accept
   - `useDeclineBooking()`: Mutation for decline
   - `useStartProcessing()`: Mutation to start work
+  - `useUpdatePayment()`: Mutation to update the service fee while processing
   - `useMarkCompleted()`: Mutation to mark done
   - `useConfirmCompletion()`: Mutation for customer confirmation
 - **Features:**
@@ -155,11 +157,11 @@ The **Booking Feature** is the core transaction system that connects customers (
   - Full booking information display
   - Role-based action buttons:
     - **Customer Actions:**
-      - Accept/Decline booking (from PENDING)
       - Confirm completion (from WAITING_CUSTOMER_CONFIRMATION)
     - **Technician Actions:**
       - Accept/Decline booking (from PENDING)
       - Start processing (from ACCEPTED)
+      - Update payment amount (from PROCESSING)
       - Mark completed (from PROCESSING)
   - Currency formatting (VND)
   - Modal confirmation for sensitive actions
@@ -228,7 +230,7 @@ The **Booking Feature** is the core transaction system that connects customers (
 #### 4. **Booking Rescheduling**
 - **Requirement:** Allow customer or technician to propose new date/time
 - **Missing:**
-  - `bookingDate` field currently stored but not used in creation
+  - `bookingDate` field is stored at creation, but availability checks and reschedule workflows are not implemented
   - New entity: `BookingRescheduleRequest` with:
     - Original booking ID
     - Proposed date/time
@@ -289,7 +291,7 @@ The **Booking Feature** is the core transaction system that connects customers (
   - `PATCH /api/v1/bookings/{id}` to edit:
     - Address (only if PENDING)
     - Service code (only if PENDING)
-    - Total amount (only if PENDING, triggers new voucher recalculation)
+    - Booking date/description (only if PENDING)
   - Validation: Only customer can edit, only in PENDING state
   - Frontend: Edit form modal on BookingDetailPage
 
@@ -438,6 +440,7 @@ GET    /api/v1/bookings/{id}
 PATCH  /api/v1/bookings/{id}/accept
 PATCH  /api/v1/bookings/{id}/decline
 PATCH  /api/v1/bookings/{id}/processing
+PATCH  /api/v1/bookings/{id}/payment
 PATCH  /api/v1/bookings/{id}/complete
 PATCH  /api/v1/bookings/{id}/confirm
 ```
@@ -454,7 +457,8 @@ Authorization: Bearer <JWT_TOKEN>
   "workerId": "550e8400-e29b-41d4-a716-446655440000",
   "serviceCode": "SERVICE_001",
   "address": "123 Main St, District 1, Ho Chi Minh City",
-  "totalAmount": 500000,
+  "bookingDate": "2026-05-22T10:30:00",
+  "description": "Air conditioner maintenance",
   "voucherId": 1
 }
 
@@ -466,13 +470,47 @@ Response (201 CREATED):
   "serviceCode": "SERVICE_001",
   "address": "123 Main St, District 1, Ho Chi Minh City",
   "status": "PENDING",
-  "totalAmount": 500000.0000,
-  "discountAmount": 50000.0000,
-  "finalAmount": 450000.0000,
+  "totalAmount": 0.0000,
+  "discountAmount": 0.0000,
+  "finalAmount": 0.0000,
   "createdAt": "2026-05-20T10:30:00Z",
   "updatedAt": "2026-05-20T10:30:00Z"
 }
 ```
+
+If `voucherId` is provided, the backend stores a pending `voucher_usage` row. The actual discount is calculated later, after the technician enters the service fee.
+
+#### Update Payment / Voucher Calculation
+```bash
+PATCH /api/v1/bookings/{id}/payment
+Content-Type: application/json
+Authorization: Bearer <JWT_TOKEN>
+
+{
+  "totalAmount": 500000
+}
+
+Response (200 OK):
+{
+  "id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+  "status": "PROCESSING",
+  "totalAmount": 500000.0000,
+  "discountAmount": 50000.0000,
+  "finalAmount": 450000.0000
+}
+```
+
+Calculation:
+
+```text
+fixed voucher: discountAmount = min(voucher.value, totalAmount)
+percentage voucher rawDiscount = totalAmount * discountPercent / 100
+percentage voucher discountAmount = min(rawDiscount, maxDiscountAmount) when maxDiscountAmount is set
+percentage voucher discountAmount = min(discountAmount, totalAmount)
+finalAmount = totalAmount - discountAmount
+```
+
+`PATCH /api/v1/bookings/{id}/complete` uses the same `totalAmount` request body, recalculates the amounts, and then moves the booking from `PROCESSING` to `WAITING_CUSTOMER_CONFIRMATION`.
 
 #### List Bookings (with filtering)
 ```bash
@@ -556,7 +594,7 @@ CREATE TABLE bookings (
   booking_date TIMESTAMP,
   address TEXT,
   status VARCHAR(40) NOT NULL DEFAULT 'PENDING',
-  total_amount NUMERIC(19,4) NOT NULL,
+  total_amount NUMERIC(19,4),
   discount_amount NUMERIC(19,4) NOT NULL DEFAULT 0,
   final_amount NUMERIC(19,4),
   created_at TIMESTAMP NOT NULL,
@@ -571,14 +609,28 @@ CREATE INDEX idx_bookings_status ON bookings(status);
 ### BookingStatusHistory Table
 ```sql
 CREATE TABLE booking_status_history (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id BIGSERIAL PRIMARY KEY,
   booking_id UUID NOT NULL REFERENCES bookings(id),
-  previous_status VARCHAR(40),
-  new_status VARCHAR(40) NOT NULL,
-  changed_at TIMESTAMP NOT NULL
+  from_status VARCHAR(40),
+  to_status VARCHAR(40) NOT NULL,
+  changed_at TIMESTAMP NOT NULL,
+  note VARCHAR(255)
 );
 
 CREATE INDEX idx_history_booking ON booking_status_history(booking_id);
+```
+
+### VoucherUsage Table
+```sql
+CREATE TABLE voucher_usage (
+  id BIGSERIAL PRIMARY KEY,
+  booking_id UUID NOT NULL UNIQUE REFERENCES bookings(id) ON DELETE CASCADE,
+  voucher_id BIGINT NOT NULL REFERENCES vouchers(id),
+  status VARCHAR(20) NOT NULL,
+  applied_discount_amount NUMERIC(19,4) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  redeemed_at TIMESTAMP
+);
 ```
 
 ---
