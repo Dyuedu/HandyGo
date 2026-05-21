@@ -76,6 +76,8 @@ public class BookingServiceImpl implements BookingService {
                     HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "workerId is required");
         }
 
+        assertBookingDateValid(request.getBookingDate());
+
         UserProfile customer = userProfileRepository
                 .findById(account.getId())
                 .orElseThrow(() -> new AuthServiceException(
@@ -365,6 +367,20 @@ public class BookingServiceImpl implements BookingService {
             }
         }
         return false;
+    }
+
+    private void assertBookingDateValid(LocalDateTime bookingDate) {
+        if (bookingDate == null) {
+            throw new AuthServiceException(
+                    HttpStatus.BAD_REQUEST, "BOOKING_DATE_REQUIRED", "Vui lòng chọn ngày và giờ hẹn");
+        }
+        LocalDateTime now = LocalDateTime.now();
+        if (bookingDate.isBefore(now)) {
+            throw new AuthServiceException(
+                    HttpStatus.BAD_REQUEST,
+                    "BOOKING_DATE_INVALID",
+                    "Giờ hẹn không được trước thời gian hiện tại");
+        }
     }
 
     private void assertVoucherUsable(Voucher voucher) {

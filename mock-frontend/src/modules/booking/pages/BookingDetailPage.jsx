@@ -9,6 +9,7 @@ import {
   useDeclineBooking,
   useStartProcessing,
 } from '../hooks'
+import { formatBookingDateTime } from '../utils/bookingDateTime'
 import './BookingPages.css'
 
 function formatVnd(value) {
@@ -97,10 +98,14 @@ export function BookingDetailPage() {
             <dt>Status</dt>
             <dd>{st}</dd>
           </div>
+          <div className="booking-detail-row">
+            <dt>Giờ hẹn (khách đặt)</dt>
+            <dd>{formatBookingDateTime(booking.bookingDate)}</dd>
+          </div>
           {booking.createdAt && (
             <div className="booking-detail-row">
-              <dt>Tạo lúc</dt>
-              <dd>{new Date(booking.createdAt).toLocaleString('vi-VN')}</dd>
+              <dt>Tạo đơn lúc</dt>
+              <dd>{formatBookingDateTime(booking.createdAt)}</dd>
             </div>
           )}
         </article>

@@ -2,15 +2,16 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useCreateBooking } from '../modules/booking/hooks'
+import {
+  buildBookingDateTime,
+  minTimeForDate,
+  resolveBookingFormError,
+  todayLocalDateString,
+  validateBookingSchedule,
+} from '../modules/booking/utils/bookingDateTime'
 import { getUserLocations } from '../services/userService'
 import { getAvailableVouchers } from '../services/voucherService'
 import './WorkerProfile.css'
-
-function buildBookingDateTime(date, time) {
-  if (!date || !time) return null
-  const normalizedTime = time.length === 5 ? `${time}:00` : time
-  return `${date}T${normalizedTime}`
-}
 
 const translateJobType = (job) => {
   if (!job) return 'Chưa xác định'
@@ -183,6 +184,17 @@ export function WorkerProfile() {
     e.preventDefault()
     setBookingError('')
 
+    const scheduleError = validateBookingSchedule(bookingData.date, bookingData.time)
+    if (scheduleError) {
+      setBookingError(scheduleError)
+      return
+    }
+
+    if (!bookingData.address.trim()) {
+      setBookingError('Vui lòng nhập địa chỉ dịch vụ.')
+      return
+    }
+
     const voucherId = bookingData.voucherId ? Number(bookingData.voucherId) : undefined
 
     const payload = {
@@ -203,7 +215,7 @@ export function WorkerProfile() {
         }
       },
       onError: (err) => {
-        setBookingError(err?.message || 'Không thể tạo đặt lịch. Vui lòng thử lại.')
+        setBookingError(resolveBookingFormError(err))
       },
     })
   }
@@ -349,8 +361,19 @@ export function WorkerProfile() {
                     type="date"
                     required
                     value={bookingData.date}
-                    min={new Date().toISOString().split('T')[0]}
-                    onChange={(e) => setBookingData(prev => ({ ...prev, date: e.target.value }))}
+                    min={todayLocalDateString()}
+                    onChange={(e) => {
+                      const date = e.target.value
+                      setBookingData((prev) => {
+                        const next = { ...prev, date }
+                        const minTime = minTimeForDate(date)
+                        if (minTime && prev.time && prev.time < minTime) {
+                          next.time = minTime
+                        }
+                        return next
+                      })
+                      if (bookingError) setBookingError('')
+                    }}
                   />
                 </div>
                 <div className="wp-form-row">
@@ -359,7 +382,11 @@ export function WorkerProfile() {
                     type="time"
                     required
                     value={bookingData.time}
-                    onChange={(e) => setBookingData(prev => ({ ...prev, time: e.target.value }))}
+                    min={minTimeForDate(bookingData.date)}
+                    onChange={(e) => {
+                      setBookingData((prev) => ({ ...prev, time: e.target.value }))
+                      if (bookingError) setBookingError('')
+                    }}
                   />
                 </div>
                 <div className="wp-form-row">

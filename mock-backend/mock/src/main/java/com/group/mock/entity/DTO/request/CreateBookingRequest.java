@@ -20,6 +20,7 @@ public class CreateBookingRequest {
     @NotBlank(message = "address is required")
     private String address;
 
+    @NotNull(message = "Vui lòng chọn ngày và giờ hẹn")
     private LocalDateTime bookingDate;
 
     private String description;
