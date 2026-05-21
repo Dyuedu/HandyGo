@@ -80,6 +80,13 @@ public class AuthController {
         String accessToken = jwtProvider.generateAccessToken(authentication);
         String refreshToken = refreshTokenService.issueAndStoreRefreshToken(authentication.getName());
 
+        if (request.getLatitude() != null && request.getLongitude() != null) {
+            String roleName = account.getRole() != null ? account.getRole().getName() : "ROLE_USER";
+            if ("ROLE_WORKER".equals(roleName)) {
+                accountService.updateWorkerLocation(account.getId(), request.getLatitude(), request.getLongitude());
+            }
+        }
+
         AuthTokenResponse response = new AuthTokenResponse(
                 accessToken,
                 refreshToken,
@@ -106,6 +113,13 @@ public class AuthController {
         
         String accessToken = jwtProvider.generateAccessToken(authentication);
         String refreshToken = refreshTokenService.issueAndStoreRefreshToken(account.getUsername());
+
+        if (request.getLatitude() != null && request.getLongitude() != null) {
+            String roleName = account.getRole() != null ? account.getRole().getName() : "ROLE_USER";
+            if ("ROLE_WORKER".equals(roleName)) {
+                accountService.updateWorkerLocation(account.getId(), request.getLatitude(), request.getLongitude());
+            }
+        }
 
         AuthTokenResponse response = new AuthTokenResponse(
                 accessToken,

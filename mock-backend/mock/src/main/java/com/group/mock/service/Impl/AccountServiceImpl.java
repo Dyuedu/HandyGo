@@ -17,12 +17,14 @@ import com.group.mock.entity.UserProfile;
 import com.group.mock.entity.Wallet;
 import com.group.mock.entity.WorkerProfile;
 import com.group.mock.entity.enums.Status;
+import com.group.mock.entity.WorkerLocation;
 import com.group.mock.exception.AuthServiceException;
 import com.group.mock.repository.AccountRepository;
 import com.group.mock.repository.RoleRepository;
 import com.group.mock.repository.UserProfileRepository;
 import com.group.mock.repository.WalletRepository;
 import com.group.mock.repository.WorkerProfileRepository;
+import com.group.mock.repository.WorkerLocationRepository;
 import com.group.mock.service.AccountService;
 import com.group.mock.service.CloudinaryUploadService;
 
@@ -40,6 +42,7 @@ public class AccountServiceImpl implements AccountService {
     private final RoleRepository roleRepository;
     private final UserProfileRepository userProfileRepository;
     private final WorkerProfileRepository workerProfileRepository;
+    private final WorkerLocationRepository workerLocationRepository;
     private final WalletRepository walletRepository;
     private final CloudinaryUploadService cloudinaryUploadService;
     private final PasswordEncoder passwordEncoder;
@@ -53,6 +56,7 @@ public class AccountServiceImpl implements AccountService {
             RoleRepository roleRepository,
             UserProfileRepository userProfileRepository,
             WorkerProfileRepository workerProfileRepository,
+            WorkerLocationRepository workerLocationRepository,
             WalletRepository walletRepository,
             CloudinaryUploadService cloudinaryUploadService,
             PasswordEncoder passwordEncoder,
@@ -61,6 +65,7 @@ public class AccountServiceImpl implements AccountService {
         this.roleRepository = roleRepository;
         this.userProfileRepository = userProfileRepository;
         this.workerProfileRepository = workerProfileRepository;
+        this.workerLocationRepository = workerLocationRepository;
         this.walletRepository = walletRepository;
         this.cloudinaryUploadService = cloudinaryUploadService;
         this.passwordEncoder = passwordEncoder;
@@ -201,13 +206,6 @@ public class AccountServiceImpl implements AccountService {
 
         String certificateUrl = cloudinaryUploadService.uploadProfessionalCertificate(request.getProfessionalCertificate());
 
-        // Create UserProfile for workers so they have a profile with fullName (defaults to username) and can update location
-        UserProfile userProfile = new UserProfile();
-        userProfile.setAccount(account);
-        userProfile.setFullName(account.getUsername());
-        userProfile.setCreatedAt(LocalDateTime.now());
-        userProfileRepository.save(userProfile);
-
         WorkerProfile workerProfile = new WorkerProfile();
         workerProfile.setAccount(account);
         workerProfile.setJobType(request.getJobType().trim());
@@ -291,5 +289,39 @@ public class AccountServiceImpl implements AccountService {
         } catch (Exception e) {
             throw new AuthServiceException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Xác thực Google qua Supabase thất bại: " + e.getMessage());
         }
+    }
+
+    @Override
+    @Transactional
+    public void updateWorkerLocation(java.util.UUID accountId, Double latitude, Double longitude) {
+        // 1. Update UserProfile for consistency
+        UserProfile profile = userProfileRepository.findById(accountId)
+                .orElseGet(() -> {
+                    UserProfile newProfile = new UserProfile();
+                    accountRepository.findById(accountId).ifPresent(newProfile::setAccount);
+                    newProfile.setFullName(newProfile.getAccount() != null ? newProfile.getAccount().getUsername() : "Người dùng");
+                    newProfile.setCreatedAt(LocalDateTime.now());
+                    return newProfile;
+                });
+        if (profile.getAccount() != null) {
+            profile.setLatitude(latitude);
+            profile.setLongitude(longitude);
+            userProfileRepository.save(profile);
+        }
+
+        // 2. Update/create WorkerLocation
+        workerProfileRepository.findById(accountId).ifPresent(workerProfile -> {
+            WorkerLocation workerLoc = workerLocationRepository.findById(accountId)
+                    .orElseGet(() -> {
+                        WorkerLocation newLoc = new WorkerLocation();
+                        newLoc.setWorkerProfile(workerProfile);
+                        return newLoc;
+                    });
+            workerLoc.setLatitude(latitude);
+            workerLoc.setLongitude(longitude);
+            workerLoc.setLastUpdate(LocalDateTime.now());
+            workerLoc.setAvailable(true);
+            workerLocationRepository.save(workerLoc);
+        });
     }
 }

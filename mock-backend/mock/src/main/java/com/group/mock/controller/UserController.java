@@ -48,7 +48,13 @@ public class UserController {
                 .orElseThrow(() -> new AuthServiceException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "Không tìm thấy tài khoản người dùng"));
 
         UserProfile profile = userProfileRepository.findById(account.getId())
-                .orElseThrow(() -> new AuthServiceException(HttpStatus.NOT_FOUND, "PROFILE_NOT_FOUND", "Không tìm thấy hồ sơ người dùng"));
+                .orElseGet(() -> {
+                    UserProfile newProfile = new UserProfile();
+                    newProfile.setAccount(account);
+                    newProfile.setFullName(account.getUsername() != null ? account.getUsername() : "Người dùng");
+                    newProfile.setCreatedAt(LocalDateTime.now());
+                    return newProfile;
+                });
 
         profile.setLatitude(request.getLatitude());
         profile.setLongitude(request.getLongitude());
@@ -63,7 +69,6 @@ public class UserController {
             WorkerLocation workerLoc = workerLocationRepository.findById(account.getId())
                     .orElseGet(() -> {
                         WorkerLocation newLoc = new WorkerLocation();
-                        newLoc.setWorkerId(account.getId());
                         newLoc.setWorkerProfile(workerProfile);
                         return newLoc;
                     });

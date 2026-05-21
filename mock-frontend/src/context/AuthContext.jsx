@@ -21,8 +21,8 @@ export function AuthProvider({ children }) {
     return response
   }
 
-  async function signInWithGoogle(accessToken) {
-    const response = await googleLoginRequest(accessToken)
+  async function signInWithGoogle(accessToken, coords) {
+    const response = await googleLoginRequest(accessToken, coords)
     saveSession(response.data)
     setSession(response.data)
     setMode(resolveInitialMode(response.data))
