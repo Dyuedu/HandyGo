@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useBookings } from '../hooks'
+import { formatBookingDateTime } from '../utils/bookingDateTime'
 import './BookingPages.css'
 
 const TAB_CONFIG = {
@@ -88,9 +89,7 @@ export function BookingActivityPage() {
                 <div className="booking-card-meta">
                   {b.address ? `${b.address.slice(0, 80)}${b.address.length > 80 ? '…' : ''}` : '—'}
                   <br />
-                  {b.createdAt
-                    ? new Date(b.createdAt).toLocaleString('vi-VN')
-                    : ''}{' '}
+                  {formatBookingDateTime(b.bookingDate ?? b.createdAt)}{' '}
                   · {formatVnd(b.finalAmount ?? b.totalAmount)}
                 </div>
               </Link>
