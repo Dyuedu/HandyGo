@@ -201,6 +201,13 @@ public class AccountServiceImpl implements AccountService {
 
         String certificateUrl = cloudinaryUploadService.uploadProfessionalCertificate(request.getProfessionalCertificate());
 
+        // Create UserProfile for workers so they have a profile with fullName (defaults to username) and can update location
+        UserProfile userProfile = new UserProfile();
+        userProfile.setAccount(account);
+        userProfile.setFullName(account.getUsername());
+        userProfile.setCreatedAt(LocalDateTime.now());
+        userProfileRepository.save(userProfile);
+
         WorkerProfile workerProfile = new WorkerProfile();
         workerProfile.setAccount(account);
         workerProfile.setJobType(request.getJobType().trim());

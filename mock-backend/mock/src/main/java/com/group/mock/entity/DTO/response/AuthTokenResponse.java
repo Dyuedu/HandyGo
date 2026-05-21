@@ -10,7 +10,8 @@ public record AuthTokenResponse(
         long refreshTokenExpiresIn,
         String role,
         String workerVerificationStatus,
-        UUID id
+        UUID id,
+        String username
 ) {
     public AuthTokenResponse(
             String accessToken,
@@ -19,6 +20,6 @@ public record AuthTokenResponse(
             long accessTokenExpiresIn,
             long refreshTokenExpiresIn
     ) {
-        this(accessToken, refreshToken, tokenType, accessTokenExpiresIn, refreshTokenExpiresIn, null, null, null);
+        this(accessToken, refreshToken, tokenType, accessTokenExpiresIn, refreshTokenExpiresIn, null, null, null, null);
     }
 }

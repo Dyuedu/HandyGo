@@ -18,3 +18,4 @@ Thumbs.db
 .spec-kit/
 .env
 docker-compose.yml
+.antigravityignore
