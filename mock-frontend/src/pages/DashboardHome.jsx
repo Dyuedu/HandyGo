@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { updateLocation, getUserLocations } from '../services/userService'
@@ -152,37 +152,18 @@ export function DashboardHome({ section = 'Home' }) {
       const marker = window.L.marker(position, markerOptions).addTo(map)
       
       const isMeTag = isMe ? ' (Bạn)' : ''
-      const roleLabel = isTechnician 
-        ? `Thợ sửa chữa` 
-        : 'Khách hàng'
+      const roleLabel = isTechnician ? 'Thợ sửa chữa' : 'Khách hàng'
       const jobLabel = isTechnician && user.jobType ? translateJobType(user.jobType) : ''
       const roleBg = isTechnician ? '#fef3c7' : '#e0f2fe'
       const roleColor = isTechnician ? '#d97706' : '#0369a1'
       const jobBg = '#f1f5f9'
       const jobColor = '#475569'
-      
-      const chatButtonHtml = !isMe ? `
-        <div style="margin-top: 8px;">
-          <a href="/app/chat?contactId=${user.id}&name=${encodeURIComponent(user.fullName)}&role=${user.role}" 
-             style="display: inline-block; font-size: 11px; font-weight: bold; color: #ffffff; background: #3b82f6; padding: 5px 10px; border-radius: 4px; text-decoration: none; text-align: center; width: 100%; box-sizing: border-box; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);">
-            Nhắn tin
-          </a>
-        </div>
-      ` : ''
 
-      marker.bindPopup(`
-        <div style="padding: 5px; font-family: sans-serif; color: #1e293b; min-width: 150px;">
-          <strong style="display: block; font-size: 14px;">${user.fullName}${isMeTag}</strong>
-          <span style="display: block; font-size: 11px; color: #64748b; margin-top: 2px;">Vĩ độ: ${user.latitude.toFixed(5)}, Kinh độ: ${user.longitude.toFixed(5)}</span>
-          <span style="display: inline-block; font-size: 10px; font-weight: bold; background: #eff6ff; color: #1e40af; padding: 2px 6px; border-radius: 4px; margin-top: 6px; text-transform: uppercase;">
-            ${roleText}
-          </span>
-          ${chatButtonHtml}
       // Build popup with clickable name for workers
       const nameHtml = (!isMe && isTechnician)
         ? `<a href="#" class="popup-worker-link" data-userid="${user.id}" style="display:block;font-size:14px;font-weight:700;color:#1e40af;text-decoration:none;cursor:pointer;">${user.fullName}${isMeTag}</a>`
         : `<strong style="display:block;font-size:14px;color:#1e293b;">${user.fullName}${isMeTag}</strong>`
-
+      
       let popupContent = `
         <div class="marker-popup-content">
           ${nameHtml}
@@ -484,100 +465,92 @@ export function DashboardHome({ section = 'Home' }) {
             {sortedFilteredUsers.length === 0 ? (
               <p className="no-users-notice">Không tìm thấy thợ phù hợp.</p>
             ) : (
+              sortedFilteredUsers.map((user) => {
+                const isMe = user.id === currentUserId
+                const isTechnician = user.role === 'TECHNICIAN'
+                const distance = (!isMe && myLat && myLng && user.latitude && user.longitude)
+                  ? calculateDistance(myLat, myLng, user.latitude, user.longitude)
+                  : null
 
-{sortedFilteredUsers.map((user) => {
-        const isMe = user.id === currentUserId // Hoặc session?.id tùy thuộc vào biến nào đang chạy trong file của bạn
-        const isTechnician = user.role === 'TECHNICIAN'
-        const distance = (!isMe && myLat && myLng && user.latitude && user.longitude)
-          ? calculateDistance(myLat, myLng, user.latitude, user.longitude)
-          : null
-
-        return (
-          <div 
-            key={user.id} 
-            className={`user-location-item ${user.id === activeUserId ? 'active' : ''} ${user.role?.toLowerCase()}`}
-            onClick={() => handleSelectUser(user)}
-          >
-            {/* 1. Phần Avatar - Giữ logic icon của main */}
-            <div className="user-avatar-circle">
-              {isTechnician ? '🔧' : (user.fullName ? user.fullName.substring(0, 2).toUpperCase() : 'US')}
-            </div>
-
-            {/* 2. Phần thông tin chữ */}
-            <div className="user-info-text" style={{ display: 'flex', flexDirection: 'column' }}>
-              <strong>{user.fullName} {isMe ? '(Bạn)' : ''}</strong>
-              <span>{user.phone || 'Không có SĐT'}</span>
-              
-              {/* Giữ cụm tag thông tin cực kỳ chi tiết của main */}
-              <div className="role-job-tags">
-                <span className={`role-tag ${user.role?.toLowerCase()}`}>
-                  {isTechnician ? 'Thợ sửa chữa' : user.role}
-                </span>
-                {user.jobType && (
-                  <span className="job-tag">{translateJobType(user.jobType)}</span>
-                )}
-                {distance !== null && (
-                  <span className="distance-tag">{distance.toFixed(1)} km</span>
-                )}
-                {!user.latitude && !user.longitude && (
-                  <span className="no-location-tag">Chưa có vị trí</span>
-                )}
-              </div>
-
-              {/* 3. Phần Nút bấm hành động (Kết hợp cả 2 nhánh) */}
-              <div className="action-buttons-group" style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                {/* Nút Xem hồ sơ thợ từ main */}
-                {!isMe && isTechnician && (
-                  <button 
-                    type="button"
-                    className="sidebar-view-profile-btn"
-                    onClick={(e) => { 
-                      e.stopPropagation(); 
-                      navigate(`/app/worker/${user.id}`); 
-                    }}
+                return (
+                  <div 
+                    key={user.id} 
+                    className={`user-location-item ${user.id === activeUserId ? 'active' : ''} ${user.role?.toLowerCase()}`}
+                    onClick={() => handleSelectUser(user)}
                   >
-                    Xem hồ sơ
-                  </button>
-                )}
+                    {/* 1. Phần Avatar */}
+                    <div className="user-avatar-circle">
+                      {isTechnician ? '🔧' : (user.fullName ? user.fullName.substring(0, 2).toUpperCase() : 'US')}
+                    </div>
 
-                {/* Nút Nhắn tin từ nhánh chatting của bạn (Chỉ hiện khi được click chọn active) */}
-                {user.id === activeUserId && !isMe && (
-                  <button
-                    type="button"
-                    className="chat-now-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/app/chat?contactId=${user.id}&name=${encodeURIComponent(user.fullName)}&role=${user.role}`);
-                    }}
-                    style={{
-                      padding: '6px 12px',
-                      background: '#3b82f6',
-                      color: '#ffffff',
-                      border: 'none',
-                      borderRadius: '6px',
-                      fontSize: '0.75rem',
-                      fontWeight: 'bold',
-                      cursor: 'pointer',
-                      boxShadow: '0 2px 4px rgba(59, 130, 246, 0.2)',
-                      width: 'fit-content'
-                    }}
-                  >
-                    Nhắn tin
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        )
-      })}
+                    {/* 2. Phần thông tin chữ */}
+                    <div className="user-info-text" style={{ display: 'flex', flexDirection: 'column' }}>
+                      <strong>{user.fullName} {isMe ? '(Bạn)' : ''}</strong>
+                      <span>{user.phone || 'Không có SĐT'}</span>
+                      
+                      {/* Cụm tag thông tin */}
+                      <div className="role-job-tags">
+                        <span className={`role-tag ${user.role?.toLowerCase()}`}>
+                          {isTechnician ? 'Thợ sửa chữa' : user.role}
+                        </span>
+                        {user.jobType && (
+                          <span className="job-tag">{translateJobType(user.jobType)}</span>
+                        )}
+                        {distance !== null && (
+                          <span className="distance-tag">{distance.toFixed(1)} km</span>
+                        )}
+                        {!user.latitude && !user.longitude && (
+                          <span className="no-location-tag">Chưa có vị trí</span>
+                        )}
+                      </div>
 
+                      {/* 3. Phần Nút bấm hành động */}
+                      <div className="action-buttons-group" style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                        {!isMe && isTechnician && (
+                          <button 
+                            type="button"
+                            className="sidebar-view-profile-btn"
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              navigate(`/app/worker/${user.id}`); 
+                            }}
+                          >
+                            Xem hồ sơ
+                          </button>
+                        )}
+
+                        {user.id === activeUserId && !isMe && (
+                          <button
+                            type="button"
+                            className="chat-now-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/app/chat?contactId=${user.id}&name=${encodeURIComponent(user.fullName)}&role=${user.role}`);
+                            }}
+                            style={{
+                              padding: '6px 12px',
+                              background: '#3b82f6',
+                              color: '#ffffff',
+                              border: 'none',
+                              borderRadius: '6px',
+                              fontSize: '0.75rem',
+                              fontWeight: 'bold',
+                              cursor: 'pointer',
+                              boxShadow: '0 2px 4px rgba(59, 130, 246, 0.2)',
+                              width: 'fit-content'
+                            }}
+                          >
+                            Nhắn tin
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 )
               })
             )}
           </div>
         </aside>
-
 
         <div className="map-view-wrapper">
           <div ref={mapRef} className="google-map-element" id="google-map-element" />
