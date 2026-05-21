@@ -36,6 +36,7 @@ export function MainLayout() {
   const navigation = mode === 'ADMIN' ? adminNav : mode === 'TECHNICIAN' ? technicianNav : customerNav
   const activeSection = sectionNames[location.pathname] || 'Dashboard'
 
+
   return (
     <div className="main-layout">
       <aside className="main-sidebar" aria-label="Main navigation">

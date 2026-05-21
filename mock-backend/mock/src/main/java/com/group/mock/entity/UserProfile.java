@@ -1,7 +1,6 @@
 package com.group.mock.entity;
 
-import java.time.LocalDateTime;
-import java.util.UUID;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -10,6 +9,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.MapsId;
 import jakarta.persistence.Table;
+import java.time.LocalDateTime;
+import java.util.UUID;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
@@ -40,6 +41,7 @@ public class UserProfile {
     private Double longitude;
 
     // Liên kết 1:1 bảo mật với Account
+    @JsonIgnore
     @OneToOne(fetch = FetchType.LAZY)
     @MapsId // Khóa chính 'id' sẽ đóng vai trò là Khóa ngoại tham chiếu sang account(id)
     @JoinColumn(name = "id")

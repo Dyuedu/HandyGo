@@ -347,7 +347,8 @@
 }
 
 .wp-form-row input,
-.wp-form-row textarea {
+.wp-form-row textarea,
+.wp-form-row select.wp-form-select {
   width: 100%;
   padding: 10px 14px;
   border: 1px solid #cbd5e1;
@@ -361,7 +362,8 @@
 }
 
 .wp-form-row input:focus,
-.wp-form-row textarea:focus {
+.wp-form-row textarea:focus,
+.wp-form-row select.wp-form-select:focus {
   outline: none;
   border-color: #f59e0b;
   background: white;
@@ -406,6 +408,53 @@
   cursor: pointer;
   box-shadow: 0 4px 14px rgba(245, 158, 11, 0.25);
   transition: all 0.2s ease;
+}
+
+.wp-voucher-hint {
+  margin: 6px 0 0;
+  font-size: 0.82rem;
+  color: #64748b;
+}
+
+.wp-voucher-preview {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  font-size: 0.88rem;
+  color: #1e40af;
+  line-height: 1.45;
+}
+
+.wp-voucher-preview-note {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.wp-form-error {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.wp-book-hint {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.wp-form-submit:disabled,
+.wp-form-cancel:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .wp-form-submit:hover {

@@ -1,4 +1,4 @@
--- Bảng role
+    -- Bảng role
 CREATE TABLE role (
     id SERIAL PRIMARY KEY,
     name VARCHAR(50) NOT NULL UNIQUE
@@ -96,3 +96,84 @@ CREATE TABLE transaction_history (
 -- Tạo Index cho transaction_history
 CREATE INDEX idx_vnp_txn_ref ON transaction_history(vnp_txn_ref);
 CREATE INDEX idx_vnp_trans_no ON transaction_history(vnp_transaction_no);
+
+-- ============================================================
+-- Booking & voucher module (HandyGo — Tuan Anh)
+-- ============================================================
+
+-- Bảng vouchers (catalog)
+CREATE TABLE vouchers (
+    id BIGSERIAL PRIMARY KEY,
+    code VARCHAR(100) NOT NULL UNIQUE,
+    value NUMERIC(19, 4) NOT NULL,
+    discount_type VARCHAR(30) DEFAULT 'FIXED_AMOUNT',
+    discount_percent NUMERIC(5, 2),
+    max_discount_amount NUMERIC(19, 4),
+    expiry_date TIMESTAMP,
+    is_used BOOLEAN NOT NULL DEFAULT FALSE,
+    max_uses INTEGER
+);
+
+-- Voucher demo: giảm 30.000 VND, tối đa 20 lượt dùng
+INSERT INTO vouchers (code, value, discount_type, is_used, max_uses)
+VALUES ('GIAM30K', 30000, 'FIXED_AMOUNT', FALSE, 20)
+ON CONFLICT (code) DO NOTHING;
+
+-- Bảng bookings
+CREATE TABLE bookings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    customer_id UUID NOT NULL,
+    worker_id UUID NOT NULL,
+    service_code VARCHAR(100),
+    description TEXT,
+    address TEXT,
+    status VARCHAR(40) NOT NULL,
+    total_amount NUMERIC(19, 4),
+    discount_amount NUMERIC(19, 4) NOT NULL DEFAULT 0,
+    final_amount NUMERIC(19, 4),
+    booking_date TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_booking_customer FOREIGN KEY (customer_id) REFERENCES user_profile(id),
+    CONSTRAINT fk_booking_worker FOREIGN KEY (worker_id) REFERENCES worker_profile(id),
+    CONSTRAINT chk_booking_status CHECK (status IN (
+        'PENDING',
+        'ACCEPTED',
+        'PROCESSING',
+        'WAITING_CUSTOMER_CONFIRMATION',
+        'FINISHED',
+        'DECLINED',
+        'CANCELLED'
+    ))
+);
+
+CREATE INDEX idx_bookings_customer ON bookings(customer_id);
+CREATE INDEX idx_bookings_worker ON bookings(worker_id);
+CREATE INDEX idx_bookings_status ON bookings(status);
+
+-- Bảng booking_status_history (audit)
+CREATE TABLE booking_status_history (
+    id BIGSERIAL PRIMARY KEY,
+    booking_id UUID NOT NULL,
+    from_status VARCHAR(40),
+    to_status VARCHAR(40) NOT NULL,
+    changed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    note VARCHAR(255),
+    CONSTRAINT fk_bsh_booking FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_bsh_booking_changed ON booking_status_history(booking_id, changed_at);
+
+-- Bảng voucher_usage (per-booking voucher state: PENDING / REDEEMED)
+CREATE TABLE voucher_usage (
+    id BIGSERIAL PRIMARY KEY,
+    booking_id UUID NOT NULL UNIQUE,
+    voucher_id BIGINT NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    applied_discount_amount NUMERIC(19, 4) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    redeemed_at TIMESTAMP,
+    CONSTRAINT fk_vu_booking FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE,
+    CONSTRAINT fk_vu_voucher FOREIGN KEY (voucher_id) REFERENCES vouchers(id),
+    CONSTRAINT chk_vu_status CHECK (status IN ('PENDING', 'REDEEMED'))
+);
