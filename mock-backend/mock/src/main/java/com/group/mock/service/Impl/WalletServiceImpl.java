@@ -13,6 +13,7 @@ import com.group.mock.entity.DTO.response.TopUpResponse;
 import com.group.mock.entity.DTO.response.TransactionHistorySummary;
 import com.group.mock.entity.DTO.response.WalletBalanceResponse;
 import com.group.mock.entity.DTO.response.WalletDeductResponse;
+import com.group.mock.exception.AuthServiceException;
 import com.group.mock.repository.TransactionHistoryRepository;
 import com.group.mock.repository.WalletRepository;
 import com.group.mock.service.AccountService;
@@ -21,6 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,6 +47,7 @@ import java.util.UUID;
 @Slf4j
 @Service
 public class WalletServiceImpl implements WalletService {
+    private static final String ROLE_WORKER = "ROLE_WORKER";
     private static final String BALANCE_CACHE_KEY_PREFIX = "cache:wallet:balance:";
     private static final String HISTORY_CACHE_KEY_PREFIX = "cache:wallet:history:";
 
@@ -91,7 +94,7 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional
     public WalletBalanceResponse createWallet(String username) {
-        Account account = accountService.getAccountByUsername(username);
+        Account account = getWorkerAccount(username);
         Wallet wallet = getOrCreateWallet(account.getId());
         updateBalanceCache(wallet.getUserId(), wallet.getBalance());
         return new WalletBalanceResponse(normalizeAmount(wallet.getBalance()), wallet.getCurrency());
@@ -100,7 +103,7 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional
     public WalletBalanceResponse getBalance(String username) {
-        Account account = accountService.getAccountByUsername(username);
+        Account account = getWorkerAccount(username);
         Wallet wallet = getOrCreateWallet(account.getId());
 
         String cachedBalance = stringRedisTemplate.opsForValue().get(balanceCacheKey(account.getId()));
@@ -121,7 +124,7 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional
     public TopUpResponse createTopUp(String username, TopUpRequest request, String ipAddress) {
-        Account account = accountService.getAccountByUsername(username);
+        Account account = getWorkerAccount(username);
         Wallet wallet = getOrCreateWallet(account.getId());
 
         BigDecimal amount = normalizeAmount(request.getAmount());
@@ -233,7 +236,7 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional
     public List<TransactionHistorySummary> getHistory(String username) {
-        Account account = accountService.getAccountByUsername(username);
+        Account account = getWorkerAccount(username);
         Wallet wallet = getOrCreateWallet(account.getId());
 
         String cacheKey = historyCacheKey(wallet.getId());
@@ -259,7 +262,7 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional
     public WalletDeductResponse deduct(String username, WalletDeductRequest request) {
-        Account account = accountService.getAccountByUsername(username);
+        Account account = getWorkerAccount(username);
         Wallet wallet = getOrCreateWallet(account.getId());
 
         BigDecimal amount = normalizeAmount(request.getAmount());
@@ -313,6 +316,19 @@ public class WalletServiceImpl implements WalletService {
             wallet.setBalance(BigDecimal.ZERO);
             return walletRepository.save(wallet);
         });
+    }
+
+    private Account getWorkerAccount(String username) {
+        Account account = accountService.getAccountByUsername(username);
+        if (account.getRole() == null
+                || account.getRole().getName() == null
+                || !ROLE_WORKER.equalsIgnoreCase(account.getRole().getName())) {
+            throw new AuthServiceException(
+                    HttpStatus.FORBIDDEN,
+                    "WALLET_ACCESS_DENIED",
+                    "Only technicians can use wallet features");
+        }
+        return account;
     }
 
     private String generateTxnRef() {
