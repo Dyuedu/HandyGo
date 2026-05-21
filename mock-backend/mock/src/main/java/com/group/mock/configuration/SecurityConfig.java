@@ -119,6 +119,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/actuator/health", "/ws/**").permitAll()
                         .requestMatchers("/api/v1/admin/**").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers("/api/v1/bookings/*/reviews").hasAnyAuthority("ROLE_USER", "ROLE_WORKER")
                         .anyRequest().authenticated())
                 .oauth2ResourceServer((oauth2) -> oauth2
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAccountAuthenticationConverter)))

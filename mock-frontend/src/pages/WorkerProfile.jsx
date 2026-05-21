@@ -11,6 +11,7 @@ import {
 } from '../modules/booking/utils/bookingDateTime'
 import { getUserLocations } from '../services/userService'
 import { getAvailableVouchers } from '../services/voucherService'
+import { getReviewsByWorkerId } from '../services/reviewService'
 import '../styles/pages/WorkerProfile.css'
 
 const translateJobType = (job) => {
@@ -72,7 +73,7 @@ export function WorkerProfile() {
   const [worker, setWorker] = useState(null)
   const [currentUser, setCurrentUser] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [reviews] = useState(() => generateMockReviews(id))
+  const [reviews, setReviews] = useState([])
   const [bookingOpen, setBookingOpen] = useState(false)
   const [bookingData, setBookingData] = useState({
     date: '',
@@ -103,6 +104,20 @@ export function WorkerProfile() {
     }
     fetchWorker()
   }, [id, currentUserId])
+
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      try {
+        const data = await getReviewsByWorkerId(id)
+        if (!cancelled) setReviews(Array.isArray(data) ? data : [])
+      } catch (err) {
+        console.error('Failed to fetch reviews for worker', err)
+      }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [id])
 
   useEffect(() => {
     if (!bookingOpen || !isCustomer) return
@@ -471,23 +486,27 @@ export function WorkerProfile() {
             </div>
 
             <div className="wp-reviews-list">
-              {reviews.map((review) => (
-                <div key={review.id} className="wp-review-card">
-                  <div className="wp-review-header">
-                    <div className="wp-reviewer-avatar">
-                      {review.reviewer.substring(0, 1)}
+                {reviews.map((review) => {
+                  const reviewer = review.reviewerName || 'Khách hàng'
+                  const date = review.createdAt ? new Date(review.createdAt).toLocaleDateString('vi-VN') : ''
+                  return (
+                    <div key={review.id || review.bookingId} className="wp-review-card">
+                      <div className="wp-review-header">
+                        <div className="wp-reviewer-avatar">
+                          {reviewer.substring(0, 1)}
+                        </div>
+                        <div className="wp-reviewer-info">
+                          <strong>{reviewer}</strong>
+                          <span className="wp-review-date">{date}</span>
+                        </div>
+                        <div className="wp-review-rating">
+                          {renderStars(review.rating, 14)}
+                        </div>
+                      </div>
+                      <p className="wp-review-comment">{review.comment}</p>
                     </div>
-                    <div className="wp-reviewer-info">
-                      <strong>{review.reviewer}</strong>
-                      <span className="wp-review-date">{review.date}</span>
-                    </div>
-                    <div className="wp-review-rating">
-                      {renderStars(review.rating, 14)}
-                    </div>
-                  </div>
-                  <p className="wp-review-comment">{review.comment}</p>
-                </div>
-              ))}
+                  )
+                })}
             </div>
           </div>
         </div>

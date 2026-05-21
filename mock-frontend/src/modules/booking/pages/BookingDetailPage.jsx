@@ -2,11 +2,14 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../../../hooks/useAuth'
 import { CustomerConfirmationModal } from '../components/CustomerConfirmationModal'
+import { ReviewModal } from '../components/ReviewModal'
 import { WorkerServiceFeeModal } from '../components/WorkerServiceFeeModal'
 import {
   useAcceptBooking,
   useBookingDetail,
   useDeclineBooking,
+  useReview,
+  useCreateReview,
   useStartProcessing,
 } from '../hooks'
 import { formatBookingDateTime } from '../utils/bookingDateTime'
@@ -34,8 +37,11 @@ export function BookingDetailPage() {
   const { mode, session } = useAuth()
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [feeModalOpen, setFeeModalOpen] = useState(false)
+  const [reviewModalOpen, setReviewModalOpen] = useState(false)
 
   const { data: booking, isLoading, isError, error } = useBookingDetail(bookingId)
+  const reviewQuery = useReview(bookingId)
+  const createReviewMutation = useCreateReview()
 
   const acceptMutation = useAcceptBooking()
   const declineMutation = useDeclineBooking()
@@ -229,6 +235,41 @@ export function BookingDetailPage() {
             <p className="muted">Không áp dụng voucher.</p>
           )}
         </article>
+
+        {isCustomerParty && st === 'FINISHED' && (
+          <article className="booking-detail-card review-card">
+            <h2>Đánh giá của bạn</h2>
+            {reviewQuery.isLoading ? (
+              <p className="muted">Đang kiểm tra đánh giá…</p>
+            ) : reviewQuery.data ? (
+              <>
+                <div className="review-stars">
+                  {Array.from({ length: 5 }, (_, index) => (
+                    <span key={index}>{index < reviewQuery.data.rating ? '★' : '☆'}</span>
+                  ))}
+                </div>
+                {reviewQuery.data.comment ? (
+                  <p className="review-comment">{reviewQuery.data.comment}</p>
+                ) : (
+                  <p className="muted">Bạn chưa thêm nhận xét cho đánh giá này.</p>
+                )}
+              </>
+            ) : (
+              <button
+                type="button"
+                className="review-btn"
+                onClick={() => setReviewModalOpen(true)}
+              >
+                Viết đánh giá
+              </button>
+            )}
+            {reviewQuery.isError && reviewQuery.error?.status !== 404 && (
+              <div className="booking-alert" role="alert" style={{ marginTop: 12 }}>
+                {reviewQuery.error?.message || 'Không thể tải đánh giá.'}
+              </div>
+            )}
+          </article>
+        )}
       </div>
 
       {isTechnician && isAssignedWorker && (
@@ -300,6 +341,16 @@ export function BookingDetailPage() {
         bookingId={bookingId}
         booking={booking}
         onClose={() => setConfirmOpen(false)}
+        onConfirmed={() => setReviewModalOpen(true)}
+      />
+
+      <ReviewModal
+        open={reviewModalOpen}
+        onClose={() => setReviewModalOpen(false)}
+        onSubmit={async (payload) => {
+          await createReviewMutation.mutateAsync({ bookingId, payload })
+          setReviewModalOpen(false)
+        }}
       />
     </section>
   )
