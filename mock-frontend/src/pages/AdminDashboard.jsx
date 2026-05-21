@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { getWorkers, toggleWorkerVerification, toggleWorkerStatus } from '../services/adminService'
-import './AdminDashboard.css'
+import '../styles/pages/AdminDashboard.css'
 
 export function AdminDashboard() {
   const queryClient = useQueryClient()

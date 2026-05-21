@@ -1,5 +1,5 @@
 import { authHighlights } from '../pages/authContent'
-import './AuthBrandPanel.css'
+import '../../../styles/modules/auth/components/AuthBrandPanel.css'
 
 export function AuthBrandPanel() {
   return (

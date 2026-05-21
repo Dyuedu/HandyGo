@@ -1,4 +1,4 @@
-import './Field.css'
+import '../../../styles/modules/auth/components/Field.css'
 
 export function Field({ label, type = 'text', value, onChange }) {
   return (

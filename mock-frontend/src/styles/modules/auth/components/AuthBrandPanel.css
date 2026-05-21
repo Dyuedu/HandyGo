@@ -8,7 +8,7 @@
   color: white;
   background:
     linear-gradient(rgba(15, 23, 42, 0.52), rgba(15, 23, 42, 0.82)),
-    url('../../../assets/hero.png') center 36% / min(72%, 360px) no-repeat,
+    url('../../../../assets/hero.png') center 36% / min(72%, 360px) no-repeat,
     linear-gradient(150deg, #0f172a, #164e63 52%, #115e59);
 }
 

@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { updateLocation, getUserLocations } from '../services/userService'
 import ChatContainer from '../modules/chat/components/ChatContainer'
-import './DashboardHome.css'
-import './MapDashboard.css'
+import '../styles/pages/DashboardHome.css'
+import '../styles/pages/MapDashboard.css'
 
 const content = {
   Activity: {

@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getWorkerById, toggleWorkerVerification, toggleWorkerStatus } from '../services/adminService'
-import './AdminWorkerDetail.css'
+import '../styles/pages/AdminWorkerDetail.css'
 
 export function AdminWorkerDetail() {
   const { id } = useParams()

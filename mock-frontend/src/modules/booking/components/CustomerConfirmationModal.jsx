@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { confirmCompletion } from '../../../services/bookingService'
-import '../pages/BookingPages.css'
+import '../../../styles/modules/booking/pages/BookingPages.css'
 
 const bookingsKeyRoot = 'bookings'
 

@@ -10,7 +10,7 @@ import {
   useStartProcessing,
 } from '../hooks'
 import { formatBookingDateTime } from '../utils/bookingDateTime'
-import './BookingPages.css'
+import '../../../styles/modules/booking/pages/BookingPages.css'
 
 function formatVnd(value) {
   if (value == null || value === '') return '—'

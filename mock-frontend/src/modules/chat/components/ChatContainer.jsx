@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, Fragment } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../../hooks/useAuth'
 import { getConversations, getChatHistory, uploadChatFiles } from '../../../services/chatService'
-import './ChatContainer.css'
+import '../../../styles/modules/chat/components/ChatContainer.css'
 
 export default function ChatContainer() {
   const { session } = useAuth()

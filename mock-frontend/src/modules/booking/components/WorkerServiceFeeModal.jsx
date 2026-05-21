@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMarkCompleted } from '../hooks'
-import '../pages/BookingPages.css'
+import '../../../styles/modules/booking/pages/BookingPages.css'
 
 function formatVnd(value) {
   const n = Number(value)
