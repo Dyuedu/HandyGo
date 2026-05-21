@@ -1,4 +1,4 @@
-import './AlertMessage.css'
+import '../../../styles/modules/auth/components/AlertMessage.css'
 
 export function AlertMessage({ type, children }) {
   if (!children) return null

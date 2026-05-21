@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import './MainLayout.css'
+import '../styles/layouts/MainLayout.css'
 
 const customerNav = [
   { path: '/app/home', icon: '⌂', label: 'Map' },

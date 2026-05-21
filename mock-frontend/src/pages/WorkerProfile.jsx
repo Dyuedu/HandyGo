@@ -13,6 +13,7 @@ import { getUserLocations } from '../services/userService'
 import { getAvailableVouchers } from '../services/voucherService'
 import { getReviewsByWorkerId } from '../services/reviewService'
 import './WorkerProfile.css'
+import '../styles/pages/WorkerProfile.css'
 
 const translateJobType = (job) => {
   if (!job) return 'Chưa xác định'

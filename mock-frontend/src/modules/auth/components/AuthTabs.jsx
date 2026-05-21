@@ -1,4 +1,4 @@
-import './AuthTabs.css'
+import '../../../styles/modules/auth/components/AuthTabs.css'
 
 const tabs = [
   { value: 'login', label: 'Đăng nhập' },

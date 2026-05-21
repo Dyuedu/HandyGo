@@ -1,6 +1,6 @@
 import { Link, Navigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import './Landing.css'
+import '../styles/pages/Landing.css'
 
 const features = [
   {

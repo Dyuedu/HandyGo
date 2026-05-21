@@ -3,13 +3,13 @@ import { AlertMessage } from '../components/AlertMessage'
 import { AuthBrandPanel } from '../components/AuthBrandPanel'
 import { AuthSessionBar } from '../components/AuthSessionBar'
 import { AuthTabs } from '../components/AuthTabs'
-import '../components/AuthForms.css'
+import '../../../styles/modules/auth/components/AuthForms.css'
 import { LoginForm } from '../components/LoginForm'
-import { RegisterUserForm } from '../components/RegisterUserForm'
-import { RegisterWorkerForm } from '../components/RegisterWorkerForm'
+import { RegisterUserForm } from '../../customer/components/RegisterUserForm'
+import { RegisterWorkerForm } from '../../worker/components/RegisterWorkerForm'
 import { useAuthForms } from '../hooks/useAuthForms'
 import { authModes } from './authContent'
-import './AuthPage.css'
+import '../../../styles/modules/auth/pages/AuthPage.css'
 
 export function AuthPage() {
   const auth = useAuthForms()

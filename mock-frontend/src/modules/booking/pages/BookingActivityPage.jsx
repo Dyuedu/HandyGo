@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useBookings } from '../hooks'
 import { formatBookingDateTime } from '../utils/bookingDateTime'
-import './BookingPages.css'
+import '../../../styles/modules/booking/pages/BookingPages.css'
 
 const TAB_CONFIG = {
   pending: {

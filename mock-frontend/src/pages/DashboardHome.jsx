@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { updateLocation, getUserLocations } from '../services/userService'
-import './DashboardHome.css'
-import './MapDashboard.css'
+import ChatContainer from '../modules/chat/components/ChatContainer'
+import '../styles/pages/DashboardHome.css'
+import '../styles/pages/MapDashboard.css'
 
 const content = {
   Activity: {
@@ -151,20 +152,18 @@ export function DashboardHome({ section = 'Home' }) {
       const marker = window.L.marker(position, markerOptions).addTo(map)
       
       const isMeTag = isMe ? ' (Bạn)' : ''
-      const roleLabel = isTechnician 
-        ? `Thợ sửa chữa` 
-        : 'Khách hàng'
+      const roleLabel = isTechnician ? 'Thợ sửa chữa' : 'Khách hàng'
       const jobLabel = isTechnician && user.jobType ? translateJobType(user.jobType) : ''
       const roleBg = isTechnician ? '#fef3c7' : '#e0f2fe'
       const roleColor = isTechnician ? '#d97706' : '#0369a1'
       const jobBg = '#f1f5f9'
       const jobColor = '#475569'
-      
+
       // Build popup with clickable name for workers
       const nameHtml = (!isMe && isTechnician)
         ? `<a href="#" class="popup-worker-link" data-userid="${user.id}" style="display:block;font-size:14px;font-weight:700;color:#1e40af;text-decoration:none;cursor:pointer;">${user.fullName}${isMeTag}</a>`
         : `<strong style="display:block;font-size:14px;color:#1e293b;">${user.fullName}${isMeTag}</strong>`
-
+      
       let popupContent = `
         <div class="marker-popup-content">
           ${nameHtml}
@@ -479,12 +478,17 @@ export function DashboardHome({ section = 'Home' }) {
                     className={`user-location-item ${user.id === activeUserId ? 'active' : ''} ${user.role?.toLowerCase()}`}
                     onClick={() => handleSelectUser(user)}
                   >
+                    {/* 1. Phần Avatar */}
                     <div className="user-avatar-circle">
                       {isTechnician ? '🔧' : (user.fullName ? user.fullName.substring(0, 2).toUpperCase() : 'US')}
                     </div>
-                    <div className="user-info-text">
+
+                    {/* 2. Phần thông tin chữ */}
+                    <div className="user-info-text" style={{ display: 'flex', flexDirection: 'column' }}>
                       <strong>{user.fullName} {isMe ? '(Bạn)' : ''}</strong>
                       <span>{user.phone || 'Không có SĐT'}</span>
+                      
+                      {/* Cụm tag thông tin */}
                       <div className="role-job-tags">
                         <span className={`role-tag ${user.role?.toLowerCase()}`}>
                           {isTechnician ? 'Thợ sửa chữa' : user.role}
@@ -499,14 +503,47 @@ export function DashboardHome({ section = 'Home' }) {
                           <span className="no-location-tag">Chưa có vị trí</span>
                         )}
                       </div>
-                      {!isMe && isTechnician && (
-                        <button 
-                          className="sidebar-view-profile-btn"
-                          onClick={(e) => { e.stopPropagation(); navigate(`/app/worker/${user.id}`) }}
-                        >
-                          Xem hồ sơ
-                        </button>
-                      )}
+
+                      {/* 3. Phần Nút bấm hành động */}
+                      <div className="action-buttons-group" style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                        {!isMe && isTechnician && (
+                          <button 
+                            type="button"
+                            className="sidebar-view-profile-btn"
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              navigate(`/app/worker/${user.id}`); 
+                            }}
+                          >
+                            Xem hồ sơ
+                          </button>
+                        )}
+
+                        {user.id === activeUserId && !isMe && (
+                          <button
+                            type="button"
+                            className="chat-now-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/app/chat?contactId=${user.id}&name=${encodeURIComponent(user.fullName)}&role=${user.role}`);
+                            }}
+                            style={{
+                              padding: '6px 12px',
+                              background: '#3b82f6',
+                              color: '#ffffff',
+                              border: 'none',
+                              borderRadius: '6px',
+                              fontSize: '0.75rem',
+                              fontWeight: 'bold',
+                              cursor: 'pointer',
+                              boxShadow: '0 2px 4px rgba(59, 130, 246, 0.2)',
+                              width: 'fit-content'
+                            }}
+                          >
+                            Nhắn tin
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )
@@ -515,7 +552,6 @@ export function DashboardHome({ section = 'Home' }) {
           </div>
         </aside>
 
-
         <div className="map-view-wrapper">
           <div ref={mapRef} className="google-map-element" id="google-map-element" />
           <div className="map-overlay-card">
@@ -523,6 +559,14 @@ export function DashboardHome({ section = 'Home' }) {
             <p>Sử dụng các cử chỉ kéo, cuộn để khám phá khu vực xung quanh. Bản đồ tự động cập nhật markers khi có tài khoản mới hoạt động.</p>
           </div>
         </div>
+      </div>
+    )
+  }
+
+  if (section === 'Chat') {
+    return (
+      <div className="chat-section-wrapper" style={{ padding: '24px' }}>
+        <ChatContainer />
       </div>
     )
   }
