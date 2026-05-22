@@ -451,6 +451,7 @@ public class BookingServiceImpl implements BookingService {
             Wallet created = new Wallet();
             created.setUserId(booking.getWorker().getId());
             created.setBalance(BigDecimal.ZERO);
+            created.setCurrency("XU");
             return walletRepository.save(created);
         });
 

@@ -14,7 +14,7 @@ const technicianNav = [
   { path: '/app/home', icon: 'briefcase', label: 'Công việc' },
   { path: '/app/activity', icon: 'activity', label: 'Hoạt động' },
   { path: '/app/chat', icon: 'chat', label: 'Tin nhắn' },
-  { path: '/app/wallet', icon: 'wallet', label: 'Ví' },
+  { path: '/app/wallet', icon: 'wallet', label: 'Ví xu' },
   { path: '/app/subscription', icon: 'crown', label: 'Gói cước' },
   { path: '/app/profile', icon: 'profile', label: 'Hồ sơ' },
 ]
@@ -28,7 +28,7 @@ const sectionNames = {
   '/app/home': 'Trang chính',
   '/app/activity': 'Hoạt động',
   '/app/chat': 'Tin nhắn',
-  '/app/wallet': 'Ví',
+  '/app/wallet': 'Ví xu',
   '/app/subscription': 'Gói cước',
   '/app/profile': 'Hồ sơ',
   '/app/admin/workers': 'Quản lý thợ',

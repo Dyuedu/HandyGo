@@ -47,13 +47,11 @@ export function WalletScreen() {
     }
   }
 
-  const formatCurrency = (value) => {
-    if (value === null || value === undefined) return '0 ₫'
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-      minimumFractionDigits: 0,
-    }).format(value)
+  const formatCoins = (value) => {
+    if (value === null || value === undefined) return '0 xu'
+    return `${new Intl.NumberFormat('vi-VN', {
+      maximumFractionDigits: 0,
+    }).format(Number(value))} xu`
   }
 
   const formatDate = (dateString) => {
@@ -64,8 +62,8 @@ export function WalletScreen() {
   return (
     <div className="wallet-screen">
       <div className="wallet-hero">
-        <h1>Ví tiền của bạn</h1>
-        <p>Quản lý số dư ví và lịch sử giao dịch</p>
+        <h1>Ví xu của bạn</h1>
+        <p>Quản lý số xu và lịch sử giao dịch. 1.000 xu tương đương 1.000 VND.</p>
       </div>
 
       {error && <div className="alert alert-error">{error}</div>}
@@ -74,18 +72,19 @@ export function WalletScreen() {
         {/* Balance Card */}
         <div className="balance-card">
           <div className="balance-header">
-            <h2>Số dư hiện tại</h2>
+            <h2>Số xu hiện tại</h2>
             <button className="refresh-btn" type="button" onClick={loadWalletData} title="Làm mới" aria-label="Làm mới ví">
               <AppIcon name="refresh" size={20} />
             </button>
           </div>
           <div className="balance-amount">
-            {loading && !balance ? (
+            {loading && balance === null ? (
               <span className="loading">Đang tải...</span>
             ) : (
-              formatCurrency(balance)
+              formatCoins(balance)
             )}
           </div>
+          <p className="coin-rate">Tỷ lệ quy đổi cố định: 1 xu = 1 VND</p>
         </div>
 
         {/* Transaction History */}
@@ -100,7 +99,7 @@ export function WalletScreen() {
                   <tr>
                     <th>Ngày giờ</th>
                     <th>Mã giao dịch</th>
-                    <th>Số tiền</th>
+                    <th>Số xu</th>
                     <th>Trạng thái</th>
                   </tr>
                 </thead>
@@ -109,7 +108,7 @@ export function WalletScreen() {
                     <tr key={transaction.id} className={`status-${transaction.status?.toLowerCase()}`}>
                       <td>{formatDate(transaction.createdAt)}</td>
                       <td className="txn-ref">{transaction.vnpTxnRef}</td>
-                      <td className="amount">{formatCurrency(transaction.amount)}</td>
+                      <td className="amount">{formatCoins(transaction.amount)}</td>
                       <td>
                         <span className={`status-badge status-${transaction.status?.toLowerCase()}`}>
                           {transaction.status === 'SUCCESS' ? 'Thành công' : 

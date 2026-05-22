@@ -19,6 +19,7 @@ import com.group.mock.service.AccountService;
 import com.group.mock.service.SubscriptionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +33,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -42,13 +44,17 @@ import java.util.stream.Collectors;
 public class SubscriptionServiceImpl implements SubscriptionService {
     private static final String ROLE_WORKER = "ROLE_WORKER";
     private static final String SUBSCRIPTION_ORDER_TYPE = "SUBSCRIPTION";
+    private static final String SUBSCRIPTION_WALLET_ORDER_TYPE = "SUBSCRIPTION_WALLET";
     private static final String SUBSCRIPTION_ORDER_PREFIX = "SUBSCRIPTION_PLAN_";
+    private static final String BALANCE_CACHE_KEY_PREFIX = "cache:wallet:balance:";
+    private static final String HISTORY_CACHE_KEY_PREFIX = "cache:wallet:history:";
 
     private final SubscriptionRepository subscriptionRepository;
     private final AccountService accountService;
     private final WorkerProfileRepository workerProfileRepository;
     private final WalletRepository walletRepository;
     private final TransactionHistoryRepository transactionHistoryRepository;
+    private final StringRedisTemplate stringRedisTemplate;
 
     @Value("${vnpay.tmn-code}")
     private String vnpTmnCode;
@@ -89,6 +95,15 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         if (plan.getPrice().compareTo(BigDecimal.ZERO) <= 0) {
             activateWorkerSubscription(account.getId(), plan);
             return new SubscriptionPaymentResponse(null, null, plan.getPrice(), getWorkerSubscriptionInfo(username));
+        }
+
+        if (isWalletPayment(request.getPaymentMethod())) {
+            TransactionHistory history = paySubscriptionWithWallet(account, plan);
+            return new SubscriptionPaymentResponse(
+                    null,
+                    history.getVnpTxnRef(),
+                    plan.getPrice(),
+                    getWorkerSubscriptionInfo(username));
         }
 
         Wallet wallet = getOrCreateWallet(account);
@@ -144,8 +159,76 @@ public class SubscriptionServiceImpl implements SubscriptionService {
             Wallet wallet = new Wallet();
             wallet.setUserId(account.getId());
             wallet.setBalance(BigDecimal.ZERO);
+            wallet.setCurrency("XU");
             return walletRepository.save(wallet);
         });
+    }
+
+    private TransactionHistory paySubscriptionWithWallet(Account account, Subscription plan) {
+        Wallet wallet = getOrCreateWalletForUpdate(account);
+        BigDecimal amount = normalizeAmount(plan.getPrice());
+        BigDecimal balanceBefore = normalizeAmount(wallet.getBalance());
+
+        if (balanceBefore.compareTo(amount) < 0) {
+            throw new AuthServiceException(
+                    HttpStatus.BAD_REQUEST,
+                    "INSUFFICIENT_COINS",
+                    "Số xu hiện tại không đủ để thanh toán gói cước");
+        }
+
+        BigDecimal balanceAfter = normalizeAmount(balanceBefore.subtract(amount));
+        wallet.setBalance(balanceAfter);
+        wallet.setCurrency("XU");
+        walletRepository.save(wallet);
+
+        TransactionHistory history = createWalletSubscriptionHistory(wallet, plan, amount, balanceBefore, balanceAfter);
+        activateWorkerSubscription(account.getId(), plan);
+        invalidateWalletCache(wallet);
+        return history;
+    }
+
+    private Wallet getOrCreateWalletForUpdate(Account account) {
+        return walletRepository.findByUserIdForUpdate(account.getId()).orElseGet(() -> {
+            Wallet wallet = new Wallet();
+            wallet.setUserId(account.getId());
+            wallet.setBalance(BigDecimal.ZERO);
+            wallet.setCurrency("XU");
+            return walletRepository.saveAndFlush(wallet);
+        });
+    }
+
+    private TransactionHistory createWalletSubscriptionHistory(
+            Wallet wallet,
+            Subscription plan,
+            BigDecimal amount,
+            BigDecimal balanceBefore,
+            BigDecimal balanceAfter) {
+        ZonedDateTime now = ZonedDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"));
+
+        TransactionHistory history = new TransactionHistory();
+        history.setWallet(wallet);
+        history.setVnpTxnRef("XU-" + generateTxnRef());
+        history.setAmount(amount);
+        history.setVnpOrderInfo(subscriptionOrderInfo(plan.getId()));
+        history.setVnpOrderType(SUBSCRIPTION_WALLET_ORDER_TYPE);
+        history.setVnpCreateDate(now.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+        history.setStatus("SUCCESS");
+        history.setBalanceBefore(balanceBefore);
+        history.setBalanceAfter(balanceAfter);
+        return transactionHistoryRepository.save(history);
+    }
+
+    private boolean isWalletPayment(String paymentMethod) {
+        if (paymentMethod == null || paymentMethod.isBlank()) {
+            return false;
+        }
+        String normalized = paymentMethod.trim().toUpperCase(Locale.ROOT);
+        return "WALLET".equals(normalized) || "XU".equals(normalized) || "COINS".equals(normalized);
+    }
+
+    private void invalidateWalletCache(Wallet wallet) {
+        stringRedisTemplate.delete(BALANCE_CACHE_KEY_PREFIX + wallet.getUserId());
+        stringRedisTemplate.delete(HISTORY_CACHE_KEY_PREFIX + wallet.getId());
     }
 
     private TransactionHistory createPendingSubscriptionPayment(Wallet wallet, Subscription plan, String ipAddress) {

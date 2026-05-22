@@ -21,8 +21,8 @@ const content = {
     description: 'Không gian nhắn tin giữa khách hàng và thợ.',
   },
   Wallet: {
-    customerTitle: 'Ví',
-    technicianTitle: 'Ví · Voucher/Thu nhập',
+    customerTitle: 'Ví xu',
+    technicianTitle: 'Ví xu · Voucher/Thu nhập',
     description: 'Theo dõi thu nhập, ví tiền và voucher dành cho thợ.',
   },
   Subscription: {

@@ -11,4 +11,6 @@ import lombok.NoArgsConstructor;
 public class SubscribeRequest {
     @NotNull(message = "subscriptionPlanId is required")
     private Long subscriptionPlanId; // ID of the subscription plan to subscribe to
+
+    private String paymentMethod = "VNPAY"; // VNPAY, WALLET
 }

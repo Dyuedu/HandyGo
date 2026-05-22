@@ -50,6 +50,7 @@ public class WalletServiceImpl implements WalletService {
     private static final String ROLE_WORKER = "ROLE_WORKER";
     private static final String SUBSCRIPTION_ORDER_TYPE = "SUBSCRIPTION";
     private static final String SUBSCRIPTION_ORDER_PREFIX = "SUBSCRIPTION_PLAN_";
+    private static final String WALLET_UNIT = "XU";
     private static final String BALANCE_CACHE_KEY_PREFIX = "cache:wallet:balance:";
     private static final String HISTORY_CACHE_KEY_PREFIX = "cache:wallet:history:";
 
@@ -96,7 +97,7 @@ public class WalletServiceImpl implements WalletService {
         Account account = getWorkerAccount(username);
         Wallet wallet = getOrCreateWallet(account.getId());
         updateBalanceCache(wallet.getUserId(), wallet.getBalance());
-        return new WalletBalanceResponse(normalizeAmount(wallet.getBalance()), wallet.getCurrency());
+        return new WalletBalanceResponse(normalizeAmount(wallet.getBalance()), WALLET_UNIT);
     }
 
     @Override
@@ -108,7 +109,7 @@ public class WalletServiceImpl implements WalletService {
         String cachedBalance = stringRedisTemplate.opsForValue().get(balanceCacheKey(account.getId()));
         if (cachedBalance != null) {
             BigDecimal balance = fromScaledAmount(Long.parseLong(cachedBalance));
-            return new WalletBalanceResponse(balance, wallet.getCurrency());
+            return new WalletBalanceResponse(balance, WALLET_UNIT);
         }
 
         BigDecimal balance = normalizeAmount(wallet.getBalance());
@@ -117,7 +118,7 @@ public class WalletServiceImpl implements WalletService {
                 String.valueOf(toScaledAmount(balance)),
                 Duration.ofSeconds(walletBalanceTtlSeconds));
 
-        return new WalletBalanceResponse(balance, wallet.getCurrency());
+        return new WalletBalanceResponse(balance, WALLET_UNIT);
     }
 
     @Override
@@ -301,7 +302,7 @@ public class WalletServiceImpl implements WalletService {
 
         updateBalanceCache(wallet.getUserId(), newBalance);
         invalidateHistoryCache(wallet.getId());
-        return new WalletDeductResponse(newBalance, wallet.getCurrency());
+        return new WalletDeductResponse(newBalance, WALLET_UNIT);
     }
 
     private Wallet getOrCreateWallet(UUID userId) {
@@ -309,6 +310,7 @@ public class WalletServiceImpl implements WalletService {
             Wallet wallet = new Wallet();
             wallet.setUserId(userId);
             wallet.setBalance(BigDecimal.ZERO);
+            wallet.setCurrency(WALLET_UNIT);
             return walletRepository.save(wallet);
         });
     }

@@ -224,6 +224,7 @@ public class AccountServiceImpl implements AccountService {
         Wallet wallet = new Wallet();
         wallet.setUserId(account.getId());
         wallet.setBalance(BigDecimal.ZERO);
+        wallet.setCurrency("XU");
         walletRepository.save(wallet);
     }
 

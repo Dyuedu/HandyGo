@@ -120,8 +120,30 @@
   font-size: 2rem;
   font-weight: 700;
   color: #1f2937;
-  margin: 0 0 30px 0;
+  margin: 0;
   text-align: center;
+}
+
+.plans-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 30px;
+}
+
+.wallet-balance-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  color: #1d4ed8;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 .plans-grid {
@@ -264,6 +286,30 @@
   margin-bottom: 12px;
 }
 
+.subscribe-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.subscribe-actions .subscribe-btn {
+  margin-bottom: 0;
+}
+
+.coin-pay-btn {
+  color: #047857;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  box-shadow: none;
+}
+
+.coin-pay-btn:hover:not(:disabled) {
+  color: #ffffff;
+  background: #059669;
+  box-shadow: 0 8px 12px rgba(5, 150, 105, 0.22);
+}
+
 .subscribe-btn:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 8px 12px rgba(59, 130, 246, 0.4);
@@ -368,6 +414,16 @@
 
   .plans-section h2 {
     font-size: 1.5rem;
+  }
+
+  .plans-title-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .wallet-balance-pill {
+    justify-content: center;
+    white-space: normal;
   }
 
   .benefits-section h2 {

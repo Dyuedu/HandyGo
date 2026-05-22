@@ -18,9 +18,10 @@ export function getSubscriptionPlans() {
   return axiosClient.get('/api/v1/subscriptions/plans')
 }
 
-export function subscribeToPlan(subscriptionPlanId) {
+export function subscribeToPlan(subscriptionPlanId, paymentMethod = 'VNPAY') {
   return axiosClient.post('/api/v1/subscriptions/subscribe', {
     subscriptionPlanId,
+    paymentMethod,
   })
 }
 
