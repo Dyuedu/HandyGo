@@ -6,8 +6,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Temporal;
 import jakarta.persistence.TemporalType;
@@ -24,24 +22,20 @@ public class Subscription {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "worker_id")
-    private WorkerProfile worker;
-
-    @Column(name = "plan_name")
+    @Column(name = "plan_name", nullable = false)
     private String planName; // BASIC (49k), PRO (199k)
 
-    @Column(name = "price")
+    @Column(name = "price", nullable = false)
     private BigDecimal price;
 
-    @Column(name = "started_at")
+    @Column(name = "duration_days", nullable = false)
+    private Integer durationDays; // Number of days this subscription lasts
+
+    @Column(name = "created_at")
     @CreationTimestamp
     @Temporal(TemporalType.TIMESTAMP)
-    private LocalDateTime startDate;
+    private LocalDateTime createdAt;
 
-    @Column(name = "end_date")
-    private LocalDateTime endDate;
-
-    @Column(name = "status")
-    private String status; // ACTIVE, EXPIRED
+    @Column(name = "status", nullable = false)
+    private String status = "ACTIVE"; // ACTIVE, INACTIVE
 }

@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { updateLocation, getUserLocations } from '../services/userService'
 import ChatContainer from '../modules/chat/components/ChatContainer'
+import WalletScreen from '../modules/payment/components/WalletScreen'
+import SubscriptionScreen from '../modules/payment/components/SubscriptionScreen'
 import '../styles/pages/DashboardHome.css'
 import '../styles/pages/MapDashboard.css'
 
@@ -21,6 +23,11 @@ const content = {
     customerTitle: 'Wallet',
     technicianTitle: 'Wallet · Voucher/Thu nhập',
     description: 'Theo dõi thu nhập, ví tiền và voucher dành cho worker.',
+  },
+  Subscription: {
+    customerTitle: 'Subscription',
+    technicianTitle: 'Nâng cấp tài khoản',
+    description: 'Chọn gói cước phù hợp để mở rộng khả năng của bạn.',
   },
   Profile: {
     customerTitle: 'Profile',
@@ -569,6 +576,14 @@ export function DashboardHome({ section = 'Home' }) {
         <ChatContainer />
       </div>
     )
+  }
+
+  if (section === 'Wallet') {
+    return <WalletScreen />
+  }
+
+  if (section === 'Subscription') {
+    return <SubscriptionScreen />
   }
 
   // Render normal tabs if not Home page
