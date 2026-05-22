@@ -118,6 +118,7 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/actuator/health", "/ws/**").permitAll()
+                        .requestMatchers("/api/v1/subscriptions/plans").permitAll()
                         .requestMatchers("/api/v1/admin/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers("/api/v1/bookings/*/reviews").hasAnyAuthority("ROLE_USER", "ROLE_WORKER")
                         .anyRequest().authenticated())

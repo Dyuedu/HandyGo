@@ -32,6 +32,19 @@ function hasServiceFee(booking) {
   return Number.isFinite(total) && total > 0
 }
 
+function statusLabel(status) {
+  switch (status) {
+    case 'PENDING': return 'Chờ thợ phản hồi'
+    case 'ACCEPTED': return 'Đã nhận việc'
+    case 'PROCESSING': return 'Đang thực hiện'
+    case 'WAITING_CUSTOMER_CONFIRMATION': return 'Chờ khách xác nhận'
+    case 'FINISHED': return 'Hoàn thành'
+    case 'DECLINED': return 'Đã từ chối'
+    case 'CANCELLED': return 'Đã hủy'
+    default: return status
+  }
+}
+
 export function BookingDetailPage() {
   const { bookingId } = useParams()
   const { mode, session } = useAuth()
@@ -77,7 +90,7 @@ export function BookingDetailPage() {
           {error?.message || 'Không tìm thấy đặt lịch.'}
         </div>
         <Link to="/app/activity" className="booking-detail-back">
-          ← Quay lại Activity
+          ← Quay lại hoạt động
         </Link>
       </section>
     )
@@ -91,7 +104,7 @@ export function BookingDetailPage() {
   return (
     <section className="booking-page">
       <Link to="/app/activity" className="booking-detail-back">
-        ← Quay lại Activity
+        ← Quay lại hoạt động
       </Link>
 
       <h1>Chi tiết đặt lịch</h1>
@@ -101,8 +114,8 @@ export function BookingDetailPage() {
         <article className="booking-detail-card">
           <h2>Trạng thái</h2>
           <div className="booking-detail-row">
-            <dt>Status</dt>
-            <dd>{st}</dd>
+            <dt>Trạng thái</dt>
+            <dd>{statusLabel(st)}</dd>
           </div>
           <div className="booking-detail-row">
             <dt>Giờ hẹn (khách đặt)</dt>
@@ -117,7 +130,7 @@ export function BookingDetailPage() {
         </article>
 
         <article className="booking-detail-card">
-          <h2>Thợ (technician)</h2>
+          <h2>Thợ phụ trách</h2>
           {technician ? (
             <>
               <div className="booking-detail-row">
@@ -282,7 +295,7 @@ export function BookingDetailPage() {
                 disabled={busy}
                 onClick={() => acceptMutation.mutate(bookingId)}
               >
-                Accept
+                Chấp nhận
               </button>
               <button
                 type="button"
@@ -290,7 +303,7 @@ export function BookingDetailPage() {
                 disabled={busy}
                 onClick={() => declineMutation.mutate(bookingId)}
               >
-                Decline
+                Từ chối
               </button>
             </>
           )}
@@ -301,7 +314,7 @@ export function BookingDetailPage() {
               disabled={busy}
               onClick={() => startMutation.mutate(bookingId)}
             >
-              Start Processing
+              Bắt đầu xử lý
             </button>
           )}
           {st === 'PROCESSING' && (
@@ -311,7 +324,7 @@ export function BookingDetailPage() {
               disabled={busy}
               onClick={() => setFeeModalOpen(true)}
             >
-              Mark Completed
+              Báo hoàn thành
             </button>
           )}
         </div>
@@ -325,7 +338,7 @@ export function BookingDetailPage() {
             disabled={busy || confirmOpen}
             onClick={() => setConfirmOpen(true)}
           >
-            Confirm Completion
+            Xác nhận hoàn thành
           </button>
         </div>
       )}

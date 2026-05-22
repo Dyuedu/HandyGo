@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, Fragment } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../../hooks/useAuth'
 import { getConversations, getChatHistory, uploadChatFiles } from '../../../services/chatService'
+import { AppIcon } from '../../../components/AppIcon'
 import '../../../styles/modules/chat/components/ChatContainer.css'
 
 export default function ChatContainer() {
@@ -485,7 +486,7 @@ export default function ChatContainer() {
       </aside>
 
       {/* Main chat window area */}
-      <section className="chat-main-area" aria-label="Chat Box">
+      <section className="chat-main-area" aria-label="Khung trò chuyện">
         {activeChat ? (
           <>
             {/* Header info of active contact */}
@@ -565,7 +566,7 @@ export default function ChatContainer() {
                                     )}
                                     {msg.isFailed && (
                                       <div className="attachment-upload-loader" style={{ backgroundColor: 'rgba(239, 68, 68, 0.75)' }}>
-                                        <span style={{ fontSize: '1.2rem' }}>⚠️</span>
+                                        <AppIcon name="alert" size={20} />
                                         <span>Lỗi gửi ảnh</span>
                                       </div>
                                     )}
@@ -647,9 +648,9 @@ export default function ChatContainer() {
           </>
         ) : (
           <div className="empty-chat-state-panel">
-            <span className="empty-chat-illustration" role="img" aria-label="chatting balloon">💬</span>
+            <span className="empty-chat-illustration" aria-hidden="true"><AppIcon name="chat" size={42} /></span>
             <h4>Chưa chọn hội thoại</h4>
-            <p>Chọn một cuộc trò chuyện từ danh sách hoặc click chọn "Nhắn tin" với bất cứ ai trên Bản đồ để trò chuyện trực tiếp.</p>
+            <p>Chọn một cuộc trò chuyện từ danh sách hoặc bấm "Nhắn tin" với bất cứ ai trên bản đồ để trò chuyện trực tiếp.</p>
           </div>
         )}
       </section>

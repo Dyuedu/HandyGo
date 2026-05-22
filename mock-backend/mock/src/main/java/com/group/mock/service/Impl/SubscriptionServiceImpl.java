@@ -1,33 +1,66 @@
 package com.group.mock.service.Impl;
 
+import com.group.mock.configuration.VNPayConfiguration.VNPayUtil;
 import com.group.mock.entity.Account;
 import com.group.mock.entity.Subscription;
+import com.group.mock.entity.TransactionHistory;
+import com.group.mock.entity.Wallet;
 import com.group.mock.entity.WorkerProfile;
 import com.group.mock.entity.DTO.request.SubscribeRequest;
+import com.group.mock.entity.DTO.response.SubscriptionPaymentResponse;
 import com.group.mock.entity.DTO.response.SubscriptionPlanResponse;
 import com.group.mock.entity.DTO.response.WorkerSubscriptionResponse;
 import com.group.mock.exception.AuthServiceException;
 import com.group.mock.repository.SubscriptionRepository;
+import com.group.mock.repository.TransactionHistoryRepository;
+import com.group.mock.repository.WalletRepository;
 import com.group.mock.repository.WorkerProfileRepository;
 import com.group.mock.service.AccountService;
 import com.group.mock.service.SubscriptionService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class SubscriptionServiceImpl implements SubscriptionService {
     private static final String ROLE_WORKER = "ROLE_WORKER";
+    private static final String SUBSCRIPTION_ORDER_TYPE = "SUBSCRIPTION";
+    private static final String SUBSCRIPTION_ORDER_PREFIX = "SUBSCRIPTION_PLAN_";
 
     private final SubscriptionRepository subscriptionRepository;
     private final AccountService accountService;
     private final WorkerProfileRepository workerProfileRepository;
+    private final WalletRepository walletRepository;
+    private final TransactionHistoryRepository transactionHistoryRepository;
+
+    @Value("${vnpay.tmn-code}")
+    private String vnpTmnCode;
+
+    @Value("${vnpay.secret-key}")
+    private String vnpSecretKey;
+
+    @Value("${vnpay.pay-url}")
+    private String vnpPayUrl;
+
+    @Value("${vnpay.return-url}")
+    private String vnpReturnUrl;
 
     @Override
     public List<SubscriptionPlanResponse> getAllActivePlans() {
@@ -39,28 +72,30 @@ public class SubscriptionServiceImpl implements SubscriptionService {
 
     @Override
     @Transactional
-    public WorkerSubscriptionResponse subscribeWorker(String username, SubscribeRequest request) {
-        // Verify worker role
+    public SubscriptionPaymentResponse subscribeWorker(String username, SubscribeRequest request, String ipAddress) {
         Account account = getWorkerAccount(username);
-        WorkerProfile worker = workerProfileRepository.findById(account.getId())
+        workerProfileRepository.findById(account.getId())
                 .orElseThrow(() -> new AuthServiceException(
                         HttpStatus.NOT_FOUND,
                         "WORKER_NOT_FOUND",
                         "Worker profile not found"));
 
-        // Get subscription plan
         Subscription plan = subscriptionRepository.findByIdAndStatus(request.getSubscriptionPlanId(), "ACTIVE")
                 .orElseThrow(() -> new AuthServiceException(
                         HttpStatus.NOT_FOUND,
                         "PLAN_NOT_FOUND",
                         "Subscription plan not found or inactive"));
 
-        // Update worker tier and expiration date
-        worker.setTierType(plan.getPlanName());
-        worker.setTierExpiredAt(LocalDateTime.now().plusDays(plan.getDurationDays()));
-        workerProfileRepository.save(worker);
+        if (plan.getPrice().compareTo(BigDecimal.ZERO) <= 0) {
+            activateWorkerSubscription(account.getId(), plan);
+            return new SubscriptionPaymentResponse(null, null, plan.getPrice(), getWorkerSubscriptionInfo(username));
+        }
 
-        return getWorkerSubscriptionInfo(username);
+        Wallet wallet = getOrCreateWallet(account);
+        TransactionHistory history = createPendingSubscriptionPayment(wallet, plan, ipAddress);
+        String paymentUrl = buildPaymentUrl(history, plan);
+
+        return new SubscriptionPaymentResponse(paymentUrl, history.getVnpTxnRef(), plan.getPrice(), null);
     }
 
     @Override
@@ -90,6 +125,91 @@ public class SubscriptionServiceImpl implements SubscriptionService {
                     "Only workers can manage subscriptions");
         }
         return account;
+    }
+
+    private void activateWorkerSubscription(java.util.UUID workerId, Subscription plan) {
+        WorkerProfile worker = workerProfileRepository.findById(workerId)
+                .orElseThrow(() -> new AuthServiceException(
+                        HttpStatus.NOT_FOUND,
+                        "WORKER_NOT_FOUND",
+                        "Worker profile not found"));
+
+        worker.setTierType(plan.getPlanName());
+        worker.setTierExpiredAt(LocalDateTime.now().plusDays(plan.getDurationDays()));
+        workerProfileRepository.save(worker);
+    }
+
+    private Wallet getOrCreateWallet(Account account) {
+        return walletRepository.findByUserId(account.getId()).orElseGet(() -> {
+            Wallet wallet = new Wallet();
+            wallet.setUserId(account.getId());
+            wallet.setBalance(BigDecimal.ZERO);
+            return walletRepository.save(wallet);
+        });
+    }
+
+    private TransactionHistory createPendingSubscriptionPayment(Wallet wallet, Subscription plan, String ipAddress) {
+        ZonedDateTime now = ZonedDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"));
+
+        TransactionHistory history = new TransactionHistory();
+        history.setWallet(wallet);
+        history.setVnpTxnRef(generateTxnRef());
+        history.setAmount(normalizeAmount(plan.getPrice()));
+        history.setVnpOrderInfo(subscriptionOrderInfo(plan.getId()));
+        history.setVnpOrderType(SUBSCRIPTION_ORDER_TYPE);
+        history.setVnpIpAddr(ipAddress);
+        history.setVnpCreateDate(now.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+        history.setVnpExpireDate(now.plusMinutes(15).format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+        history.setStatus("PENDING");
+
+        return transactionHistoryRepository.save(history);
+    }
+
+    private String buildPaymentUrl(TransactionHistory history, Subscription plan) {
+        SortedMap<String, String> vnpParams = new TreeMap<>();
+        vnpParams.put("vnp_Version", "2.1.0");
+        vnpParams.put("vnp_Command", "pay");
+        vnpParams.put("vnp_TmnCode", vnpTmnCode);
+        vnpParams.put("vnp_Amount", toVnpAmount(plan.getPrice()));
+        vnpParams.put("vnp_CurrCode", "VND");
+        vnpParams.put("vnp_Locale", "vn");
+        vnpParams.put("vnp_TxnRef", history.getVnpTxnRef());
+        vnpParams.put("vnp_OrderInfo", history.getVnpOrderInfo());
+        vnpParams.put("vnp_OrderType", "other");
+        vnpParams.put("vnp_ReturnUrl", vnpReturnUrl);
+        vnpParams.put("vnp_IpAddr", history.getVnpIpAddr());
+        vnpParams.put("vnp_CreateDate", history.getVnpCreateDate());
+        vnpParams.put("vnp_ExpireDate", history.getVnpExpireDate());
+
+        String secureHash = VNPayUtil.hashAllFields(vnpParams, vnpSecretKey);
+        StringBuilder url = new StringBuilder(vnpPayUrl);
+        url.append("?");
+        for (Map.Entry<String, String> entry : vnpParams.entrySet()) {
+            url.append(URLEncoder.encode(entry.getKey(), StandardCharsets.UTF_8));
+            url.append("=");
+            url.append(URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8));
+            url.append("&");
+        }
+        url.append("vnp_SecureHash=").append(secureHash);
+        return url.toString();
+    }
+
+    private String generateTxnRef() {
+        return "SUB" + System.currentTimeMillis() + VNPayUtil.getRandomNumber(6);
+    }
+
+    private String toVnpAmount(BigDecimal amount) {
+        return normalizeAmount(amount).setScale(0, RoundingMode.DOWN)
+                .multiply(BigDecimal.valueOf(100))
+                .toPlainString();
+    }
+
+    private BigDecimal normalizeAmount(BigDecimal amount) {
+        return amount.setScale(4, RoundingMode.HALF_UP);
+    }
+
+    static String subscriptionOrderInfo(Long planId) {
+        return SUBSCRIPTION_ORDER_PREFIX + planId;
     }
 
     private SubscriptionPlanResponse toResponse(Subscription subscription) {

@@ -69,8 +69,28 @@
 }
 
 .sidebar-icon {
-  font-size: 23px;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
   line-height: 1;
+  border-radius: 8px;
+  color: currentColor;
+  background: transparent;
+  transition:
+    background-color 160ms ease,
+    transform 160ms ease;
+}
+
+.sidebar-link:hover .sidebar-icon,
+.sidebar-link.active .sidebar-icon {
+  background: rgba(37, 99, 235, 0.12);
+  transform: translateY(-1px);
+}
+
+.app-icon {
+  display: block;
+  flex-shrink: 0;
 }
 
 .main-content {

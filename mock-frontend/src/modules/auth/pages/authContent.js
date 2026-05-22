@@ -22,7 +22,7 @@ export const authModes = {
 export const authHighlights = [
   {
     title: 'JWT',
-    description: 'Access + refresh',
+    description: 'Token truy cập và làm mới',
   },
   {
     title: '10 phút',
@@ -30,6 +30,6 @@ export const authHighlights = [
   },
   {
     title: 'Cloudinary',
-    description: 'Lưu chứng chỉ hành nghề',
+    description: 'Lưu trữ chứng chỉ hành nghề',
   },
 ]

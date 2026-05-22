@@ -1,9 +1,13 @@
 package com.group.mock.controller;
 
+import com.group.mock.configuration.VNPayConfiguration.VNPayUtil;
 import com.group.mock.entity.DTO.request.SubscribeRequest;
+import com.group.mock.entity.DTO.response.SubscriptionPaymentResponse;
 import com.group.mock.entity.DTO.response.SubscriptionPlanResponse;
 import com.group.mock.entity.DTO.response.WorkerSubscriptionResponse;
 import com.group.mock.service.SubscriptionService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -27,10 +31,12 @@ public class SubscriptionController {
     }
 
     @PostMapping("/subscribe")
-    public ResponseEntity<WorkerSubscriptionResponse> subscribe(
+    public ResponseEntity<SubscriptionPaymentResponse> subscribe(
             Authentication authentication,
-            @RequestBody SubscribeRequest request) {
-        return ResponseEntity.ok(subscriptionService.subscribeWorker(authentication.getName(), request));
+            @Valid @RequestBody SubscribeRequest request,
+            HttpServletRequest httpRequest) {
+        String ipAddress = VNPayUtil.getIpAddress(httpRequest);
+        return ResponseEntity.ok(subscriptionService.subscribeWorker(authentication.getName(), request, ipAddress));
     }
 
     @GetMapping("/info")

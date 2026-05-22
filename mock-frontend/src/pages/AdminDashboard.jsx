@@ -36,7 +36,7 @@ export function AdminDashboard() {
   return (
     <div className="admin-dashboard">
       <header className="admin-header">
-        <h1>Quản lý Thợ (Workers)</h1>
+        <h1>Quản lý thợ</h1>
         <p>Danh sách và trạng thái của tất cả thợ trên hệ thống.</p>
       </header>
 

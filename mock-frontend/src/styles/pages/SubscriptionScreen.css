@@ -303,9 +303,15 @@
 }
 
 .benefit-icon {
-  font-size: 2.5rem;
-  margin-bottom: 16px;
-  display: block;
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 16px;
+  border-radius: 8px;
+  color: #2563eb;
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
 }
 
 .benefit-item h3 {
