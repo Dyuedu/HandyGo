@@ -14,6 +14,7 @@ const technicianNav = [
   { path: '/app/activity', icon: '◷', label: 'Activity' },
   { path: '/app/chat', icon: '◌', label: 'Chat' },
   { path: '/app/wallet', icon: '◈', label: 'Wallet' },
+  { path: '/app/subscription', icon: '⭐', label: 'Subscription' },
   { path: '/app/profile', icon: '◎', label: 'Profile' },
 ]
 
@@ -26,6 +27,7 @@ const sectionNames = {
   '/app/activity': 'Activity',
   '/app/chat': 'Chat',
   '/app/wallet': 'Wallet',
+  '/app/subscription': 'Subscription',
   '/app/profile': 'Profile',
   '/app/admin/workers': 'Workers Management',
 }

@@ -27,6 +27,7 @@ export function AppRoutes() {
           <Route path="/app/bookings/:bookingId" element={<BookingDetailPage />} />
           <Route path="/app/chat" element={<DashboardHome section="Chat" />} />
           <Route path="/app/wallet" element={<DashboardHome section="Wallet" />} />
+          <Route path="/app/subscription" element={<DashboardHome section="Subscription" />} />
           <Route path="/app/profile" element={<DashboardHome section="Profile" />} />
           <Route path="/app/worker/:id" element={<WorkerProfile />} />
           <Route path="/app/admin/workers" element={<AdminDashboard />} />
