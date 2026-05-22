@@ -9,6 +9,7 @@ import { WorkerProfile } from '../pages/WorkerProfile'
 import { Landing } from '../pages/Landing'
 import { AdminDashboard } from '../pages/AdminDashboard'
 import { AdminWorkerDetail } from '../pages/AdminWorkerDetail'
+import { AdminCatalogPage } from '../pages/AdminCatalogPage'
 import { PrivateRoute } from './PrivateRoute'
 
 export function AppRoutes() {
@@ -32,6 +33,7 @@ export function AppRoutes() {
           <Route path="/app/worker/:id" element={<WorkerProfile />} />
           <Route path="/app/admin/workers" element={<AdminDashboard />} />
           <Route path="/app/admin/workers/:id" element={<AdminWorkerDetail />} />
+          <Route path="/app/admin/catalog" element={<AdminCatalogPage />} />
         </Route>
       </Route>
 
@@ -39,4 +41,3 @@ export function AppRoutes() {
     </Routes>
   )
 }
-

@@ -96,6 +96,11 @@
   color: #991b1b;
 }
 
+.status-badge.inactive {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
 .actions-cell {
   display: flex;
   gap: 8px;

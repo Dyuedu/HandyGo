@@ -41,6 +41,7 @@ public class VoucherServiceImpl implements VoucherService {
         dto.setMaxDiscountAmount(voucher.getMaxDiscountAmount());
         dto.setExpiryDate(voucher.getExpiryDate());
         dto.setMaxUses(voucher.getMaxUses());
+        dto.setUsed(voucher.isUsed());
         if (voucher.getMaxUses() != null) {
             long used = VoucherAvailabilityHelper.usedCount(voucher, voucherUsageRepository);
             dto.setUsedCount(used);

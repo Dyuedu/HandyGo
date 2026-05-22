@@ -21,6 +21,7 @@ const technicianNav = [
 
 const adminNav = [
   { path: '/app/admin/workers', icon: 'users', label: 'Thợ' },
+  { path: '/app/admin/catalog', icon: 'catalog', label: 'Gói & Voucher' },
 ]
 
 const sectionNames = {
@@ -31,6 +32,7 @@ const sectionNames = {
   '/app/subscription': 'Gói cước',
   '/app/profile': 'Hồ sơ',
   '/app/admin/workers': 'Quản lý thợ',
+  '/app/admin/catalog': 'Gói & Voucher',
 }
 
 const roleLabels = {
