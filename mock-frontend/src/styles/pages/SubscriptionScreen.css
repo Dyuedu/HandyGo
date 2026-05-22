@@ -158,8 +158,16 @@
 .plan-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  gap: 12px;
   margin-bottom: 16px;
+}
+
+.plan-title-line {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .plan-name {
@@ -167,6 +175,14 @@
   font-weight: 700;
   color: #1f2937;
   margin: 0;
+}
+
+.plan-original-price {
+  color: #9ca3af;
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
 }
 
 .current-badge {
@@ -196,6 +212,18 @@
 .price-period {
   font-size: 0.9rem;
   color: #6b7280;
+}
+
+.discount-badge {
+  align-self: center;
+  padding: 4px 8px;
+  color: #b45309;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 .plan-features {

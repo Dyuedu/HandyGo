@@ -1,7 +1,12 @@
 package com.group.mock.controller;
 
+import com.group.mock.entity.DTO.request.CreateSubscriptionPlanRequest;
+import com.group.mock.entity.DTO.request.CreateVoucherRequest;
 import com.group.mock.entity.DTO.response.AdminWorkerResponse;
+import com.group.mock.entity.DTO.response.SubscriptionPlanResponse;
+import com.group.mock.entity.DTO.response.VoucherSummaryResponse;
 import com.group.mock.service.AdminService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -37,5 +42,26 @@ public class AdminController {
     public ResponseEntity<?> toggleWorkerStatus(@PathVariable UUID id) {
         adminService.toggleWorkerStatus(id);
         return ResponseEntity.ok(Map.of("message", "Thay đổi trạng thái tài khoản thành công"));
+    }
+
+    @GetMapping("/vouchers")
+    public ResponseEntity<List<VoucherSummaryResponse>> getAllVouchers() {
+        return ResponseEntity.ok(adminService.getAllVouchers());
+    }
+
+    @PostMapping("/vouchers")
+    public ResponseEntity<VoucherSummaryResponse> createVoucher(@Valid @RequestBody CreateVoucherRequest request) {
+        return ResponseEntity.ok(adminService.createVoucher(request));
+    }
+
+    @GetMapping("/subscription-plans")
+    public ResponseEntity<List<SubscriptionPlanResponse>> getAllSubscriptionPlans() {
+        return ResponseEntity.ok(adminService.getAllSubscriptionPlans());
+    }
+
+    @PostMapping("/subscription-plans")
+    public ResponseEntity<SubscriptionPlanResponse> createSubscriptionPlan(
+            @Valid @RequestBody CreateSubscriptionPlanRequest request) {
+        return ResponseEntity.ok(adminService.createSubscriptionPlan(request));
     }
 }

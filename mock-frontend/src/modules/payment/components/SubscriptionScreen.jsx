@@ -78,6 +78,12 @@ export function SubscriptionScreen() {
     }).format(value)
   }
 
+  const getVirtualOriginalPrice = (price) => {
+    const numericPrice = Number(price || 0)
+    if (numericPrice <= 0) return null
+    return Math.ceil((numericPrice / 0.8) / 1000) * 1000
+  }
+
   const formatDate = (dateString) => {
     if (!dateString) return 'Không xác định'
     const date = new Date(dateString)
@@ -160,15 +166,22 @@ export function SubscriptionScreen() {
           <div className="plans-grid">
             {plans.map((plan) => {
               const isCurrent = currentSubscription?.tierType === plan.planName
+              const originalPrice = getVirtualOriginalPrice(plan.price)
               return (
                 <div key={plan.id} className={`plan-card ${isCurrent ? 'current' : ''}`}>
                   <div className="plan-header">
-                    <h3 className="plan-name">{plan.planName}</h3>
+                    <div className="plan-title-line">
+                      <h3 className="plan-name">{plan.planName}</h3>
+                      {originalPrice && (
+                        <span className="plan-original-price">{formatCurrency(originalPrice)}</span>
+                      )}
+                    </div>
                     {isCurrent && <span className="current-badge">Gói hiện tại</span>}
                   </div>
 
                   <div className="plan-price">
                     <span className="price-amount">{formatCurrency(plan.price)}</span>
+                    {originalPrice && <span className="discount-badge">Tiết kiệm 20%</span>}
                     <span className="price-period">
                       {plan.durationDays === 1 ? 'mỗi ngày' : `mỗi ${plan.durationDays} ngày`}
                     </span>
