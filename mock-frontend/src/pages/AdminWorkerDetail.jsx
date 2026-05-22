@@ -66,7 +66,7 @@ export function AdminWorkerDetail() {
 
       <div className="admin-detail-content">
         <div className="detail-card">
-          <h2>Thông tin chung (Account & Profile)</h2>
+          <h2>Thông tin chung</h2>
           <div className="info-grid">
             <div className="info-item">
               <span className="info-label">ID Thợ</span>
@@ -94,7 +94,7 @@ export function AdminWorkerDetail() {
         </div>
 
         <div className="detail-card">
-          <h2>Thông tin công việc (Worker Profile)</h2>
+          <h2>Thông tin công việc</h2>
           <div className="info-grid">
             <div className="info-item">
               <span className="info-label">Loại công việc</span>

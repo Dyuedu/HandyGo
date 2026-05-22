@@ -5,33 +5,34 @@ import { updateLocation, getUserLocations } from '../services/userService'
 import ChatContainer from '../modules/chat/components/ChatContainer'
 import WalletScreen from '../modules/payment/components/WalletScreen'
 import SubscriptionScreen from '../modules/payment/components/SubscriptionScreen'
+import { AppIcon } from '../components/AppIcon'
 import '../styles/pages/DashboardHome.css'
 import '../styles/pages/MapDashboard.css'
 
 const content = {
   Activity: {
-    customerTitle: 'Activity',
-    technicianTitle: 'Activity',
+    customerTitle: 'Hoạt động',
+    technicianTitle: 'Hoạt động',
     description: 'Theo dõi lịch sử đặt lịch, trạng thái công việc và các cập nhật mới nhất.',
   },
   Chat: {
-    customerTitle: 'Chat',
-    technicianTitle: 'Chat',
+    customerTitle: 'Tin nhắn',
+    technicianTitle: 'Tin nhắn',
     description: 'Không gian nhắn tin giữa khách hàng và thợ.',
   },
   Wallet: {
-    customerTitle: 'Wallet',
-    technicianTitle: 'Wallet · Voucher/Thu nhập',
-    description: 'Theo dõi thu nhập, ví tiền và voucher dành cho worker.',
+    customerTitle: 'Ví',
+    technicianTitle: 'Ví · Voucher/Thu nhập',
+    description: 'Theo dõi thu nhập, ví tiền và voucher dành cho thợ.',
   },
   Subscription: {
-    customerTitle: 'Subscription',
+    customerTitle: 'Gói cước',
     technicianTitle: 'Nâng cấp tài khoản',
     description: 'Chọn gói cước phù hợp để mở rộng khả năng của bạn.',
   },
   Profile: {
-    customerTitle: 'Profile',
-    technicianTitle: 'Profile',
+    customerTitle: 'Hồ sơ',
+    technicianTitle: 'Hồ sơ',
     description: 'Quản lý thông tin cá nhân và trạng thái xác minh.',
   },
 }
@@ -142,7 +143,7 @@ export function DashboardHome({ section = 'Home' }) {
         // Worker-specific marker with wrench icon
         markerOptions.icon = window.L.divIcon({
           className: 'leaflet-custom-worker-marker',
-          html: `<div class="worker-marker-dot"><span>🔧</span></div>`,
+          html: '<div class="worker-marker-dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5 5L3 18v3h3l6.7-6.7a4 4 0 0 0 5-5l-2.4 2.4-3-3 2.4-2.4z"/></svg></div>',
           iconSize: [32, 32],
           iconAnchor: [16, 16]
         })
@@ -179,7 +180,7 @@ export function DashboardHome({ section = 'Home' }) {
 
       if (!isMe && myLat && myLng) {
         const dist = calculateDistance(myLat, myLng, user.latitude, user.longitude)
-        popupContent += `<span style="display:block;font-size:11px;color:#2563eb;font-weight:600;margin-top:3px;">📍 Cách bạn: ${dist.toFixed(2)} km</span>`
+        popupContent += `<span style="display:block;font-size:11px;color:#2563eb;font-weight:600;margin-top:3px;">Cách bạn: ${dist.toFixed(2)} km</span>`
       }
 
       popupContent += `
@@ -412,7 +413,7 @@ export function DashboardHome({ section = 'Home' }) {
   if (section === 'Home') {
     return (
       <div className="map-dashboard-container">
-        <aside className="map-sidebar" aria-label="Location Control Panel">
+        <aside className="map-sidebar" aria-label="Bảng điều khiển vị trí">
           <div className="map-sidebar-header">
             <h2>Định vị trực tuyến</h2>
             <p>Tìm kiếm thợ sửa chữa và người dùng xung quanh bạn theo thời gian thực.</p>
@@ -487,7 +488,7 @@ export function DashboardHome({ section = 'Home' }) {
                   >
                     {/* 1. Phần Avatar */}
                     <div className="user-avatar-circle">
-                      {isTechnician ? '🔧' : (user.fullName ? user.fullName.substring(0, 2).toUpperCase() : 'US')}
+                      {isTechnician ? <AppIcon name="wrench" size={18} strokeWidth={2.4} /> : (user.fullName ? user.fullName.substring(0, 2).toUpperCase() : 'US')}
                     </div>
 
                     {/* 2. Phần thông tin chữ */}
@@ -562,8 +563,8 @@ export function DashboardHome({ section = 'Home' }) {
         <div className="map-view-wrapper">
           <div ref={mapRef} className="google-map-element" id="google-map-element" />
           <div className="map-overlay-card">
-            <h3>OpenStreetMap Live</h3>
-            <p>Sử dụng các cử chỉ kéo, cuộn để khám phá khu vực xung quanh. Bản đồ tự động cập nhật markers khi có tài khoản mới hoạt động.</p>
+            <h3>Bản đồ trực tuyến</h3>
+            <p>Sử dụng thao tác kéo, cuộn để khám phá khu vực xung quanh. Bản đồ tự động cập nhật điểm đánh dấu khi có tài khoản mới hoạt động.</p>
           </div>
         </div>
       </div>
@@ -588,10 +589,11 @@ export function DashboardHome({ section = 'Home' }) {
 
   // Render normal tabs if not Home page
   const title = mode === 'TECHNICIAN' ? page.technicianTitle : page.customerTitle
+  const sectionLabel = page?.customerTitle || section
   return (
     <section className="dashboard-surface">
       <div className="dashboard-hero">
-        <p>{mode === 'TECHNICIAN' ? 'Worker mode' : 'User mode'}</p>
+        <p>{mode === 'TECHNICIAN' ? 'Chế độ thợ' : 'Chế độ khách hàng'}</p>
         <h1>{title}</h1>
         <span>{page.description}</span>
       </div>
@@ -599,15 +601,15 @@ export function DashboardHome({ section = 'Home' }) {
       <div className="dashboard-grid">
         <article>
           <strong>Trạng thái</strong>
-          <span>Sẵn sàng tích hợp module business.</span>
+          <span>Sẵn sàng tích hợp phân hệ nghiệp vụ.</span>
         </article>
         <article>
-          <strong>Role hiện tại</strong>
-          <span>{mode}</span>
+          <strong>Vai trò hiện tại</strong>
+          <span>{mode === 'TECHNICIAN' ? 'Thợ' : mode === 'ADMIN' ? 'Quản trị viên' : 'Khách hàng'}</span>
         </article>
         <article>
-          <strong>Module</strong>
-          <span>{section}</span>
+          <strong>Phân hệ</strong>
+          <span>{sectionLabel}</span>
         </article>
       </div>
     </section>

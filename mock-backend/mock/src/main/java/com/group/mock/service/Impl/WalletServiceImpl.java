@@ -4,18 +4,20 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.group.mock.configuration.VNPayConfiguration.VNPayUtil;
 import com.group.mock.entity.Account;
+import com.group.mock.entity.Subscription;
 import com.group.mock.entity.TransactionHistory;
 import com.group.mock.entity.Wallet;
-import com.group.mock.entity.DTO.request.TopUpRequest;
+import com.group.mock.entity.WorkerProfile;
 import com.group.mock.entity.DTO.request.WalletDeductRequest;
 import com.group.mock.entity.DTO.response.PaymentCallbackResponse;
-import com.group.mock.entity.DTO.response.TopUpResponse;
 import com.group.mock.entity.DTO.response.TransactionHistorySummary;
 import com.group.mock.entity.DTO.response.WalletBalanceResponse;
 import com.group.mock.entity.DTO.response.WalletDeductResponse;
 import com.group.mock.exception.AuthServiceException;
+import com.group.mock.repository.SubscriptionRepository;
 import com.group.mock.repository.TransactionHistoryRepository;
 import com.group.mock.repository.WalletRepository;
+import com.group.mock.repository.WorkerProfileRepository;
 import com.group.mock.service.AccountService;
 import com.group.mock.service.WalletService;
 import lombok.extern.slf4j.Slf4j;
@@ -28,10 +30,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.text.Normalizer;
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -48,11 +48,15 @@ import java.util.UUID;
 @Service
 public class WalletServiceImpl implements WalletService {
     private static final String ROLE_WORKER = "ROLE_WORKER";
+    private static final String SUBSCRIPTION_ORDER_TYPE = "SUBSCRIPTION";
+    private static final String SUBSCRIPTION_ORDER_PREFIX = "SUBSCRIPTION_PLAN_";
     private static final String BALANCE_CACHE_KEY_PREFIX = "cache:wallet:balance:";
     private static final String HISTORY_CACHE_KEY_PREFIX = "cache:wallet:history:";
 
     private final WalletRepository walletRepository;
     private final TransactionHistoryRepository transactionHistoryRepository;
+    private final SubscriptionRepository subscriptionRepository;
+    private final WorkerProfileRepository workerProfileRepository;
     private final AccountService accountService;
     private final StringRedisTemplate stringRedisTemplate;
     private final DefaultRedisScript<Long> walletDeductScript;
@@ -64,27 +68,22 @@ public class WalletServiceImpl implements WalletService {
     @Value("${app.cache.wallet-history-ttl-seconds:120}")
     private long walletHistoryTtlSeconds;
 
-    @Value("${vnpay.tmn-code}")
-    private String vnpTmnCode;
-
     @Value("${vnpay.secret-key}")
     private String vnpSecretKey;
-
-    @Value("${vnpay.pay-url}")
-    private String vnpPayUrl;
-
-    @Value("${vnpay.return-url}")
-    private String vnpReturnUrl;
 
     public WalletServiceImpl(
             WalletRepository walletRepository,
             TransactionHistoryRepository transactionHistoryRepository,
+            SubscriptionRepository subscriptionRepository,
+            WorkerProfileRepository workerProfileRepository,
             AccountService accountService,
             StringRedisTemplate stringRedisTemplate,
             DefaultRedisScript<Long> walletDeductScript,
             ObjectMapper objectMapper) {
         this.walletRepository = walletRepository;
         this.transactionHistoryRepository = transactionHistoryRepository;
+        this.subscriptionRepository = subscriptionRepository;
+        this.workerProfileRepository = workerProfileRepository;
         this.accountService = accountService;
         this.stringRedisTemplate = stringRedisTemplate;
         this.walletDeductScript = walletDeductScript;
@@ -119,58 +118,6 @@ public class WalletServiceImpl implements WalletService {
                 Duration.ofSeconds(walletBalanceTtlSeconds));
 
         return new WalletBalanceResponse(balance, wallet.getCurrency());
-    }
-
-    @Override
-    @Transactional
-    public TopUpResponse createTopUp(String username, TopUpRequest request, String ipAddress) {
-        Account account = getWorkerAccount(username);
-        Wallet wallet = getOrCreateWallet(account.getId());
-
-        BigDecimal amount = normalizeAmount(request.getAmount());
-        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Amount must be greater than 0");
-        }
-
-        String vnpTxnRef = generateTxnRef();
-        TransactionHistory history = new TransactionHistory();
-        history.setWallet(wallet);
-        history.setVnpTxnRef(vnpTxnRef);
-        history.setAmount(amount);
-        history.setVnpOrderInfo(sanitizeOrderInfo(request.getOrderInfo(), "Wallet top up"));
-        history.setVnpOrderType("other");
-        history.setVnpIpAddr(ipAddress);
-        history.setBalanceBefore(wallet.getBalance());
-
-        ZonedDateTime now = ZonedDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"));
-        history.setVnpCreateDate(now.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
-        history.setVnpExpireDate(now.plusMinutes(15).format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
-
-        transactionHistoryRepository.save(history);
-
-        SortedMap<String, String> vnpParams = new TreeMap<>();
-        vnpParams.put("vnp_Version", "2.1.0");
-        vnpParams.put("vnp_Command", "pay");
-        vnpParams.put("vnp_TmnCode", vnpTmnCode);
-        vnpParams.put("vnp_Amount", toVnpAmount(amount));
-        vnpParams.put("vnp_CurrCode", "VND");
-        vnpParams.put("vnp_Locale", "vn");
-        vnpParams.put("vnp_TxnRef", vnpTxnRef);
-        vnpParams.put("vnp_OrderInfo", history.getVnpOrderInfo());
-        vnpParams.put("vnp_OrderType", "other");
-        vnpParams.put("vnp_ReturnUrl", vnpReturnUrl);
-        vnpParams.put("vnp_IpAddr", ipAddress);
-        vnpParams.put("vnp_CreateDate", history.getVnpCreateDate());
-        vnpParams.put("vnp_ExpireDate", history.getVnpExpireDate());
-
-        if (request.getBankCode() != null && !request.getBankCode().isBlank()) {
-            vnpParams.put("vnp_BankCode", request.getBankCode());
-        }
-
-        String secureHash = VNPayUtil.hashAllFields(vnpParams, vnpSecretKey);
-        String paymentUrl = buildPaymentUrl(vnpParams, secureHash);
-
-        return new TopUpResponse(paymentUrl, vnpTxnRef, amount);
     }
 
     @Override
@@ -211,6 +158,11 @@ public class WalletServiceImpl implements WalletService {
         history.setVnpResponseCode(responseCode);
 
         if (success) {
+            if (SUBSCRIPTION_ORDER_TYPE.equalsIgnoreCase(history.getVnpOrderType())) {
+                activateSubscriptionPayment(history);
+                return new PaymentCallbackResponse(true, "Subscription payment success", vnpTxnRef);
+            }
+
             Wallet wallet = history.getWallet();
             BigDecimal balanceBefore = wallet.getBalance();
             BigDecimal newBalance = balanceBefore.add(history.getAmount());
@@ -231,6 +183,49 @@ public class WalletServiceImpl implements WalletService {
         transactionHistoryRepository.save(history);
         invalidateHistoryCache(history.getWallet().getId());
         return new PaymentCallbackResponse(false, "Payment failed", vnpTxnRef);
+    }
+
+    private void activateSubscriptionPayment(TransactionHistory history) {
+        Long planId = parseSubscriptionPlanId(history.getVnpOrderInfo());
+        Subscription plan = subscriptionRepository.findByIdAndStatus(planId, "ACTIVE")
+                .orElseThrow(() -> new AuthServiceException(
+                        HttpStatus.NOT_FOUND,
+                        "PLAN_NOT_FOUND",
+                        "Subscription plan not found or inactive"));
+
+        Wallet wallet = history.getWallet();
+        WorkerProfile worker = workerProfileRepository.findById(wallet.getUserId())
+                .orElseThrow(() -> new AuthServiceException(
+                        HttpStatus.NOT_FOUND,
+                        "WORKER_NOT_FOUND",
+                        "Worker profile not found"));
+
+        worker.setTierType(plan.getPlanName());
+        worker.setTierExpiredAt(LocalDateTime.now().plusDays(plan.getDurationDays()));
+        workerProfileRepository.save(worker);
+
+        history.setStatus("SUCCESS");
+        history.setBalanceBefore(wallet.getBalance());
+        history.setBalanceAfter(wallet.getBalance());
+        transactionHistoryRepository.save(history);
+        invalidateHistoryCache(wallet.getId());
+    }
+
+    private Long parseSubscriptionPlanId(String orderInfo) {
+        if (orderInfo == null || !orderInfo.startsWith(SUBSCRIPTION_ORDER_PREFIX)) {
+            throw new AuthServiceException(
+                    HttpStatus.BAD_REQUEST,
+                    "INVALID_SUBSCRIPTION_PAYMENT",
+                    "Invalid subscription payment metadata");
+        }
+        try {
+            return Long.parseLong(orderInfo.substring(SUBSCRIPTION_ORDER_PREFIX.length()));
+        } catch (NumberFormatException ex) {
+            throw new AuthServiceException(
+                    HttpStatus.BAD_REQUEST,
+                    "INVALID_SUBSCRIPTION_PAYMENT",
+                    "Invalid subscription plan id");
+        }
     }
 
     @Override
@@ -335,24 +330,6 @@ public class WalletServiceImpl implements WalletService {
         return String.valueOf(System.currentTimeMillis()) + VNPayUtil.getRandomNumber(6);
     }
 
-    private String toVnpAmount(BigDecimal amount) {
-        BigDecimal vnpAmount = amount.setScale(0, RoundingMode.DOWN).multiply(BigDecimal.valueOf(100));
-        return vnpAmount.toPlainString();
-    }
-
-    private String buildPaymentUrl(SortedMap<String, String> vnpParams, String secureHash) {
-        StringBuilder url = new StringBuilder(vnpPayUrl);
-        url.append("?");
-        for (Map.Entry<String, String> entry : vnpParams.entrySet()) {
-            url.append(URLEncoder.encode(entry.getKey(), StandardCharsets.UTF_8));
-            url.append("=");
-            url.append(URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8));
-            url.append("&");
-        }
-        url.append("vnp_SecureHash=").append(secureHash);
-        return url.toString();
-    }
-
     private BigDecimal normalizeAmount(BigDecimal amount) {
         if (amount == null) {
             throw new IllegalArgumentException("Amount is required");
@@ -366,19 +343,6 @@ public class WalletServiceImpl implements WalletService {
 
     private BigDecimal fromScaledAmount(long scaled) {
         return BigDecimal.valueOf(scaled).movePointLeft(4);
-    }
-
-    private String sanitizeOrderInfo(String input, String fallback) {
-        String raw = (input == null || input.isBlank()) ? fallback : input;
-        String normalized = Normalizer.normalize(raw, Normalizer.Form.NFD)
-                .replaceAll("\\p{M}", "")
-                .replaceAll("[^A-Za-z0-9 ]", " ")
-                .replaceAll("\\s+", " ")
-                .trim();
-        if (normalized.isEmpty()) {
-            return fallback;
-        }
-        return normalized;
     }
 
     private void ensureBalanceCache(Wallet wallet, String balanceKey) {

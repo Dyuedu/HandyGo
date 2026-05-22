@@ -6,15 +6,15 @@ import '../../../styles/modules/booking/pages/BookingPages.css'
 
 const TAB_CONFIG = {
   pending: {
-    label: 'Pending',
+    label: 'Chờ xử lý',
     status: ['PENDING'],
   },
   processing: {
-    label: 'Processing',
+    label: 'Đang thực hiện',
     status: ['ACCEPTED', 'PROCESSING', 'WAITING_CUSTOMER_CONFIRMATION'],
   },
   finished: {
-    label: 'Finished',
+    label: 'Đã kết thúc',
     status: ['FINISHED', 'DECLINED', 'CANCELLED'],
   },
 }
@@ -44,13 +44,25 @@ export function BookingActivityPage() {
   const { data, isLoading, isError, error, refetch } = useBookings({ status })
 
   const list = Array.isArray(data) ? data : []
+  const statusLabel = (status) => {
+    switch (status) {
+      case 'PENDING': return 'Chờ thợ phản hồi'
+      case 'ACCEPTED': return 'Đã nhận việc'
+      case 'PROCESSING': return 'Đang thực hiện'
+      case 'WAITING_CUSTOMER_CONFIRMATION': return 'Chờ khách xác nhận'
+      case 'FINISHED': return 'Hoàn thành'
+      case 'DECLINED': return 'Đã từ chối'
+      case 'CANCELLED': return 'Đã hủy'
+      default: return status
+    }
+  }
 
   return (
     <section className="booking-page">
-      <h1>Bookings</h1>
+      <h1>Đặt lịch</h1>
       <p className="muted">Theo dõi đặt lịch theo trạng thái.</p>
 
-      <div className="booking-tabs" role="tablist" aria-label="Booking filters">
+      <div className="booking-tabs" role="tablist" aria-label="Bộ lọc đặt lịch">
         {Object.entries(TAB_CONFIG).map(([key, { label }]) => (
           <button
             key={key}
@@ -84,7 +96,7 @@ export function BookingActivityPage() {
               <Link key={b.id} to={`/app/bookings/${b.id}`} className="booking-card">
                 <div className="booking-card-top">
                   <span className="booking-card-title">Đặt lịch · {b.id?.slice(0, 8)}…</span>
-                  <span className={`booking-badge ${statusBadgeClass(b.status)}`}>{b.status}</span>
+                  <span className={`booking-badge ${statusBadgeClass(b.status)}`}>{statusLabel(b.status)}</span>
                 </div>
                 <div className="booking-card-meta">
                   {b.address ? `${b.address.slice(0, 80)}${b.address.length > 80 ? '…' : ''}` : '—'}

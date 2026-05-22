@@ -94,15 +94,22 @@
 }
 
 .refresh-btn {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  background: #eff6ff;
   cursor: pointer;
-  font-size: 1.5rem;
   color: #3b82f6;
-  transition: transform 0.3s, color 0.2s;
+  transition: transform 0.3s, color 0.2s, background-color 0.2s;
 }
 
 .refresh-btn:hover {
   transform: rotate(180deg);
   color: #2563eb;
+  background: #dbeafe;
 }
 
 .balance-amount {
@@ -115,122 +122,6 @@
 .balance-amount .loading {
   font-size: 1rem;
   color: #9ca3af;
-}
-
-/* Top-up Card */
-.topup-card {
-  background: white;
-  border-radius: 12px;
-  padding: 28px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
-  border: 1px solid #e5e7eb;
-}
-
-.topup-card h3 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #1f2937;
-  margin: 0 0 20px 0;
-}
-
-.form-group {
-  margin-bottom: 16px;
-}
-
-.form-group label {
-  display: block;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #374151;
-  margin-bottom: 8px;
-}
-
-.form-input {
-  width: 100%;
-  padding: 12px 16px;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font-size: 1rem;
-  transition: border-color 0.2s, box-shadow 0.2s;
-  box-sizing: border-box;
-}
-
-.form-input:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.form-input:disabled {
-  background-color: #f3f4f6;
-  color: #9ca3af;
-  cursor: not-allowed;
-}
-
-/* Quick amounts */
-.topup-quick-amounts {
-  margin: 24px 0;
-}
-
-.topup-quick-amounts h4 {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #374151;
-  margin: 0 0 12px 0;
-}
-
-.quick-amounts {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-}
-
-.quick-amount-btn {
-  padding: 12px 16px;
-  background-color: #f3f4f6;
-  border: 2px solid #d1d5db;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #374151;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.quick-amount-btn:hover:not(:disabled) {
-  background-color: #e5e7eb;
-  border-color: #3b82f6;
-  color: #3b82f6;
-}
-
-.quick-amount-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Top-up button */
-.topup-btn {
-  width: 100%;
-  padding: 14px 20px;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);
-}
-
-.topup-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 12px rgba(59, 130, 246, 0.4);
-}
-
-.topup-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 /* History Card */
@@ -339,17 +230,12 @@
   }
 
   .balance-card,
-  .topup-card,
   .history-card {
     padding: 20px;
   }
 
   .balance-amount {
     font-size: 2rem;
-  }
-
-  .quick-amounts {
-    grid-template-columns: repeat(2, 1fr);
   }
 
   .history-table {
@@ -369,10 +255,6 @@
 
   .balance-amount {
     font-size: 1.75rem;
-  }
-
-  .quick-amounts {
-    grid-template-columns: 1fr;
   }
 
   .history-table {

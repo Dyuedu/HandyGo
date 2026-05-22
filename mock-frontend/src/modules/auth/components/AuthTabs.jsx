@@ -8,7 +8,7 @@ const tabs = [
 
 export function AuthTabs({ mode, onChange }) {
   return (
-    <div className="tabs" role="tablist" aria-label="Auth modes">
+    <div className="tabs" role="tablist" aria-label="Chế độ xác thực">
       {tabs.map((tab) => (
         <button
           key={tab.value}

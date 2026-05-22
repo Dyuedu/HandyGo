@@ -12,6 +12,7 @@ import {
 import { getUserLocations } from '../services/userService'
 import { getAvailableVouchers } from '../services/voucherService'
 import { getReviewsByWorkerId } from '../services/reviewService'
+import { AppIcon } from '../components/AppIcon'
 import '../styles/pages/WorkerProfile.css'
 
 const translateJobType = (job) => {
@@ -97,7 +98,7 @@ export function WorkerProfile() {
         setWorker(found || null)
         setCurrentUser(me || null)
       } catch (err) {
-        console.error('Failed to fetch worker data', err)
+        console.error('Không thể tải dữ liệu thợ', err)
       } finally {
         setLoading(false)
       }
@@ -112,7 +113,7 @@ export function WorkerProfile() {
         const data = await getReviewsByWorkerId(id)
         if (!cancelled) setReviews(Array.isArray(data) ? data : [])
       } catch (err) {
-        console.error('Failed to fetch reviews for worker', err)
+        console.error('Không thể tải đánh giá của thợ', err)
       }
     }
     load()
@@ -168,7 +169,7 @@ export function WorkerProfile() {
       window.L.marker([worker.latitude, worker.longitude], {
         icon: window.L.divIcon({
           className: 'leaflet-custom-worker-marker',
-          html: '<div class="worker-marker-dot"><span>🔧</span></div>',
+          html: '<div class="worker-marker-dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5 5L3 18v3h3l6.7-6.7a4 4 0 0 0 5-5l-2.4 2.4-3-3 2.4-2.4z"/></svg></div>',
           iconSize: [32, 32],
           iconAnchor: [16, 16],
         }),
@@ -304,21 +305,21 @@ export function WorkerProfile() {
           {/* Info Cards */}
           <div className="wp-info-grid">
             <div className="wp-info-card">
-              <div className="wp-info-icon">📱</div>
+              <div className="wp-info-icon"><AppIcon name="phone" size={22} /></div>
               <div className="wp-info-content">
                 <span className="wp-info-label">Số điện thoại</span>
                 <span className="wp-info-value">{worker.phone || 'Chưa cập nhật'}</span>
               </div>
             </div>
             <div className="wp-info-card">
-              <div className="wp-info-icon">🛠️</div>
+              <div className="wp-info-icon"><AppIcon name="wrench" size={22} /></div>
               <div className="wp-info-content">
                 <span className="wp-info-label">Chuyên ngành</span>
                 <span className="wp-info-value">{translateJobType(worker.jobType)}</span>
               </div>
             </div>
             <div className="wp-info-card">
-              <div className="wp-info-icon">📍</div>
+              <div className="wp-info-icon"><AppIcon name="map" size={22} /></div>
               <div className="wp-info-content">
                 <span className="wp-info-label">Trạng thái</span>
                 <span className="wp-info-value">
@@ -332,7 +333,7 @@ export function WorkerProfile() {
             </div>
             {distance !== null && (
               <div className="wp-info-card highlight">
-                <div className="wp-info-icon">🧭</div>
+                <div className="wp-info-icon"><AppIcon name="target" size={22} /></div>
                 <div className="wp-info-content">
                   <span className="wp-info-label">Khoảng cách đến bạn</span>
                   <span className="wp-info-value distance">{distance.toFixed(2)} km</span>
@@ -344,7 +345,7 @@ export function WorkerProfile() {
           {/* Mini Map */}
           {worker.latitude && worker.longitude && (
             <div className="wp-map-section">
-              <h3 className="wp-section-title">📍 Vị trí hiện tại</h3>
+              <h3 className="wp-section-title"><AppIcon name="map" size={20} /> Vị trí hiện tại</h3>
               <div className="wp-mini-map" ref={miniMapRef} />
             </div>
           )}
@@ -360,13 +361,13 @@ export function WorkerProfile() {
 
             {isCustomer && !bookingOpen && (
               <button className="wp-book-btn" onClick={() => { setBookingOpen(true); setBookingError('') }}>
-                📅 Đặt lịch với {worker.fullName?.split(' ').pop() || 'thợ'}
+                <AppIcon name="calendar" size={18} /> Đặt lịch với {worker.fullName?.split(' ').pop() || 'thợ'}
               </button>
             )}
 
             {isCustomer && bookingOpen && (
               <form className="wp-booking-form" onSubmit={handleBookingSubmit}>
-                <h3 className="wp-form-title">📅 Đặt lịch hẹn</h3>
+                <h3 className="wp-form-title"><AppIcon name="calendar" size={18} /> Đặt lịch hẹn</h3>
                 {bookingError && (
                   <div className="wp-form-error" role="alert">{bookingError}</div>
                 )}
@@ -476,7 +477,7 @@ export function WorkerProfile() {
 
           {/* Reviews */}
           <div className="wp-reviews-section">
-            <h3 className="wp-section-title">⭐ Đánh giá từ khách hàng</h3>
+            <h3 className="wp-section-title"><AppIcon name="badge" size={20} /> Đánh giá từ khách hàng</h3>
             <div className="wp-reviews-summary-bar">
               <div className="wp-avg-rating-big">
                 <span className="wp-avg-number">{avgRating.toFixed(1)}</span>

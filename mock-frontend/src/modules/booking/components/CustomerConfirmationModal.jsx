@@ -105,7 +105,7 @@ export function CustomerConfirmationModal({ open, bookingId, booking, onClose, o
             disabled={pending}
             onClick={handleConfirm}
           >
-            {pending ? 'Đang xử lý…' : 'Confirm Completion'}
+            {pending ? 'Đang xử lý…' : 'Xác nhận hoàn thành'}
           </button>
         </div>
       </div>

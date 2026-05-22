@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { getSubscriptionPlans, subscribeToplan, getWorkerSubscriptionInfo } from '../../../services/paymentService'
+import { getSubscriptionPlans, subscribeToPlan, getWorkerSubscriptionInfo } from '../../../services/paymentService'
+import { AppIcon } from '../../../components/AppIcon'
 import '../../../styles/pages/SubscriptionScreen.css'
 
 export function SubscriptionScreen() {
@@ -28,11 +29,11 @@ export function SubscriptionScreen() {
         const subInfo = await getWorkerSubscriptionInfo()
         setCurrentSubscription(subInfo)
       } catch (err) {
-        console.error('Failed to load subscription info:', err)
+        console.error('Không thể tải thông tin gói cước:', err)
       }
     } catch (err) {
-      console.error('Error loading subscription data:', err)
-      setError('Failed to load subscription data. Please try again.')
+      console.error('Không thể tải dữ liệu gói cước:', err)
+      setError('Không thể tải dữ liệu gói cước. Vui lòng thử lại.')
     } finally {
       setLoading(false)
     }
@@ -44,17 +45,25 @@ export function SubscriptionScreen() {
       setSuccessMessage(null)
       setSubscribing(planId)
 
-      const response = await subscribeToplan(planId)
-      setCurrentSubscription(response)
-      setSuccessMessage('Successfully subscribed! Your tier has been updated.')
+      const response = await subscribeToPlan(planId)
+      if (response.paymentUrl) {
+        setSuccessMessage('Đang chuyển sang cổng thanh toán VNPay...')
+        window.location.href = response.paymentUrl
+        return
+      }
+
+      if (response.subscription) {
+        setCurrentSubscription(response.subscription)
+      }
+      setSuccessMessage('Đăng ký gói thành công.')
 
       // Reload plans to reflect any changes
       setTimeout(() => {
         loadSubscriptionData()
       }, 1500)
     } catch (err) {
-      console.error('Error subscribing:', err)
-      setError(err.response?.data?.message || 'Failed to subscribe. Please try again.')
+      console.error('Không thể đăng ký gói:', err)
+      setError(err.message || 'Không thể đăng ký gói. Vui lòng thử lại.')
     } finally {
       setSubscribing(null)
     }
@@ -197,32 +206,32 @@ export function SubscriptionScreen() {
         <h2>Lợi ích của việc nâng cấp</h2>
         <div className="benefits-grid">
           <div className="benefit-item">
-            <div className="benefit-icon">👀</div>
+            <div className="benefit-icon"><AppIcon name="eye" size={28} /></div>
             <h3>Cao hơn trong tìm kiếm</h3>
             <p>Tài khoản nâng cấp được hiển thị ưu tiên trong danh sách tìm kiếm</p>
           </div>
           <div className="benefit-item">
-            <div className="benefit-icon">⭐</div>
+            <div className="benefit-icon"><AppIcon name="badge" size={28} /></div>
             <h3>Huy hiệu cao cấp</h3>
             <p>Hiển thị huy hiệu cao cấp trên hồ sơ và danh sách tìm kiếm</p>
           </div>
           <div className="benefit-item">
-            <div className="benefit-icon">📞</div>
+            <div className="benefit-icon"><AppIcon name="phone" size={28} /></div>
             <h3>Hỗ trợ ưu tiên</h3>
             <p>Nhận hỗ trợ từ đội ngũ hỗ trợ khách hàng với độ ưu tiên cao</p>
           </div>
           <div className="benefit-item">
-            <div className="benefit-icon">📊</div>
+            <div className="benefit-icon"><AppIcon name="chart" size={28} /></div>
             <h3>Thống kê chi tiết</h3>
             <p>Truy cập vào các thống kê chi tiết về lượt xem và tương tác</p>
           </div>
           <div className="benefit-item">
-            <div className="benefit-icon">🎯</div>
+            <div className="benefit-icon"><AppIcon name="target" size={28} /></div>
             <h3>Chiến dịch tiếp thị</h3>
             <p>Sử dụng công cụ tiếp thị nâng cao để quảng bá dịch vụ của bạn</p>
           </div>
           <div className="benefit-item">
-            <div className="benefit-icon">📱</div>
+            <div className="benefit-icon"><AppIcon name="smartphone" size={28} /></div>
             <h3>Ứng dụng di động</h3>
             <p>Truy cập ứng dụng di động chuyên dùng với tất cả các tính năng</p>
           </div>
