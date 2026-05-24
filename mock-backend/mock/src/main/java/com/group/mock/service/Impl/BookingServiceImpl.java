@@ -26,6 +26,7 @@ import com.group.mock.repository.WalletRepository;
 import com.group.mock.repository.WorkerProfileRepository;
 import com.group.mock.service.BookingService;
 import com.group.mock.service.BookingStateTransitionValidator;
+import com.group.mock.service.NotificationEventPublisher;
 import com.group.mock.service.VoucherAvailabilityHelper;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -38,6 +39,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -46,6 +48,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class BookingServiceImpl implements BookingService {
 
     private static final String ROLE_USER = "ROLE_USER";
@@ -64,6 +67,7 @@ public class BookingServiceImpl implements BookingService {
     private final TransactionHistoryRepository transactionHistoryRepository;
     private final StringRedisTemplate stringRedisTemplate;
     private final BookingStateTransitionValidator transitionValidator;
+    private final NotificationEventPublisher notificationEventPublisher;
 
     @Override
     @Transactional
@@ -115,6 +119,18 @@ public class BookingServiceImpl implements BookingService {
         booking = bookingRepository.save(booking);
         recordHistory(booking, null, BookingStatus.PENDING, "Booking created");
 
+        // Send notification to worker about new booking
+        try {
+            notificationEventPublisher.publishBookingCreated(
+                worker.getId(),
+                booking.getId().getMostSignificantBits(),
+                customer.getFullName(),
+                request.getServiceCode()
+            );
+        } catch (Exception e) {
+            log.warn("Failed to send booking created notification", e);
+        }
+
         if (appliedVoucher != null) {
             VoucherUsage usage = new VoucherUsage();
             usage.setBooking(booking);
@@ -135,6 +151,19 @@ public class BookingServiceImpl implements BookingService {
                 bookingRepository.findById(bookingId).orElseThrow(bookingNotFound());
         assertWorker(account, booking);
         transition(booking, BookingStatus.ACCEPTED, "Accepted by technician");
+        
+        // Send notification to customer
+        try {
+            notificationEventPublisher.publishBookingAccepted(
+                booking.getCustomer().getId(),
+                bookingId.getMostSignificantBits(),
+                booking.getWorker().getFullName(),
+                booking.getServiceCode()
+            );
+        } catch (Exception e) {
+            log.warn("Failed to send booking accepted notification", e);
+        }
+        
         return bookingRepository.findDetailById(bookingId).orElse(booking);
     }
 
@@ -146,6 +175,18 @@ public class BookingServiceImpl implements BookingService {
                 bookingRepository.findById(bookingId).orElseThrow(bookingNotFound());
         assertWorker(account, booking);
         transition(booking, BookingStatus.DECLINED, "Declined by technician");
+        
+        // Send notification to customer
+        try {
+            notificationEventPublisher.publishBookingRejected(
+                booking.getCustomer().getId(),
+                bookingId.getMostSignificantBits(),
+                booking.getServiceCode()
+            );
+        } catch (Exception e) {
+            log.warn("Failed to send booking rejected notification", e);
+        }
+        
         return bookingRepository.findDetailById(bookingId).orElse(booking);
     }
 

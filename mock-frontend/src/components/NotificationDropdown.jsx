@@ -1,0 +1,106 @@
+import React, { useState } from 'react';
+import { useNotification } from '@/context/NotificationContext';
+import NotificationItem from './NotificationItem';
+import './NotificationDropdown.css';
+
+const NotificationDropdown = ({ onClose }) => {
+  const {
+    notifications,
+    unreadCount,
+    isLoading,
+    pagination,
+    fetchNotifications,
+    markAllAsRead,
+    deleteNotification
+  } = useNotification();
+
+  const [currentPage, setCurrentPage] = useState(0);
+
+  const handleLoadMore = () => {
+    const nextPage = currentPage + 1;
+    setCurrentPage(nextPage);
+    fetchNotifications(nextPage, pagination.pageSize);
+  };
+
+  const handleNotificationClick = (notificationId) => {
+    // Mark as read when clicked
+    // markAsRead(notificationId);
+  };
+
+  const handleViewAll = () => {
+    // Navigate to full notifications page
+    window.location.href = '/app/notifications';
+  };
+
+  return (
+    <div className="notification-dropdown">
+      {/* Header */}
+      <div className="notification-dropdown-header">
+        <h3 className="notification-dropdown-title">
+          Notifications
+          {unreadCount > 0 && (
+            <span className="unread-badge">{unreadCount}</span>
+          )}
+        </h3>
+        {unreadCount > 0 && (
+          <button
+            className="mark-all-read-btn"
+            onClick={markAllAsRead}
+            title="Mark all as read"
+          >
+            ✓
+          </button>
+        )}
+      </div>
+
+      {/* Content */}
+      <div className="notification-dropdown-content">
+        {isLoading && notifications.length === 0 ? (
+          <div className="notification-loading">
+            <div className="spinner"></div>
+            <p>Loading notifications...</p>
+          </div>
+        ) : notifications.length === 0 ? (
+          <div className="notification-empty">
+            <span className="empty-icon">📭</span>
+            <p>No notifications yet</p>
+          </div>
+        ) : (
+          <div className="notification-list">
+            {notifications.slice(0, 10).map((notification) => (
+              <NotificationItem
+                key={notification.id}
+                notification={notification}
+                onClick={() => handleNotificationClick(notification.id)}
+                onDelete={() => deleteNotification(notification.id)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Footer */}
+      {notifications.length > 0 && (
+        <div className="notification-dropdown-footer">
+          {pagination.hasNext && (
+            <button
+              className="load-more-btn"
+              onClick={handleLoadMore}
+              disabled={isLoading}
+            >
+              {isLoading ? 'Loading...' : 'Load More'}
+            </button>
+          )}
+          <button
+            className="view-all-btn"
+            onClick={handleViewAll}
+          >
+            View All →
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default NotificationDropdown;
