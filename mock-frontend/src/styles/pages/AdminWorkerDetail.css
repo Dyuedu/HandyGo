@@ -129,3 +129,112 @@
   text-align: center;
   padding: 32px;
 }
+
+.certificate-viewer {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.certificate-pdf {
+  width: 100%;
+  height: 600px;
+  border: none;
+  border-radius: 8px;
+}
+
+.certificate-document {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 32px;
+  text-align: center;
+}
+
+.document-icon {
+  font-size: 64px;
+  line-height: 1;
+}
+
+.document-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.document-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+}
+
+.document-note {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0;
+}
+
+.certificate-unknown {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 32px;
+  text-align: center;
+}
+
+.certificate-unknown p {
+  color: #6b7280;
+  margin: 0;
+  font-size: 14px;
+}
+
+.btn-download-certificate {
+  padding: 10px 16px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+
+.btn-download-certificate:hover {
+  background: #2563eb;
+}
+
+.certificate-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.certificate-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 32px;
+  text-align: center;
+}
+
+.certificate-error p {
+  color: #dc2626;
+  margin: 0;
+  font-size: 14px;
+}
