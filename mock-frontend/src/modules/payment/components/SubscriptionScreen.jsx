@@ -7,7 +7,7 @@ import {
 } from '../../../services/paymentService'
 import { AppIcon } from '../../../components/AppIcon'
 import { useLanguage } from '../../../i18n/LanguageContext'
-import { formatCoins as formatCoinsValue, formatDate, formatMoney } from '../../../i18n/formatters'
+import { formatCoins as formatCoinsValue, formatDate as formatLocalizedDate, formatMoney } from '../../../i18n/formatters'
 import '../../../styles/pages/SubscriptionScreen.css'
 
 export function SubscriptionScreen() {
@@ -103,7 +103,7 @@ export function SubscriptionScreen() {
   }
 
   const formatDate = (dateString) => {
-    return formatDate(dateString, language, t('subscription.unknown'))
+    return formatLocalizedDate(dateString, language, t('subscription.unknown'))
   }
 
   const isExpired = (expiryDate) => {
