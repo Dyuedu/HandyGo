@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { updateLocation, getUserLocations } from '../services/userService'
+import { updateLocation, getUserLocations, updateWorkerAvailability } from '../services/userService'
 import ChatContainer from '../modules/chat/components/ChatContainer'
 import WalletScreen from '../modules/payment/components/WalletScreen'
 import SubscriptionScreen from '../modules/payment/components/SubscriptionScreen'
@@ -53,6 +53,7 @@ export function DashboardHome({ section = 'Home' }) {
   const [activeUserId, setActiveUserId] = useState(null)
   const [status, setStatus] = useState('pending') // pending, active, error
   const [statusTextKey, setStatusTextKey] = useState('dashboard.map.status.connecting')
+  const [availabilityUpdating, setAvailabilityUpdating] = useState(false)
   
   const markersRef = useRef({})
   const circleRef = useRef(null)
@@ -301,6 +302,24 @@ export function DashboardHome({ section = 'Home' }) {
     }
   }
 
+  const currentUser = users.find(u => u.id === currentUserId)
+  const myLat = currentUser?.latitude
+  const myLng = currentUser?.longitude
+
+  const handleWorkerAvailabilityChange = async (available) => {
+    try {
+      setAvailabilityUpdating(true)
+      const updated = await updateWorkerAvailability(available)
+      setUsers((current) => current.map((user) => user.id === updated.id ? { ...user, ...updated } : user))
+      await fetchLocations(myLat, myLng)
+    } catch (err) {
+      setStatus('error')
+      setStatusTextKey('dashboard.map.status.saveError')
+    } finally {
+      setAvailabilityUpdating(false)
+    }
+  }
+
   // Effect 1: Handle Map container mounting and initialization lifecycle
   useEffect(() => {
     if (section !== 'Home') return
@@ -346,11 +365,6 @@ export function DashboardHome({ section = 'Home' }) {
       }
     }
   }, [section])
-
-  // Get coordinates of the currently logged-in user
-  const currentUser = users.find(u => u.id === currentUserId)
-  const myLat = currentUser?.latitude
-  const myLng = currentUser?.longitude
 
   // Filter list
   const filteredUsers = users.filter(user => {
@@ -425,7 +439,7 @@ export function DashboardHome({ section = 'Home' }) {
               <span>{t(statusTextKey)}</span>
             </div>
 
-            <button 
+            <button
               type="button" 
               className="update-location-btn" 
               onClick={triggerGeolocation}
@@ -433,6 +447,30 @@ export function DashboardHome({ section = 'Home' }) {
             >
               {t('dashboard.map.updateLocation')}
             </button>
+
+            {mode === 'TECHNICIAN' && currentUser && (
+              <div className="worker-availability-panel">
+                <label className="availability-toggle">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(currentUser.available)}
+                    disabled={availabilityUpdating}
+                    onChange={(event) => handleWorkerAvailabilityChange(event.target.checked)}
+                  />
+                  <span>{currentUser.available ? t('dashboard.map.acceptingJobs') : t('dashboard.map.notAcceptingJobs')}</span>
+                </label>
+                <div className="availability-flags">
+                  <span className={currentUser.eligible ? 'availability-flag visible' : 'availability-flag hidden'}>
+                    {currentUser.eligible ? t('dashboard.map.visible') : t('dashboard.map.hidden')}
+                  </span>
+                  {currentUser.busy && <span className="availability-flag busy">{t('dashboard.map.busy')}</span>}
+                  {!currentUser.online && <span className="availability-flag offline">{t('dashboard.map.offline')}</span>}
+                  {!currentUser.available && <span className="availability-flag unavailable">{t('dashboard.map.unavailable')}</span>}
+                  {!currentUser.verified && <span className="availability-flag unverified">{t('dashboard.map.unverified')}</span>}
+                </div>
+                <p className="availability-hint">{t('dashboard.map.availabilityHint')}</p>
+              </div>
+            )}
           </div>
 
           <div className="map-search-filters">
@@ -471,7 +509,7 @@ export function DashboardHome({ section = 'Home' }) {
           </div>
 
           <div className="users-list-container">
-            <h3 className="users-list-title">{t('dashboard.map.active', { count: sortedFilteredUsers.filter(u => u.latitude && u.longitude).length })}</h3>
+            <h3 className="users-list-title">{t('dashboard.map.active', { count: sortedFilteredUsers.filter(u => u.eligible && u.latitude && u.longitude).length })}</h3>
             {sortedFilteredUsers.length === 0 ? (
               <p className="no-users-notice">{t('dashboard.map.noWorkers')}</p>
             ) : (
@@ -511,6 +549,15 @@ export function DashboardHome({ section = 'Home' }) {
                         )}
                         {!user.latitude && !user.longitude && (
                           <span className="no-location-tag">{t('dashboard.map.noLocation')}</span>
+                        )}
+                        {isTechnician && user.busy && (
+                          <span className="busy-tag">{t('dashboard.map.busy')}</span>
+                        )}
+                        {isTechnician && user.id === currentUserId && !user.verified && (
+                          <span className="hidden-tag">{t('dashboard.map.unverified')}</span>
+                        )}
+                        {isTechnician && user.id === currentUserId && !user.eligible && (
+                          <span className="hidden-tag">{t('dashboard.map.hidden')}</span>
                         )}
                       </div>
 

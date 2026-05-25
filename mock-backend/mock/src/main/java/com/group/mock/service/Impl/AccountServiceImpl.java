@@ -316,12 +316,12 @@ public class AccountServiceImpl implements AccountService {
                     .orElseGet(() -> {
                         WorkerLocation newLoc = new WorkerLocation();
                         newLoc.setWorkerProfile(workerProfile);
+                        newLoc.setAvailable(true);
                         return newLoc;
                     });
             workerLoc.setLatitude(latitude);
             workerLoc.setLongitude(longitude);
             workerLoc.setLastUpdate(LocalDateTime.now());
-            workerLoc.setAvailable(true);
             workerLocationRepository.save(workerLoc);
         });
     }
