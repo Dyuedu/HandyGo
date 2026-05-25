@@ -20,6 +20,14 @@ function getFileExtension(url) {
   return url.split('.').pop().toUpperCase()
 }
 
+function isCloudinaryUrl(value) {
+  try {
+    return new URL(value).hostname.endsWith('cloudinary.com')
+  } catch {
+    return false
+  }
+}
+
 // Component to display PDF/Word with auth headers
 function DocumentViewer({ url, fileType, fileExt }) {
   const [blobUrl, setBlobUrl] = useState(null)
@@ -27,46 +35,56 @@ function DocumentViewer({ url, fileType, fileExt }) {
   const [error, setError] = useState(null)
 
   useEffect(() => {
+    let objectUrl = null
+    let isCancelled = false
+
     const loadDocument = async () => {
       try {
         setLoading(true)
-        
-        // Check if URL is external (Cloudinary, S3, etc) or internal API
-        const isExternal = !url.includes('localhost') && !url.includes('127.0.0.1') && url.includes('cloudinary')
-        
-        console.log('Loading document:', { url, isExternal })
-        
+        setError(null)
+
+        const isExternal = isCloudinaryUrl(url)
+
         const fetchOptions = {}
-        
-        // Only add auth headers for internal API URLs
+
         if (!isExternal) {
           const session = loadSession()
           if (session?.accessToken) {
             fetchOptions.headers = {
               'Authorization': `Bearer ${session.accessToken}`
             }
-            console.log('Added auth headers for internal URL')
           }
-        } else {
-          console.log('External URL detected - loading without auth headers')
         }
-        
+
         const response = await fetch(url, fetchOptions)
-        
+
         if (!response.ok) {
+          const cloudinaryError = response.headers.get('x-cld-error')
+          if (isExternal && response.status === 401 && cloudinaryError) {
+            throw new Error(
+              'Cloudinary đang chặn delivery PDF này. Hãy bật "Allow delivery of PDF and ZIP files" trong Product Environment > Security của Cloudinary.'
+            )
+          }
           throw new Error(`Server responded with ${response.status} ${response.statusText}`)
         }
-        
+
         const blob = await response.blob()
-        const objectUrl = URL.createObjectURL(blob)
+        objectUrl = URL.createObjectURL(blob)
+        if (isCancelled) {
+          URL.revokeObjectURL(objectUrl)
+          return
+        }
         setBlobUrl(objectUrl)
-        setError(null)
       } catch (err) {
         console.error('Document loading error:', err)
-        setError(`Không thể tải tài liệu: ${err.message}`)
-        setBlobUrl(null)
+        if (!isCancelled) {
+          setError(`Không thể tải tài liệu: ${err.message}`)
+          setBlobUrl(null)
+        }
       } finally {
-        setLoading(false)
+        if (!isCancelled) {
+          setLoading(false)
+        }
       }
     }
 
@@ -75,11 +93,12 @@ function DocumentViewer({ url, fileType, fileExt }) {
     }
 
     return () => {
-      if (blobUrl) {
-        URL.revokeObjectURL(blobUrl)
+      isCancelled = true
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl)
       }
     }
-  }, [url, blobUrl])
+  }, [url])
 
   if (loading) {
     return <div className="certificate-loading">Đang tải tài liệu...</div>
@@ -92,9 +111,6 @@ function DocumentViewer({ url, fileType, fileExt }) {
         <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '8px', wordBreak: 'break-all' }}>
           URL: {url}
         </div>
-        <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '12px' }}>
-          Check browser console for detailed debugging information
-        </p>
         <a 
           href={url}
           download
