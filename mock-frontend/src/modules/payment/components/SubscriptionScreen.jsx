@@ -6,9 +6,12 @@ import {
   getWalletBalance,
 } from '../../../services/paymentService'
 import { AppIcon } from '../../../components/AppIcon'
+import { useLanguage } from '../../../i18n/LanguageContext'
+import { formatCoins as formatCoinsValue, formatDate, formatMoney } from '../../../i18n/formatters'
 import '../../../styles/pages/SubscriptionScreen.css'
 
 export function SubscriptionScreen() {
+  const { language, t } = useLanguage()
   const [plans, setPlans] = useState([])
   const [currentSubscription, setCurrentSubscription] = useState(null)
   const [walletBalance, setWalletBalance] = useState(null)
@@ -47,7 +50,7 @@ export function SubscriptionScreen() {
       }
     } catch (err) {
       console.error('Không thể tải dữ liệu gói cước:', err)
-      setError('Không thể tải dữ liệu gói cước. Vui lòng thử lại.')
+      setError(t('subscription.loadError'))
     } finally {
       setLoading(false)
     }
@@ -61,7 +64,7 @@ export function SubscriptionScreen() {
 
       const response = await subscribeToPlan(planId, paymentMethod)
       if (response.paymentUrl) {
-        setSuccessMessage('Đang chuyển sang cổng thanh toán VNPay...')
+        setSuccessMessage(t('subscription.redirectVnpay'))
         window.location.href = response.paymentUrl
         return
       }
@@ -70,8 +73,8 @@ export function SubscriptionScreen() {
         setCurrentSubscription(response.subscription)
       }
       setSuccessMessage(paymentMethod === 'WALLET'
-        ? 'Thanh toán bằng xu thành công. Gói cước đã được kích hoạt.'
-        : 'Đăng ký gói thành công.')
+        ? t('subscription.walletSuccess')
+        : t('subscription.success'))
 
       // Reload plans to reflect any changes
       setTimeout(() => {
@@ -79,19 +82,14 @@ export function SubscriptionScreen() {
       }, 1500)
     } catch (err) {
       console.error('Không thể đăng ký gói:', err)
-      setError(err.message || 'Không thể đăng ký gói. Vui lòng thử lại.')
+      setError(err.message || t('subscription.submitError'))
     } finally {
       setSubscribing(null)
     }
   }
 
   const formatCurrency = (value) => {
-    if (value === null || value === undefined) return '0 ₫'
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-      minimumFractionDigits: 0,
-    }).format(value)
+    return formatMoney(value ?? 0, language)
   }
 
   const getVirtualOriginalPrice = (price) => {
@@ -101,20 +99,11 @@ export function SubscriptionScreen() {
   }
 
   const formatCoins = (value) => {
-    if (value === null || value === undefined) return '0 xu'
-    return `${new Intl.NumberFormat('vi-VN', {
-      maximumFractionDigits: 0,
-    }).format(Number(value))} xu`
+    return formatCoinsValue(value, language, t('wallet.coinUnit'))
   }
 
   const formatDate = (dateString) => {
-    if (!dateString) return 'Không xác định'
-    const date = new Date(dateString)
-    return date.toLocaleDateString('vi-VN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    })
+    return formatDate(dateString, language, t('subscription.unknown'))
   }
 
   const isExpired = (expiryDate) => {
@@ -134,8 +123,8 @@ export function SubscriptionScreen() {
   return (
     <div className="subscription-screen">
       <div className="subscription-hero">
-        <h1>Nâng cấp tài khoản</h1>
-        <p>Chọn gói cước phù hợp để mở rộng khả năng của bạn</p>
+        <h1>{t('subscription.title')}</h1>
+        <p>{t('subscription.description')}</p>
       </div>
 
       {error && <div className="alert alert-error">{error}</div>}
@@ -145,26 +134,26 @@ export function SubscriptionScreen() {
       {currentSubscription && (
         <div className="current-subscription-card">
           <div className="subscription-info">
-            <h2>Gói cước hiện tại</h2>
+            <h2>{t('subscription.current')}</h2>
             <div className="subscription-details">
               <div className="detail-item">
-                <span className="detail-label">Hạng thành viên</span>
+                <span className="detail-label">{t('subscription.tier')}</span>
                 <span className="detail-value tier-badge">{currentSubscription.tierType}</span>
               </div>
               {currentSubscription.tierExpiredAt && (
                 <>
                   <div className="detail-item">
-                    <span className="detail-label">Hết hạn vào</span>
+                    <span className="detail-label">{t('subscription.expiresAt')}</span>
                     <span className="detail-value">
                       {formatDate(currentSubscription.tierExpiredAt)}
                     </span>
                   </div>
                   <div className="detail-item">
-                    <span className="detail-label">Thời gian còn lại</span>
+                    <span className="detail-label">{t('subscription.timeLeft')}</span>
                     <span className={`detail-value days-left ${isExpired(currentSubscription.tierExpiredAt) ? 'expired' : ''}`}>
                       {isExpired(currentSubscription.tierExpiredAt)
-                        ? 'Đã hết hạn'
-                        : `${daysUntilExpiry(currentSubscription.tierExpiredAt)} ngày`}
+                        ? t('subscription.expired')
+                        : t('subscription.days', { count: daysUntilExpiry(currentSubscription.tierExpiredAt) })}
                     </span>
                   </div>
                 </>
@@ -177,19 +166,19 @@ export function SubscriptionScreen() {
       {/* Subscription Plans */}
       <div className="plans-section">
         <div className="plans-title-row">
-          <h2>Chọn gói cước</h2>
+          <h2>{t('subscription.choose')}</h2>
           <span className="wallet-balance-pill">
             <AppIcon name="wallet" size={17} />
-            Số xu hiện tại: {walletBalance === null ? 'Không xác định' : formatCoins(walletBalance)}
+            {t('subscription.walletBalance', { amount: walletBalance === null ? t('subscription.unknown') : formatCoins(walletBalance) })}
           </span>
         </div>
         {loading ? (
           <div className="loading-state">
-            <p>Đang tải gói cước...</p>
+            <p>{t('subscription.loadingPlans')}</p>
           </div>
         ) : plans.length === 0 ? (
           <div className="empty-state">
-            <p>Không có gói cước nào khả dụng</p>
+            <p>{t('subscription.emptyPlans')}</p>
           </div>
         ) : (
           <div className="plans-grid">
@@ -210,23 +199,23 @@ export function SubscriptionScreen() {
                         <span className="plan-original-price">{formatCurrency(originalPrice)}</span>
                       )}
                     </div>
-                    {isCurrent && <span className="current-badge">Gói hiện tại</span>}
+                    {isCurrent && <span className="current-badge">{t('subscription.currentBadge')}</span>}
                   </div>
 
                   <div className="plan-price">
                     <span className="price-amount">{formatCurrency(plan.price)}</span>
-                    {originalPrice && <span className="discount-badge">Tiết kiệm 20%</span>}
+                    {originalPrice && <span className="discount-badge">{t('subscription.save20')}</span>}
                     <span className="price-period">
-                      {plan.durationDays === 1 ? 'mỗi ngày' : `mỗi ${plan.durationDays} ngày`}
+                      {plan.durationDays === 1 ? t('subscription.perDay') : t('subscription.perDays', { count: plan.durationDays })}
                     </span>
                   </div>
 
                   <ul className="plan-features">
-                    <li>✓ Hạng thành viên: <strong>{plan.planName}</strong></li>
-                    <li>✓ Thời hạn: <strong>{plan.durationDays} ngày</strong></li>
-                    {!isFree && <li>✓ Thanh toán bằng xu: <strong>{formatCoins(plan.price)}</strong></li>}
-                    <li>✓ Ưu đãi: Được ưu tiên hiển thị</li>
-                    <li>✓ Hỗ trợ: Ưu tiên cao</li>
+                    <li>✓ {t('subscription.featureTier')}: <strong>{plan.planName}</strong></li>
+                    <li>✓ {t('subscription.featureDuration')}: <strong>{t('subscription.days', { count: plan.durationDays })}</strong></li>
+                    {!isFree && <li>✓ {t('subscription.featureCoinPay')}: <strong>{formatCoins(plan.price)}</strong></li>}
+                    <li>✓ {t('subscription.featurePriorityShow')}</li>
+                    <li>✓ {t('subscription.featurePrioritySupport')}</li>
                   </ul>
 
                   <div className="subscribe-actions">
@@ -236,30 +225,30 @@ export function SubscriptionScreen() {
                       disabled={isCurrent || Boolean(subscribing)}
                     >
                       {isCurrent
-                        ? 'Gói hiện tại'
+                        ? t('subscription.currentBadge')
                         : subscribing === vnpayKey
-                        ? isFree ? 'Đang kích hoạt...' : 'Đang mở VNPay...'
-                        : isFree ? 'Kích hoạt miễn phí' : 'Thanh toán VNPay'}
+                        ? isFree ? t('subscription.activating') : t('subscription.openingVnpay')
+                        : isFree ? t('subscription.activateFree') : t('subscription.payVnpay')}
                     </button>
                     {!isFree && (
                       <button
                         className={`subscribe-btn coin-pay-btn ${isCurrent ? 'disabled' : ''}`}
                         onClick={() => handleSubscribe(plan.id, 'WALLET')}
                         disabled={isCurrent || Boolean(subscribing) || !canPayWithCoins}
-                        title={!canPayWithCoins ? 'Số xu hiện tại không đủ để thanh toán gói này' : undefined}
+                        title={!canPayWithCoins ? t('subscription.notEnoughTitle') : undefined}
                       >
                         {isCurrent
-                          ? 'Gói hiện tại'
+                          ? t('subscription.currentBadge')
                           : subscribing === walletKey
-                          ? 'Đang trừ xu...'
+                          ? t('subscription.deducting')
                           : canPayWithCoins
-                          ? 'Thanh toán bằng xu'
-                          : 'Không đủ xu'}
+                          ? t('subscription.payCoins')
+                          : t('subscription.notEnoughCoins')}
                       </button>
                     )}
                   </div>
 
-                  <p className="plan-info">Bạn có thể nâng cấp bất kỳ lúc nào</p>
+                  <p className="plan-info">{t('subscription.anytime')}</p>
                 </div>
               )
             })}
@@ -269,37 +258,37 @@ export function SubscriptionScreen() {
 
       {/* Benefits Section */}
       <div className="benefits-section">
-        <h2>Lợi ích của việc nâng cấp</h2>
+        <h2>{t('subscription.benefitsTitle')}</h2>
         <div className="benefits-grid">
           <div className="benefit-item">
             <div className="benefit-icon"><AppIcon name="eye" size={28} /></div>
-            <h3>Cao hơn trong tìm kiếm</h3>
-            <p>Tài khoản nâng cấp được hiển thị ưu tiên trong danh sách tìm kiếm</p>
+            <h3>{t('subscription.benefitSearchTitle')}</h3>
+            <p>{t('subscription.benefitSearchDesc')}</p>
           </div>
           <div className="benefit-item">
             <div className="benefit-icon"><AppIcon name="badge" size={28} /></div>
-            <h3>Huy hiệu cao cấp</h3>
-            <p>Hiển thị huy hiệu cao cấp trên hồ sơ và danh sách tìm kiếm</p>
+            <h3>{t('subscription.benefitBadgeTitle')}</h3>
+            <p>{t('subscription.benefitBadgeDesc')}</p>
           </div>
           <div className="benefit-item">
             <div className="benefit-icon"><AppIcon name="phone" size={28} /></div>
-            <h3>Hỗ trợ ưu tiên</h3>
-            <p>Nhận hỗ trợ từ đội ngũ hỗ trợ khách hàng với độ ưu tiên cao</p>
+            <h3>{t('subscription.benefitSupportTitle')}</h3>
+            <p>{t('subscription.benefitSupportDesc')}</p>
           </div>
           <div className="benefit-item">
             <div className="benefit-icon"><AppIcon name="chart" size={28} /></div>
-            <h3>Thống kê chi tiết</h3>
-            <p>Truy cập vào các thống kê chi tiết về lượt xem và tương tác</p>
+            <h3>{t('subscription.benefitStatsTitle')}</h3>
+            <p>{t('subscription.benefitStatsDesc')}</p>
           </div>
           <div className="benefit-item">
             <div className="benefit-icon"><AppIcon name="target" size={28} /></div>
-            <h3>Chiến dịch tiếp thị</h3>
-            <p>Sử dụng công cụ tiếp thị nâng cao để quảng bá dịch vụ của bạn</p>
+            <h3>{t('subscription.benefitMarketingTitle')}</h3>
+            <p>{t('subscription.benefitMarketingDesc')}</p>
           </div>
           <div className="benefit-item">
             <div className="benefit-icon"><AppIcon name="smartphone" size={28} /></div>
-            <h3>Ứng dụng di động</h3>
-            <p>Truy cập ứng dụng di động chuyên dùng với tất cả các tính năng</p>
+            <h3>{t('subscription.benefitMobileTitle')}</h3>
+            <p>{t('subscription.benefitMobileDesc')}</p>
           </div>
         </div>
       </div>

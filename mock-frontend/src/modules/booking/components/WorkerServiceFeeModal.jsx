@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useMarkCompleted } from '../hooks'
+import { useLanguage } from '../../../i18n/LanguageContext'
 import '../../../styles/modules/booking/pages/BookingPages.css'
 
 function formatVnd(value) {
@@ -12,6 +13,7 @@ function formatVnd(value) {
  * Technician enters service fee before moving to WAITING_CUSTOMER_CONFIRMATION.
  */
 export function WorkerServiceFeeModal({ open, bookingId, onClose }) {
+  const { t } = useLanguage()
   const [totalAmount, setTotalAmount] = useState('')
   const [error, setError] = useState('')
   const markCompletedMutation = useMarkCompleted()
@@ -23,7 +25,7 @@ export function WorkerServiceFeeModal({ open, bookingId, onClose }) {
     setError('')
     const amount = Number(totalAmount)
     if (!Number.isFinite(amount) || amount <= 0) {
-      setError('Vui lòng nhập phí dịch vụ lớn hơn 0.')
+      setError(t('workerFee.amountError'))
       return
     }
 
@@ -35,7 +37,7 @@ export function WorkerServiceFeeModal({ open, bookingId, onClose }) {
           onClose()
         },
         onError: (err) => {
-          setError(err?.message || 'Không thể gửi phí dịch vụ.')
+          setError(err?.message || t('workerFee.submitError'))
         },
       },
     )
@@ -57,15 +59,15 @@ export function WorkerServiceFeeModal({ open, bookingId, onClose }) {
         onClick={(e) => e.stopPropagation()}
       >
         <h2 id="worker-fee-title" style={{ margin: '0 0 8px', fontSize: '1.1rem' }}>
-          Báo phí dịch vụ
+          {t('workerFee.title')}
         </h2>
         <p className="booking-modal-hint">
-          Nhập phí sau khi hoàn thành công việc. Khách hàng sẽ thấy số tiền và thanh toán tiền mặt trước khi xác nhận.
+          {t('workerFee.hint')}
         </p>
 
         <form onSubmit={handleSubmit}>
           <label className="booking-modal-field-label" htmlFor="service-fee-amount">
-            Phí dịch vụ (VNĐ)
+            {t('workerFee.label')}
           </label>
           <input
             id="service-fee-amount"
@@ -73,7 +75,7 @@ export function WorkerServiceFeeModal({ open, bookingId, onClose }) {
             min="1"
             step="1"
             required
-            placeholder="Ví dụ: 300000"
+            placeholder={t('workerFee.placeholder')}
             value={totalAmount}
             onChange={(e) => setTotalAmount(e.target.value)}
             className="booking-modal-input"
@@ -81,8 +83,8 @@ export function WorkerServiceFeeModal({ open, bookingId, onClose }) {
 
           {totalAmount && Number(totalAmount) > 0 && (
             <p className="booking-modal-preview">
-              Khách thanh toán dự kiến: <strong>{formatVnd(totalAmount)}</strong>
-              <span className="muted"> (đã trừ voucher nếu có)</span>
+              {t('workerFee.preview')}: <strong>{formatVnd(totalAmount)}</strong>
+              <span className="muted"> {t('workerFee.previewNote')}</span>
             </p>
           )}
 
@@ -94,10 +96,10 @@ export function WorkerServiceFeeModal({ open, bookingId, onClose }) {
 
           <div className="booking-modal-actions" style={{ marginTop: 16 }}>
             <button type="button" disabled={busy} onClick={onClose}>
-              Hủy
+              {t('profile.cancel')}
             </button>
             <button type="submit" className="confirm" disabled={busy}>
-              {busy ? 'Đang gửi…' : 'Xác nhận phí & hoàn thành'}
+              {busy ? t('worker.submitting') : t('workerFee.submit')}
             </button>
           </div>
         </form>

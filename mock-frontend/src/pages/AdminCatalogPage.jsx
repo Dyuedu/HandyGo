@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AppIcon } from '../components/AppIcon'
+import { useLanguage } from '../i18n/LanguageContext'
+import { formatDateTime as formatLocalizedDateTime, formatMoney } from '../i18n/formatters'
 import {
   createAdminSubscriptionPlan,
   createAdminVoucher,
@@ -27,15 +29,9 @@ const initialVoucherForm = {
   maxUses: '',
 }
 
-const moneyFormatter = new Intl.NumberFormat('vi-VN', {
-  style: 'currency',
-  currency: 'VND',
-  maximumFractionDigits: 0,
-})
-
-function toMoney(value) {
+function toMoney(value, language) {
   if (value === null || value === undefined || value === '') return '-'
-  return moneyFormatter.format(Number(value))
+  return formatMoney(value, language)
 }
 
 function toNumberOrNull(value) {
@@ -46,14 +42,6 @@ function toNumberOrNull(value) {
 function toDateTimeOrNull(value) {
   if (!value) return null
   return value.length === 16 ? `${value}:00` : value
-}
-
-function formatDateTime(value) {
-  if (!value) return 'Không giới hạn'
-  return new Intl.DateTimeFormat('vi-VN', {
-    dateStyle: 'short',
-    timeStyle: 'short',
-  }).format(new Date(value))
 }
 
 function normalizeVoucherPayload(form) {
@@ -81,6 +69,7 @@ function normalizePlanPayload(form) {
 
 export function AdminCatalogPage() {
   const queryClient = useQueryClient()
+  const { language, t } = useLanguage()
   const [planForm, setPlanForm] = useState(initialPlanForm)
   const [voucherForm, setVoucherForm] = useState(initialVoucherForm)
   const [planMessage, setPlanMessage] = useState('')
@@ -113,12 +102,12 @@ export function AdminCatalogPage() {
     mutationFn: createAdminSubscriptionPlan,
     onSuccess: () => {
       setPlanForm(initialPlanForm)
-      setPlanMessage('Đã tạo gói cước mới.')
+      setPlanMessage(t('catalog.planCreated'))
       queryClient.invalidateQueries({ queryKey: ['admin-subscription-plans'] })
       queryClient.invalidateQueries({ queryKey: ['subscription-plans'] })
     },
     onError: (error) => {
-      setPlanMessage(error.message || 'Không thể tạo gói cước.')
+      setPlanMessage(error.message || t('catalog.planCreateError'))
     },
   })
 
@@ -126,12 +115,12 @@ export function AdminCatalogPage() {
     mutationFn: createAdminVoucher,
     onSuccess: () => {
       setVoucherForm(initialVoucherForm)
-      setVoucherMessage('Đã tạo voucher mới.')
+      setVoucherMessage(t('catalog.voucherCreated'))
       queryClient.invalidateQueries({ queryKey: ['admin-vouchers'] })
       queryClient.invalidateQueries({ queryKey: ['vouchers'] })
     },
     onError: (error) => {
-      setVoucherMessage(error.message || 'Không thể tạo voucher.')
+      setVoucherMessage(error.message || t('catalog.voucherCreateError'))
     },
   })
 
@@ -159,8 +148,8 @@ export function AdminCatalogPage() {
     <div className="admin-catalog-page">
       <header className="admin-catalog-header">
         <div>
-          <h1>Gói cước & Voucher</h1>
-          <p>Tạo dữ liệu thương mại để thợ đăng ký gói và khách hàng dùng ưu đãi khi đặt lịch.</p>
+          <h1>{t('catalog.title')}</h1>
+          <p>{t('catalog.description')}</p>
         </div>
       </header>
 
@@ -171,24 +160,24 @@ export function AdminCatalogPage() {
               <AppIcon name="crown" size={22} />
             </span>
             <div>
-              <h2>Tạo gói cước</h2>
-              <p>Gói đang hoạt động sẽ hiển thị cho thợ đăng ký.</p>
+              <h2>{t('catalog.createPlan')}</h2>
+              <p>{t('catalog.planHint')}</p>
             </div>
           </div>
 
           <label>
-            Tên gói
+            {t('catalog.planName')}
             <input
               value={planForm.planName}
               onChange={(event) => updatePlanField('planName', event.target.value)}
-              placeholder="Ví dụ: PRO"
+              placeholder={t('catalog.planPlaceholder')}
               required
             />
           </label>
 
           <div className="field-row">
             <label>
-              Giá gói
+              {t('catalog.price')}
               <input
                 type="number"
                 min="0"
@@ -199,7 +188,7 @@ export function AdminCatalogPage() {
               />
             </label>
             <label>
-              Thời hạn
+              {t('catalog.duration')}
               <input
                 type="number"
                 min="1"
@@ -211,10 +200,10 @@ export function AdminCatalogPage() {
           </div>
 
           <label>
-            Trạng thái
+            {t('catalog.status')}
             <select value={planForm.status} onChange={(event) => updatePlanField('status', event.target.value)}>
-              <option value="ACTIVE">Đang hoạt động</option>
-              <option value="INACTIVE">Tạm ẩn</option>
+              <option value="ACTIVE">{t('status.ACTIVE')}</option>
+              <option value="INACTIVE">{t('catalog.inactive')}</option>
             </select>
           </label>
 
@@ -222,7 +211,7 @@ export function AdminCatalogPage() {
 
           <button type="submit" className="catalog-submit" disabled={createPlanMutation.isPending}>
             <AppIcon name="plus" size={18} />
-            {createPlanMutation.isPending ? 'Đang tạo...' : 'Tạo gói cước'}
+            {createPlanMutation.isPending ? t('catalog.creating') : t('catalog.createPlan')}
           </button>
         </form>
 
@@ -232,14 +221,14 @@ export function AdminCatalogPage() {
               <AppIcon name="ticket" size={22} />
             </span>
             <div>
-              <h2>Tạo voucher</h2>
-              <p>Voucher khả dụng sẽ xuất hiện ở luồng đặt lịch.</p>
+              <h2>{t('catalog.createVoucher')}</h2>
+              <p>{t('catalog.voucherHint')}</p>
             </div>
           </div>
 
           <div className="field-row">
             <label>
-              Mã voucher
+              {t('catalog.voucherCode')}
               <input
                 value={voucherForm.code}
                 onChange={(event) => updateVoucherField('code', event.target.value)}
@@ -248,20 +237,20 @@ export function AdminCatalogPage() {
               />
             </label>
             <label>
-              Kiểu giảm
+              {t('catalog.discountType')}
               <select
                 value={voucherForm.discountType}
                 onChange={(event) => updateVoucherField('discountType', event.target.value)}
               >
-                <option value="FIXED_AMOUNT">Giảm tiền</option>
-                <option value="PERCENTAGE">Giảm phần trăm</option>
+                <option value="FIXED_AMOUNT">{t('catalog.fixedAmount')}</option>
+                <option value="PERCENTAGE">{t('catalog.percentage')}</option>
               </select>
             </label>
           </div>
 
           {voucherForm.discountType === 'FIXED_AMOUNT' ? (
             <label>
-              Số tiền giảm
+              {t('catalog.discountAmount')}
               <input
                 type="number"
                 min="1"
@@ -274,7 +263,7 @@ export function AdminCatalogPage() {
           ) : (
             <div className="field-row">
               <label>
-                Phần trăm giảm
+                {t('catalog.discountPercent')}
                 <input
                   type="number"
                   min="1"
@@ -287,7 +276,7 @@ export function AdminCatalogPage() {
                 />
               </label>
               <label>
-                Giảm tối đa
+                {t('catalog.maxDiscount')}
                 <input
                   type="number"
                   min="1"
@@ -301,7 +290,7 @@ export function AdminCatalogPage() {
 
           <div className="field-row">
             <label>
-              Hạn sử dụng
+              {t('catalog.expiryDate')}
               <input
                 type="datetime-local"
                 value={voucherForm.expiryDate}
@@ -309,7 +298,7 @@ export function AdminCatalogPage() {
               />
             </label>
             <label>
-              Số lượt dùng
+              {t('catalog.maxUses')}
               <input
                 type="number"
                 min="1"
@@ -324,30 +313,30 @@ export function AdminCatalogPage() {
 
           <button type="submit" className="catalog-submit" disabled={createVoucherMutation.isPending}>
             <AppIcon name="plus" size={18} />
-            {createVoucherMutation.isPending ? 'Đang tạo...' : 'Tạo voucher'}
+            {createVoucherMutation.isPending ? t('catalog.creating') : t('catalog.createVoucher')}
           </button>
         </form>
       </section>
 
       <section className="catalog-list-section">
         <div className="catalog-list-header">
-          <h2>Danh sách gói cước</h2>
+          <h2>{t('catalog.planList')}</h2>
         </div>
         <div className="admin-table-container">
           <table className="admin-table">
             <thead>
               <tr>
-                <th>Tên gói</th>
-                <th>Giá</th>
-                <th>Thời hạn</th>
-                <th>Trạng thái</th>
-                <th>Ngày tạo</th>
+                <th>{t('catalog.planName')}</th>
+                <th>{t('catalog.price')}</th>
+                <th>{t('catalog.duration')}</th>
+                <th>{t('catalog.status')}</th>
+                <th>{t('catalog.createdAt')}</th>
               </tr>
             </thead>
             <tbody>
               {plansLoading ? (
                 <tr>
-                  <td colSpan="5" className="empty-state">Đang tải gói cước...</td>
+                  <td colSpan="5" className="empty-state">{t('catalog.loadingPlans')}</td>
                 </tr>
               ) : plansError ? (
                 <tr>
@@ -355,20 +344,20 @@ export function AdminCatalogPage() {
                 </tr>
               ) : sortedPlans.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="empty-state">Chưa có gói cước.</td>
+                  <td colSpan="5" className="empty-state">{t('catalog.emptyPlans')}</td>
                 </tr>
               ) : (
                 sortedPlans.map((plan) => (
                   <tr key={plan.id}>
                     <td><span className="badge tier-badge">{plan.planName}</span></td>
-                    <td>{toMoney(plan.price)}</td>
-                    <td>{plan.durationDays} ngày</td>
+                    <td>{toMoney(plan.price, language)}</td>
+                    <td>{t('subscription.days', { count: plan.durationDays })}</td>
                     <td>
                       <span className={`badge status-badge ${plan.status?.toLowerCase()}`}>
-                        {plan.status === 'ACTIVE' ? 'Đang hoạt động' : 'Tạm ẩn'}
+                        {plan.status === 'ACTIVE' ? t('status.ACTIVE') : t('catalog.inactive')}
                       </span>
                     </td>
-                    <td>{formatDateTime(plan.createdAt)}</td>
+                    <td>{formatLocalizedDateTime(plan.createdAt, language, t('catalog.noLimit'))}</td>
                   </tr>
                 ))
               )}
@@ -379,24 +368,24 @@ export function AdminCatalogPage() {
 
       <section className="catalog-list-section">
         <div className="catalog-list-header">
-          <h2>Danh sách voucher</h2>
+          <h2>{t('catalog.voucherList')}</h2>
         </div>
         <div className="admin-table-container">
           <table className="admin-table">
             <thead>
               <tr>
-                <th>Mã</th>
-                <th>Ưu đãi</th>
-                <th>Kiểu</th>
-                <th>Hạn dùng</th>
-                <th>Lượt dùng</th>
-                <th>Trạng thái</th>
+                <th>{t('booking.code')}</th>
+                <th>{t('catalog.offer')}</th>
+                <th>{t('catalog.discountType')}</th>
+                <th>{t('catalog.expiry')}</th>
+                <th>{t('catalog.uses')}</th>
+                <th>{t('catalog.status')}</th>
               </tr>
             </thead>
             <tbody>
               {vouchersLoading ? (
                 <tr>
-                  <td colSpan="6" className="empty-state">Đang tải voucher...</td>
+                  <td colSpan="6" className="empty-state">{t('catalog.loadingVouchers')}</td>
                 </tr>
               ) : vouchersError ? (
                 <tr>
@@ -404,23 +393,23 @@ export function AdminCatalogPage() {
                 </tr>
               ) : vouchers.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="empty-state">Chưa có voucher.</td>
+                  <td colSpan="6" className="empty-state">{t('catalog.emptyVouchers')}</td>
                 </tr>
               ) : (
                 vouchers.map((voucher) => (
                   <tr key={voucher.id}>
                     <td><span className="voucher-code">{voucher.code}</span></td>
                     <td>{voucher.discountPreview}</td>
-                    <td>{voucher.discountType === 'PERCENTAGE' ? 'Phần trăm' : 'Giảm tiền'}</td>
-                    <td>{formatDateTime(voucher.expiryDate)}</td>
+                    <td>{voucher.discountType === 'PERCENTAGE' ? t('catalog.percentage') : t('catalog.fixedAmount')}</td>
+                    <td>{formatLocalizedDateTime(voucher.expiryDate, language, t('catalog.noLimit'))}</td>
                     <td>
                       {voucher.maxUses
                         ? `${voucher.usedCount || 0}/${voucher.maxUses}`
-                        : 'Không giới hạn'}
+                        : t('catalog.noLimit')}
                     </td>
                     <td>
                       <span className={`badge status-badge ${voucher.used ? 'blocked' : 'active'}`}>
-                        {voucher.used ? 'Đã dùng' : 'Khả dụng'}
+                        {voucher.used ? t('catalog.used') : t('catalog.available')}
                       </span>
                     </td>
                   </tr>

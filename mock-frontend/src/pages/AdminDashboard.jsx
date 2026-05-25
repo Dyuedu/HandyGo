@@ -2,9 +2,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { useState, useMemo } from 'react'
 import { getWorkers, toggleWorkerVerification, toggleWorkerStatus } from '../services/adminService'
+import { useLanguage } from '../i18n/LanguageContext'
 import '../styles/pages/AdminDashboard.css'
 
 export function AdminDashboard() {
+  const { t } = useLanguage()
   const queryClient = useQueryClient()
   const [searchQuery, setSearchQuery] = useState('')
   const [jobFilter, setJobFilter] = useState('')
@@ -71,25 +73,25 @@ export function AdminDashboard() {
   }, [workers])
 
   if (isLoading) {
-    return <div className="admin-loading">Đang tải dữ liệu...</div>
+    return <div className="admin-loading">{t('admin.loading')}</div>
   }
 
   if (error) {
-    return <div className="admin-error">Lỗi khi tải dữ liệu: {error.message}</div>
+    return <div className="admin-error">{t('admin.loadError')}: {error.message}</div>
   }
 
   return (
     <div className="admin-dashboard">
       <header className="admin-header">
-        <h1>Quản lý thợ</h1>
-        <p>Danh sách và trạng thái của tất cả thợ trên hệ thống.</p>
+        <h1>{t('admin.workersTitle')}</h1>
+        <p>{t('admin.workersDesc')}</p>
       </header>
 
       <div className="admin-controls">
         <div className="search-box">
           <input
             type="text"
-            placeholder="Tìm theo tên đăng nhập, họ tên hoặc số điện thoại..."
+            placeholder={t('admin.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="search-input"
@@ -102,7 +104,7 @@ export function AdminDashboard() {
             onChange={(e) => setJobFilter(e.target.value)}
             className="filter-select"
           >
-            <option value="">Tất cả nghề nghiệp</option>
+            <option value="">{t('admin.allJobs')}</option>
             {jobTypes.map(job => (
               <option key={job} value={job}>{job}</option>
             ))}
@@ -113,9 +115,9 @@ export function AdminDashboard() {
             onChange={(e) => setVerifiedFilter(e.target.value)}
             className="filter-select"
           >
-            <option value="">Tất cả trạng thái GPKD</option>
-            <option value="verified">Đã duyệt</option>
-            <option value="unverified">Chưa duyệt</option>
+            <option value="">{t('admin.allCertStatus')}</option>
+            <option value="verified">{t('admin.verified')}</option>
+            <option value="unverified">{t('admin.unverified')}</option>
           </select>
 
           <select 
@@ -123,10 +125,10 @@ export function AdminDashboard() {
             onChange={(e) => setStatusFilter(e.target.value)}
             className="filter-select"
           >
-            <option value="">Tất cả trạng thái tài khoản</option>
+            <option value="">{t('admin.allAccountStatus')}</option>
             {statuses.map(status => (
               <option key={status} value={status}>
-                {status === 'ACTIVE' ? 'Hoạt động' : status === 'BLOCKED' ? 'Bị khóa' : status}
+                {t(`status.${status}`)}
               </option>
             ))}
           </select>
@@ -141,7 +143,7 @@ export function AdminDashboard() {
               }}
               className="btn-reset-filters"
             >
-              Xóa bộ lọc
+              {t('admin.resetFilters')}
             </button>
           )}
         </div>
@@ -152,15 +154,15 @@ export function AdminDashboard() {
           <thead>
             <tr>
               <th>ID</th>
-              <th>Tên Đăng Nhập</th>
-              <th>Họ Tên</th>
-              <th>Số Điện Thoại</th>
-              <th>Nghề Nghiệp</th>
-              <th>Hạng</th>
-              <th>Đánh Giá</th>
-              <th>Xác Thực GPKD</th>
-              <th>Trạng Thái Tài Khoản</th>
-              <th>Hành Động</th>
+              <th>{t('admin.username')}</th>
+              <th>{t('admin.fullName')}</th>
+              <th>{t('admin.phone')}</th>
+              <th>{t('admin.job')}</th>
+              <th>{t('admin.tier')}</th>
+              <th>{t('admin.rating')}</th>
+              <th>{t('admin.certVerification')}</th>
+              <th>{t('admin.accountStatus')}</th>
+              <th>{t('admin.actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -179,23 +181,23 @@ export function AdminDashboard() {
                 <td>{worker.avgRating ? worker.avgRating.toFixed(1) + ' ⭐' : '-'}</td>
                 <td>
                   <span className={`badge verify-badge ${worker.verified ? 'verified' : 'unverified'}`}>
-                    {worker.verified ? 'Đã duyệt' : 'Chưa duyệt'}
+                    {worker.verified ? t('admin.verified') : t('admin.unverified')}
                   </span>
                 </td>
                 <td>
                   <span className={`badge status-badge ${worker.status?.toLowerCase()}`}>
-                    {worker.status === 'ACTIVE' ? 'Hoạt động' : worker.status === 'BLOCKED' ? 'Bị khóa' : worker.status}
+                    {t(`status.${worker.status}`)}
                   </span>
                 </td>
                 <td className="actions-cell">
-                  <Link to={`/app/admin/workers/${worker.id}`} className="btn-action btn-view">Xem chi tiết</Link>
+                  <Link to={`/app/admin/workers/${worker.id}`} className="btn-action btn-view">{t('admin.viewDetail')}</Link>
                   {!worker.verified && (
                     <button 
                       className="btn-action btn-verify approve"
                       onClick={() => verifyMutation.mutate(worker.id)}
                       disabled={verifyMutation.isPending}
                     >
-                      Duyệt GPKD
+                      {t('admin.approveCert')}
                     </button>
                   )}
                   <button 
@@ -203,14 +205,14 @@ export function AdminDashboard() {
                     onClick={() => statusMutation.mutate(worker.id)}
                     disabled={statusMutation.isPending}
                   >
-                    {worker.status === 'ACTIVE' ? 'Khóa' : 'Mở khóa'}
+                    {worker.status === 'ACTIVE' ? t('admin.block') : t('admin.unblock')}
                   </button>
                 </td>
               </tr>
             ))}
             {(!filteredWorkers || filteredWorkers.length === 0) && (
               <tr>
-                <td colSpan="10" className="empty-state">Không có dữ liệu thợ.</td>
+                <td colSpan="10" className="empty-state">{t('admin.emptyWorkers')}</td>
               </tr>
             )}
           </tbody>
