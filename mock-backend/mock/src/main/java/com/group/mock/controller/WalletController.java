@@ -1,9 +1,12 @@
 package com.group.mock.controller;
 
+import com.group.mock.entity.DTO.request.CreateWithdrawalRequest;
 import com.group.mock.entity.DTO.request.WalletDeductRequest;
 import com.group.mock.entity.DTO.response.TransactionHistorySummary;
 import com.group.mock.entity.DTO.response.WalletBalanceResponse;
 import com.group.mock.entity.DTO.response.WalletDeductResponse;
+import com.group.mock.entity.DTO.response.WithdrawalResponse;
+import jakarta.validation.Valid;
 import com.group.mock.service.WalletService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -42,5 +45,17 @@ public class WalletController {
             Authentication authentication,
             @RequestBody WalletDeductRequest request) {
         return ResponseEntity.ok(walletService.deduct(authentication.getName(), request));
+    }
+
+    @PostMapping("/withdrawals")
+    public ResponseEntity<WithdrawalResponse> createWithdrawal(
+            Authentication authentication,
+            @Valid @RequestBody CreateWithdrawalRequest request) {
+        return ResponseEntity.ok(walletService.createWithdrawal(authentication.getName(), request));
+    }
+
+    @GetMapping("/withdrawals")
+    public ResponseEntity<List<WithdrawalResponse>> withdrawals(Authentication authentication) {
+        return ResponseEntity.ok(walletService.getWithdrawals(authentication.getName()));
     }
 }

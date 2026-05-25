@@ -1,13 +1,23 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { useState, useMemo } from 'react'
-import { getWorkers, toggleWorkerVerification, toggleWorkerStatus } from '../services/adminService'
+import {
+  getWorkers,
+  toggleWorkerVerification,
+  toggleWorkerStatus,
+  getAdminWithdrawals,
+  getAdminWithdrawalDetail,
+  confirmAdminWithdrawal
+} from '../services/adminService'
 import { useLanguage } from '../i18n/LanguageContext'
 import '../styles/pages/AdminDashboard.css'
 
 export function AdminDashboard() {
   const { t } = useLanguage()
   const queryClient = useQueryClient()
+  const [activeTab, setActiveTab] = useState('workers')
+  const [withdrawalStatus, setWithdrawalStatus] = useState('PENDING')
+  const [selectedWithdrawalId, setSelectedWithdrawalId] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [jobFilter, setJobFilter] = useState('')
   const [verifiedFilter, setVerifiedFilter] = useState('')
@@ -15,7 +25,27 @@ export function AdminDashboard() {
 
   const { data: workers, isLoading, error } = useQuery({
     queryKey: ['admin-workers'],
-    queryFn: getWorkers
+    queryFn: getWorkers,
+    enabled: activeTab === 'workers'
+  })
+
+  const {
+    data: withdrawals,
+    isLoading: withdrawalsLoading,
+    error: withdrawalsError
+  } = useQuery({
+    queryKey: ['admin-withdrawals', withdrawalStatus],
+    queryFn: () => getAdminWithdrawals(withdrawalStatus),
+    enabled: activeTab === 'withdrawals'
+  })
+
+  const {
+    data: withdrawalDetail,
+    isLoading: withdrawalDetailLoading
+  } = useQuery({
+    queryKey: ['admin-withdrawal-detail', selectedWithdrawalId],
+    queryFn: () => getAdminWithdrawalDetail(selectedWithdrawalId),
+    enabled: activeTab === 'withdrawals' && Boolean(selectedWithdrawalId)
   })
 
   const verifyMutation = useMutation({
@@ -29,6 +59,14 @@ export function AdminDashboard() {
     mutationFn: toggleWorkerStatus,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-workers'] })
+    }
+  })
+
+  const confirmWithdrawalMutation = useMutation({
+    mutationFn: (withdrawalId) => confirmAdminWithdrawal(withdrawalId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-withdrawals'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-withdrawal-detail'] })
     }
   })
 
@@ -72,21 +110,160 @@ export function AdminDashboard() {
     return [...new Set(workers.map(w => w.status))].sort()
   }, [workers])
 
-  if (isLoading) {
+  const withdrawalStatusLabel = (status) => {
+    if (status === 'COMPLETED') return 'Đã chuyển'
+    if (status === 'REJECTED') return 'Từ chối'
+    return 'Đang chờ'
+  }
+
+  if (activeTab === 'workers' && isLoading) {
     return <div className="admin-loading">{t('admin.loading')}</div>
   }
 
-  if (error) {
+  if (activeTab === 'workers' && error) {
     return <div className="admin-error">{t('admin.loadError')}: {error.message}</div>
   }
 
   return (
     <div className="admin-dashboard">
       <header className="admin-header">
-        <h1>{t('admin.workersTitle')}</h1>
-        <p>{t('admin.workersDesc')}</p>
+        <h1>{activeTab === 'workers' ? t('admin.workersTitle') : 'Yêu cầu rút tiền'}</h1>
+        <p>{activeTab === 'workers' ? t('admin.workersDesc') : 'Duyệt yêu cầu rút xu và quét VietQR để chuyển khoản cho thợ.'}</p>
       </header>
 
+      <div className="admin-tabs">
+        <button
+          type="button"
+          className={activeTab === 'workers' ? 'active' : ''}
+          onClick={() => setActiveTab('workers')}
+        >
+          Thợ
+        </button>
+        <button
+          type="button"
+          className={activeTab === 'withdrawals' ? 'active' : ''}
+          onClick={() => setActiveTab('withdrawals')}
+        >
+          Yêu cầu rút tiền
+        </button>
+      </div>
+
+      {activeTab === 'withdrawals' ? (
+        <>
+          <div className="admin-controls">
+            <div className="filters-container">
+              <select
+                value={withdrawalStatus}
+                onChange={(e) => {
+                  setWithdrawalStatus(e.target.value)
+                  setSelectedWithdrawalId(null)
+                }}
+                className="filter-select"
+              >
+                <option value="">Tất cả trạng thái</option>
+                <option value="PENDING">Đang chờ</option>
+                <option value="COMPLETED">Đã chuyển</option>
+                <option value="REJECTED">Từ chối</option>
+              </select>
+            </div>
+          </div>
+
+          {withdrawalsLoading && <div className="admin-loading">Đang tải yêu cầu rút tiền...</div>}
+          {withdrawalsError && <div className="admin-error">Không thể tải yêu cầu rút tiền: {withdrawalsError.message}</div>}
+
+          {!withdrawalsLoading && !withdrawalsError && (
+            <div className="withdrawal-admin-layout">
+              <div className="admin-table-container">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Mã</th>
+                      <th>Thợ</th>
+                      <th>Số xu</th>
+                      <th>Ngân hàng</th>
+                      <th>Nội dung CK</th>
+                      <th>Trạng thái</th>
+                      <th>{t('admin.actions')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(withdrawals || []).map((request) => (
+                      <tr key={request.id}>
+                        <td className="col-id">WD{request.id}</td>
+                        <td>{request.workerFullName || request.workerUsername || '-'}</td>
+                        <td>{Number(request.amount).toLocaleString('vi-VN')} {request.currency}</td>
+                        <td>{request.bankName}</td>
+                        <td className="txn-ref">{request.transferContent}</td>
+                        <td>
+                          <span className={`badge withdrawal-status ${request.status?.toLowerCase()}`}>
+                            {withdrawalStatusLabel(request.status)}
+                          </span>
+                        </td>
+                        <td className="actions-cell">
+                          <button
+                            type="button"
+                            className="btn-action btn-view"
+                            onClick={() => setSelectedWithdrawalId(request.id)}
+                          >
+                            Xem QR
+                          </button>
+                          {request.status === 'PENDING' && (
+                            <button
+                              type="button"
+                              className="btn-action btn-verify approve"
+                              disabled={confirmWithdrawalMutation.isPending}
+                              onClick={() => confirmWithdrawalMutation.mutate(request.id)}
+                            >
+                              Xác nhận
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    {(!withdrawals || withdrawals.length === 0) && (
+                      <tr>
+                        <td colSpan="7" className="empty-state">Không có yêu cầu rút tiền</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              <aside className="withdrawal-detail-panel">
+                {!selectedWithdrawalId && <p>Chọn một yêu cầu để xem QR chuyển khoản.</p>}
+                {selectedWithdrawalId && withdrawalDetailLoading && <p>Đang render QR...</p>}
+                {withdrawalDetail && (
+                  <>
+                    <h2>WD{withdrawalDetail.request.id}</h2>
+                    <img src={withdrawalDetail.qrImageDataUrl} alt="VietQR chuyển khoản" className="withdrawal-qr" />
+                    <dl>
+                      <dt>Tài khoản</dt>
+                      <dd>{withdrawalDetail.request.accountNo}</dd>
+                      <dt>Chủ tài khoản</dt>
+                      <dd>{withdrawalDetail.request.accountName}</dd>
+                      <dt>Số xu</dt>
+                      <dd>{Number(withdrawalDetail.request.amount).toLocaleString('vi-VN')} XU</dd>
+                      <dt>Nội dung</dt>
+                      <dd>{withdrawalDetail.request.transferContent}</dd>
+                    </dl>
+                    {withdrawalDetail.request.status === 'PENDING' && (
+                      <button
+                        type="button"
+                        className="withdrawal-confirm-btn"
+                        disabled={confirmWithdrawalMutation.isPending}
+                        onClick={() => confirmWithdrawalMutation.mutate(withdrawalDetail.request.id)}
+                      >
+                        Đã chuyển khoản
+                      </button>
+                    )}
+                  </>
+                )}
+              </aside>
+            </div>
+          )}
+        </>
+      ) : (
+        <>
       <div className="admin-controls">
         <div className="search-box">
           <input
@@ -218,6 +395,8 @@ export function AdminDashboard() {
           </tbody>
         </table>
       </div>
+        </>
+      )}
     </div>
   )
 }
