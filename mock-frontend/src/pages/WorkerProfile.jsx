@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useCreateBooking } from '../modules/booking/hooks'
 import {
@@ -9,6 +9,7 @@ import {
   todayLocalDateString,
   validateBookingSchedule,
 } from '../modules/booking/utils/bookingDateTime'
+import { getPublicWorkerProfile } from '../services/profileService'
 import { getUserLocations } from '../services/userService'
 import { getAvailableVouchers } from '../services/voucherService'
 import { getReviewsByWorkerId } from '../services/reviewService'
@@ -66,7 +67,15 @@ const generateMockReviews = (workerId) => {
 export function WorkerProfile() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const { session, mode } = useAuth()
+
+  const returnPath = location.state?.from || '/app/home'
+  const returnLabel = returnPath === '/app/profile' ? 'Quay lại hồ sơ' : 'Quay lại bản đồ'
+
+  const handleBack = () => {
+    navigate(returnPath)
+  }
   const createBookingMutation = useCreateBooking()
   const currentUserId = session?.id || localStorage.getItem('my_user_id')
   const isCustomer = mode === 'CUSTOMER'
@@ -92,11 +101,17 @@ export function WorkerProfile() {
   useEffect(() => {
     const fetchWorker = async () => {
       try {
+        let found = null
+        try {
+          found = await getPublicWorkerProfile(id)
+        } catch {
+          const data = await getUserLocations()
+          found = data.find((u) => u.id === id) || null
+        }
         const data = await getUserLocations()
-        const found = data.find(u => u.id === id)
-        const me = data.find(u => u.id === currentUserId)
-        setWorker(found || null)
-        setCurrentUser(me || null)
+        const me = data.find((u) => u.id === currentUserId) || null
+        setWorker(found)
+        setCurrentUser(me)
       } catch (err) {
         console.error('Không thể tải dữ liệu thợ', err)
       } finally {
@@ -188,9 +203,13 @@ export function WorkerProfile() {
     }
   }, [worker])
 
-  const avgRating = reviews.length > 0
-    ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length)
+  const reviewAvg = reviews.length > 0
+    ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
     : 0
+  const avgRating =
+    worker?.avgRating != null && Number(worker.avgRating) > 0
+      ? Number(worker.avgRating)
+      : reviewAvg
 
   const distance = (currentUser && worker)
     ? calculateDistance(currentUser.latitude, currentUser.longitude, worker.latitude, worker.longitude)
@@ -265,7 +284,7 @@ export function WorkerProfile() {
         <span className="wp-not-found-icon">🔍</span>
         <h2>Không tìm thấy thợ</h2>
         <p>Thông tin thợ không tồn tại hoặc đã bị xóa.</p>
-        <button onClick={() => navigate('/app/home')} className="wp-back-btn">← Quay lại bản đồ</button>
+        <button type="button" onClick={handleBack} className="wp-back-btn">← {returnLabel}</button>
       </div>
     )
   }
@@ -273,8 +292,8 @@ export function WorkerProfile() {
   return (
     <div className="wp-container">
       {/* Back navigation */}
-      <button className="wp-back-link" onClick={() => navigate('/app/home')}>
-        ← Quay lại bản đồ
+      <button type="button" className="wp-back-link" onClick={handleBack}>
+        ← {returnLabel}
       </button>
 
       <div className="wp-grid">
@@ -292,6 +311,9 @@ export function WorkerProfile() {
                 <span className="wp-badge role">Thợ sửa chữa</span>
                 {worker.jobType && (
                   <span className="wp-badge job">{translateJobType(worker.jobType)}</span>
+                )}
+                {worker.verified && (
+                  <span className="wp-badge verified">Đã xác minh</span>
                 )}
               </div>
               <div className="wp-rating-summary">
