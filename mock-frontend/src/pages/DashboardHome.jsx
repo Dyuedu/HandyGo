@@ -587,6 +587,10 @@ export function DashboardHome({ section = 'Home' }) {
     return <SubscriptionScreen />
   }
 
+  if (section === 'Profile') {
+    return null
+  }
+
   // Render normal tabs if not Home page
   const title = mode === 'TECHNICIAN' ? page.technicianTitle : page.customerTitle
   const sectionLabel = page?.customerTitle || section
