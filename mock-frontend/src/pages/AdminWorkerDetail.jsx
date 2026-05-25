@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { getWorkerById, toggleWorkerVerification, toggleWorkerStatus } from '../services/adminService'
 import { loadSession } from '../state/authStore'
+import { useLanguage } from '../i18n/LanguageContext'
+import { formatDateTime } from '../i18n/formatters'
 import '../styles/pages/AdminWorkerDetail.css'
 
 // Helper function to detect file type
@@ -29,7 +31,7 @@ function isCloudinaryUrl(value) {
 }
 
 // Component to display PDF/Word with auth headers
-function DocumentViewer({ url, fileType, fileExt }) {
+function DocumentViewer({ url, fileType, fileExt, t }) {
   const [blobUrl, setBlobUrl] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -61,9 +63,7 @@ function DocumentViewer({ url, fileType, fileExt }) {
         if (!response.ok) {
           const cloudinaryError = response.headers.get('x-cld-error')
           if (isExternal && response.status === 401 && cloudinaryError) {
-            throw new Error(
-              'Cloudinary đang chặn delivery PDF này. Hãy bật "Allow delivery of PDF and ZIP files" trong Product Environment > Security của Cloudinary.'
-            )
+            throw new Error(t('admin.cloudinaryPdfBlocked'))
           }
           throw new Error(`Server responded with ${response.status} ${response.statusText}`)
         }
@@ -78,7 +78,7 @@ function DocumentViewer({ url, fileType, fileExt }) {
       } catch (err) {
         console.error('Document loading error:', err)
         if (!isCancelled) {
-          setError(`Không thể tải tài liệu: ${err.message}`)
+          setError(t('admin.documentLoadError', { message: err.message }))
           setBlobUrl(null)
         }
       } finally {
@@ -101,7 +101,7 @@ function DocumentViewer({ url, fileType, fileExt }) {
   }, [url])
 
   if (loading) {
-    return <div className="certificate-loading">Đang tải tài liệu...</div>
+    return <div className="certificate-loading">{t('common.loading')}</div>
   }
 
   if (error) {
@@ -118,7 +118,7 @@ function DocumentViewer({ url, fileType, fileExt }) {
           target="_blank"
           rel="noopener noreferrer"
         >
-          ⬇ Tải xuống {fileExt} (Fallback)
+          {t('admin.downloadFile')} {fileExt} (Fallback)
         </a>
       </div>
     )
@@ -129,7 +129,7 @@ function DocumentViewer({ url, fileType, fileExt }) {
       <div className="certificate-viewer">
         <iframe 
           src={blobUrl} 
-          title="Chứng chỉ chuyên môn"
+          title={t('profile.certificate')}
           className="certificate-pdf"
         />
         <a 
@@ -139,7 +139,7 @@ function DocumentViewer({ url, fileType, fileExt }) {
           target="_blank"
           rel="noopener noreferrer"
         >
-          ⬇ Tải xuống PDF
+          {t('admin.downloadFile')} PDF
         </a>
       </div>
     )
@@ -151,8 +151,8 @@ function DocumentViewer({ url, fileType, fileExt }) {
         📄
       </div>
       <div className="document-info">
-        <p className="document-name">Tài liệu Word ({fileExt})</p>
-        <p className="document-note">Tải xuống để xem tài liệu Word</p>
+        <p className="document-name">Word ({fileExt})</p>
+        <p className="document-note">{t('admin.downloadFile')}</p>
       </div>
       <a 
         href={url}
@@ -161,13 +161,14 @@ function DocumentViewer({ url, fileType, fileExt }) {
         target="_blank"
         rel="noopener noreferrer"
       >
-        ⬇ Tải xuống {fileExt}
+        {t('admin.downloadFile')} {fileExt}
       </a>
     </div>
   )
 }
 
 export function AdminWorkerDetail() {
+  const { language, t } = useLanguage()
   const { id } = useParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -194,21 +195,21 @@ export function AdminWorkerDetail() {
   })
 
   if (isLoading) {
-    return <div className="admin-loading">Đang tải thông tin thợ...</div>
+    return <div className="admin-loading">{t('worker.loading')}</div>
   }
 
   if (error || !worker) {
-    return <div className="admin-error">Lỗi khi tải thông tin: {error?.message || 'Không tìm thấy thợ'}</div>
+    return <div className="admin-error">{t('admin.loadWorkerError')}: {error?.message || t('admin.workerNotFound')}</div>
   }
 
   return (
     <div className="admin-detail-container">
       <div className="admin-detail-header">
         <button className="btn-back" onClick={() => navigate('/app/admin/workers')}>
-          ← Quay lại danh sách
+          ← {t('admin.backList')}
         </button>
         <div className="header-title-actions">
-          <h1>Hồ sơ thợ: {worker.fullName || worker.username}</h1>
+          <h1>{t('admin.workerProfile')}: {worker.fullName || worker.username}</h1>
           <div className="detail-actions">
             {!worker.verified && (
               <button 
@@ -216,7 +217,7 @@ export function AdminWorkerDetail() {
                 onClick={() => verifyMutation.mutate()}
                 disabled={verifyMutation.isPending}
               >
-                Duyệt GPKD
+                {t('admin.approveCert')}
               </button>
             )}
             <button 
@@ -224,7 +225,7 @@ export function AdminWorkerDetail() {
               onClick={() => statusMutation.mutate()}
               disabled={statusMutation.isPending}
             >
-              {worker.status === 'ACTIVE' ? 'Khóa Tài Khoản' : 'Mở Khóa Tài Khoản'}
+              {worker.status === 'ACTIVE' ? t('admin.blockAccount') : t('admin.unblockAccount')}
             </button>
           </div>
         </div>
@@ -232,65 +233,65 @@ export function AdminWorkerDetail() {
 
       <div className="admin-detail-content">
         <div className="detail-card">
-          <h2>Thông tin chung</h2>
+          <h2>{t('admin.generalInfo')}</h2>
           <div className="info-grid">
             <div className="info-item">
-              <span className="info-label">ID Thợ</span>
+              <span className="info-label">{t('admin.workerId')}</span>
               <span className="info-value">{worker.id}</span>
             </div>
             <div className="info-item">
-              <span className="info-label">Tên đăng nhập</span>
+              <span className="info-label">{t('admin.username')}</span>
               <span className="info-value">{worker.username}</span>
             </div>
             <div className="info-item">
-              <span className="info-label">Họ tên đầy đủ</span>
+              <span className="info-label">{t('admin.fullName')}</span>
               <span className="info-value">{worker.fullName || '-'}</span>
             </div>
             <div className="info-item">
-              <span className="info-label">Số điện thoại</span>
+              <span className="info-label">{t('admin.phone')}</span>
               <span className="info-value">{worker.phone || '-'}</span>
             </div>
             <div className="info-item">
-              <span className="info-label">Ngày tạo tài khoản</span>
+              <span className="info-label">{t('admin.createdAt')}</span>
               <span className="info-value">
-                {worker.createdAt ? new Date(worker.createdAt).toLocaleString('vi-VN') : '-'}
+                {formatDateTime(worker.createdAt, language, '-')}
               </span>
             </div>
           </div>
         </div>
 
         <div className="detail-card">
-          <h2>Thông tin công việc</h2>
+          <h2>{t('admin.workInfo')}</h2>
           <div className="info-grid">
             <div className="info-item">
-              <span className="info-label">Loại công việc</span>
+              <span className="info-label">{t('admin.jobType')}</span>
               <span className="info-value badge job-badge">{worker.jobType}</span>
             </div>
             <div className="info-item">
-              <span className="info-label">Hạng thành viên</span>
+              <span className="info-label">{t('admin.tier')}</span>
               <span className="info-value badge tier-badge">{worker.tierType}</span>
             </div>
             <div className="info-item">
-              <span className="info-label">Đánh giá trung bình</span>
-              <span className="info-value">{worker.avgRating ? `${worker.avgRating.toFixed(1)} ⭐` : 'Chưa có'}</span>
+              <span className="info-label">{t('admin.avgRating')}</span>
+              <span className="info-value">{worker.avgRating ? `${worker.avgRating.toFixed(1)} ⭐` : t('admin.noRating')}</span>
             </div>
             <div className="info-item">
-              <span className="info-label">Trạng thái GPKD</span>
+              <span className="info-label">{t('admin.certVerification')}</span>
               <span className={`info-value badge verify-badge ${worker.verified ? 'verified' : 'unverified'}`}>
-                {worker.verified ? 'Đã duyệt' : 'Chưa duyệt'}
+                {worker.verified ? t('admin.verified') : t('admin.unverified')}
               </span>
             </div>
             <div className="info-item">
-              <span className="info-label">Trạng thái tài khoản</span>
+              <span className="info-label">{t('admin.accountStatus')}</span>
               <span className={`info-value badge status-badge ${worker.status?.toLowerCase()}`}>
-                {worker.status === 'ACTIVE' ? 'Hoạt động' : worker.status === 'BLOCKED' ? 'Bị khóa' : worker.status}
+                {t(`status.${worker.status}`)}
               </span>
             </div>
           </div>
         </div>
 
         <div className="detail-card full-width">
-          <h2>Giấy phép kinh doanh (Chứng chỉ)</h2>
+          <h2>{t('admin.businessLicense')}</h2>
           <div className="certificate-container">
             {worker.professionalCertificateUrl ? (
               (() => {
@@ -301,7 +302,7 @@ export function AdminWorkerDetail() {
                   return (
                     <img 
                       src={worker.professionalCertificateUrl} 
-                      alt="Chứng chỉ chuyên môn" 
+                      alt={t('profile.certificate')}
                       className="certificate-image" 
                     />
                   )
@@ -311,12 +312,13 @@ export function AdminWorkerDetail() {
                       url={worker.professionalCertificateUrl}
                       fileType={fileType}
                       fileExt={fileExt}
+                      t={t}
                     />
                   )
                 } else {
                   return (
                     <div className="certificate-unknown">
-                      <p>Định dạng tập tin không được hỗ trợ ({fileExt})</p>
+                      <p>{t('admin.unsupportedFile', { ext: fileExt })}</p>
                       <a 
                         href={worker.professionalCertificateUrl}
                         download
@@ -324,7 +326,7 @@ export function AdminWorkerDetail() {
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        ⬇ Tải xuống tệp
+                        {t('admin.downloadFile')}
                       </a>
                     </div>
                   )
@@ -332,7 +334,7 @@ export function AdminWorkerDetail() {
               })()
             ) : (
               <div className="certificate-empty">
-                Chưa cập nhật hình ảnh GPKD/Chứng chỉ.
+                {t('admin.emptyCertificate')}
               </div>
             )}
           </div>

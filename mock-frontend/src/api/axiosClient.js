@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { getStoredLanguage, translateStored } from '../i18n/LanguageContext'
 import { loadSession } from '../state/authStore'
 
 const axiosClient = axios.create({
@@ -13,6 +14,7 @@ axiosClient.interceptors.request.use((config) => {
   if (session?.accessToken) {
     config.headers.Authorization = `Bearer ${session.accessToken}`
   }
+  config.headers['Accept-Language'] = getStoredLanguage()
 
   if (config.data instanceof FormData) {
     delete config.headers['Content-Type']
@@ -25,7 +27,7 @@ axiosClient.interceptors.response.use(
   (response) => response.data,
   (error) => {
     const payload = error.response?.data
-    const message = payload?.error?.message || 'Không thể kết nối đến máy chủ'
+    const message = payload?.error?.message || payload?.error || translateStored('common.serverConnectionError')
     const normalizedError = new Error(message)
     normalizedError.payload = payload
     normalizedError.status = error.response?.status

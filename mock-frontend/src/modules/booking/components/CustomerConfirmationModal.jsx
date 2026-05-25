@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { confirmCompletion } from '../../../services/bookingService'
+import { useLanguage } from '../../../i18n/LanguageContext'
 import '../../../styles/modules/booking/pages/BookingPages.css'
 
 const bookingsKeyRoot = 'bookings'
@@ -21,6 +22,7 @@ function formatVnd(value) {
  */
 export function CustomerConfirmationModal({ open, bookingId, booking, onClose, onConfirmed }) {
   const queryClient = useQueryClient()
+  const { t } = useLanguage()
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
 
@@ -42,7 +44,7 @@ export function CustomerConfirmationModal({ open, bookingId, booking, onClose, o
       }
       onClose()
     } catch (err) {
-      setError(err?.message || 'Không thể xác nhận hoàn thành.')
+      setError(err?.message || t('customerConfirm.error'))
     } finally {
       setPending(false)
     }
@@ -62,31 +64,31 @@ export function CustomerConfirmationModal({ open, bookingId, booking, onClose, o
         onClick={(e) => e.stopPropagation()}
       >
         <h2 id="customer-confirm-title" style={{ margin: '0 0 8px', fontSize: '1.1rem' }}>
-          Xác nhận hoàn thành
+          {t('customerConfirm.title')}
         </h2>
         <p id="customer-confirm-message" className="booking-modal-hint">
-          Thợ đã báo hoàn thành công việc. Vui lòng thanh toán tiền mặt cho thợ theo bảng phí bên dưới, sau đó xác nhận.
+          {t('customerConfirm.hint')}
         </p>
 
         <div className="booking-payment-summary">
           <div className="booking-payment-row">
-            <span>Phí dịch vụ</span>
+            <span>{t('booking.serviceFee')}</span>
             <strong>{formatVnd(booking.totalAmount)}</strong>
           </div>
           {discount > 0 && (
             <div className="booking-payment-row">
-              <span>Giảm voucher</span>
+              <span>{t('customerConfirm.voucherDiscount')}</span>
               <strong>-{formatVnd(discount)}</strong>
             </div>
           )}
           <div className="booking-payment-row highlight">
-            <span>Bạn trả tiền mặt cho thợ</span>
+            <span>{t('customerConfirm.payCash')}</span>
             <strong>{formatVnd(finalAmount)}</strong>
           </div>
         </div>
 
         <p className="booking-cash-note">
-          Thanh toán trực tiếp cho thợ (tiền mặt). Không thanh toán qua ví/VNPay trong bước này.
+          {t('customerConfirm.note')}
         </p>
 
         {error && (
@@ -97,7 +99,7 @@ export function CustomerConfirmationModal({ open, bookingId, booking, onClose, o
 
         <div className="booking-modal-actions booking-modal-actions--confirm">
           <button type="button" disabled={pending} onClick={onClose}>
-            Đóng
+            {t('customerConfirm.close')}
           </button>
           <button
             type="button"
@@ -105,7 +107,7 @@ export function CustomerConfirmationModal({ open, bookingId, booking, onClose, o
             disabled={pending}
             onClick={handleConfirm}
           >
-            {pending ? 'Đang xử lý…' : 'Xác nhận hoàn thành'}
+            {pending ? t('common.processing') : t('booking.confirmComplete')}
           </button>
         </div>
       </div>
