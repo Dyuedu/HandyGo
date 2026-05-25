@@ -4,20 +4,30 @@ import com.group.mock.entity.Account;
 import com.group.mock.entity.Subscription;
 import com.group.mock.entity.UserProfile;
 import com.group.mock.entity.Voucher;
+import com.group.mock.entity.Wallet;
+import com.group.mock.entity.WithdrawalRequest;
 import com.group.mock.entity.WorkerProfile;
+import com.group.mock.entity.TransactionHistory;
+import com.group.mock.entity.DTO.request.ConfirmWithdrawalRequest;
 import com.group.mock.entity.DTO.request.CreateSubscriptionPlanRequest;
 import com.group.mock.entity.DTO.request.CreateVoucherRequest;
 import com.group.mock.entity.DTO.response.AdminWorkerResponse;
 import com.group.mock.entity.DTO.response.SubscriptionPlanResponse;
 import com.group.mock.entity.DTO.response.VoucherSummaryResponse;
+import com.group.mock.entity.DTO.response.WithdrawalDetailResponse;
+import com.group.mock.entity.DTO.response.WithdrawalResponse;
 import com.group.mock.entity.enums.Status;
 import com.group.mock.entity.enums.VoucherDiscountType;
+import com.group.mock.entity.enums.WithdrawalStatus;
 import com.group.mock.exception.AuthServiceException;
 import com.group.mock.repository.AccountRepository;
 import com.group.mock.repository.SubscriptionRepository;
+import com.group.mock.repository.TransactionHistoryRepository;
 import com.group.mock.repository.UserProfileRepository;
 import com.group.mock.repository.VoucherRepository;
 import com.group.mock.repository.VoucherUsageRepository;
+import com.group.mock.repository.WalletRepository;
+import com.group.mock.repository.WithdrawalRequestRepository;
 import com.group.mock.repository.WorkerProfileRepository;
 import com.group.mock.service.VoucherAvailabilityHelper;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +36,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.List;
 import java.util.Locale;
@@ -42,6 +53,10 @@ public class AdminService {
     private final VoucherRepository voucherRepository;
     private final VoucherUsageRepository voucherUsageRepository;
     private final SubscriptionRepository subscriptionRepository;
+    private final WithdrawalRequestRepository withdrawalRequestRepository;
+    private final WalletRepository walletRepository;
+    private final TransactionHistoryRepository transactionHistoryRepository;
+    private final VietQrService vietQrService;
 
     public List<AdminWorkerResponse> getAllWorkers() {
         List<WorkerProfile> workers = workerProfileRepository.findAll();
@@ -156,6 +171,81 @@ public class AdminService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<WithdrawalResponse> getWithdrawalRequests(String status) {
+        if (status == null || status.isBlank()) {
+            return withdrawalRequestRepository.findAllByOrderByCreatedAtDesc().stream()
+                    .map(this::toWithdrawalResponse)
+                    .toList();
+        }
+        WithdrawalStatus withdrawalStatus = parseWithdrawalStatus(status);
+        return withdrawalRequestRepository.findByStatusOrderByCreatedAtDesc(withdrawalStatus).stream()
+                .map(this::toWithdrawalResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public WithdrawalDetailResponse getWithdrawalRequest(Long id) {
+        WithdrawalRequest withdrawal = withdrawalRequestRepository.findById(id)
+                .orElseThrow(() -> new AuthServiceException(
+                        HttpStatus.NOT_FOUND,
+                        "WITHDRAWAL_NOT_FOUND",
+                        "Không tìm thấy yêu cầu rút tiền"));
+        return new WithdrawalDetailResponse(
+                toWithdrawalResponse(withdrawal),
+                withdrawal.getVietQrPayload(),
+                vietQrService.renderPngDataUrl(withdrawal.getVietQrPayload()));
+    }
+
+    @Transactional
+    public WithdrawalResponse confirmWithdrawalRequest(Long id, ConfirmWithdrawalRequest request) {
+        WithdrawalRequest withdrawal = withdrawalRequestRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new AuthServiceException(
+                        HttpStatus.NOT_FOUND,
+                        "WITHDRAWAL_NOT_FOUND",
+                        "Không tìm thấy yêu cầu rút tiền"));
+        if (withdrawal.getStatus() != WithdrawalStatus.PENDING) {
+            throw new AuthServiceException(
+                    HttpStatus.CONFLICT,
+                    "WITHDRAWAL_ALREADY_PROCESSED",
+                    "Yêu cầu rút tiền đã được xử lý");
+        }
+
+        Wallet wallet = walletRepository.findByUserIdForUpdate(withdrawal.getWorkerId())
+                .orElseThrow(() -> new AuthServiceException(
+                        HttpStatus.NOT_FOUND,
+                        "WALLET_NOT_FOUND",
+                        "Không tìm thấy ví của thợ"));
+        BigDecimal lockedBalance = wallet.getLockedBalance() == null ? BigDecimal.ZERO : wallet.getLockedBalance();
+        if (lockedBalance.compareTo(withdrawal.getAmount()) < 0) {
+            throw new AuthServiceException(
+                    HttpStatus.CONFLICT,
+                    "LOCKED_BALANCE_MISMATCH",
+                    "Số xu đang khóa không đủ để xác nhận yêu cầu");
+        }
+
+        wallet.setLockedBalance(lockedBalance.subtract(withdrawal.getAmount()));
+        walletRepository.save(wallet);
+
+        withdrawal.setStatus(WithdrawalStatus.COMPLETED);
+        withdrawal.setConfirmedAt(LocalDateTime.now());
+        withdrawal.setAdminNote(request != null ? request.getAdminNote() : null);
+        withdrawal = withdrawalRequestRepository.save(withdrawal);
+
+        TransactionHistory history = new TransactionHistory();
+        history.setWallet(wallet);
+        history.setVnpTxnRef("WITHDRAW-DONE-" + withdrawal.getId());
+        history.setAmount(withdrawal.getAmount().negate());
+        history.setVnpOrderInfo(withdrawal.getTransferContent());
+        history.setVnpOrderType("WITHDRAWAL");
+        history.setStatus("SUCCESS");
+        history.setBalanceBefore(wallet.getBalance());
+        history.setBalanceAfter(wallet.getBalance());
+        transactionHistoryRepository.save(history);
+
+        return toWithdrawalResponse(withdrawal);
+    }
+
     @Transactional
     public SubscriptionPlanResponse createSubscriptionPlan(CreateSubscriptionPlanRequest request) {
         String planName = request.getPlanName().trim().toUpperCase(Locale.ROOT);
@@ -262,5 +352,36 @@ public class AdminService {
                 subscription.getStatus(),
                 subscription.getCreatedAt()
         );
+    }
+
+    private WithdrawalStatus parseWithdrawalStatus(String status) {
+        try {
+            return WithdrawalStatus.valueOf(status.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new AuthServiceException(
+                    HttpStatus.BAD_REQUEST,
+                    "INVALID_WITHDRAWAL_STATUS",
+                    "Trạng thái yêu cầu rút tiền không hợp lệ");
+        }
+    }
+
+    private WithdrawalResponse toWithdrawalResponse(WithdrawalRequest withdrawal) {
+        return new WithdrawalResponse(
+                withdrawal.getId(),
+                withdrawal.getWorkerId(),
+                withdrawal.getWorkerUsername(),
+                withdrawal.getWorkerFullName(),
+                withdrawal.getAmount(),
+                "XU",
+                withdrawal.getBankBin(),
+                withdrawal.getBankName(),
+                withdrawal.getAccountNo(),
+                withdrawal.getAccountName(),
+                withdrawal.getTransferContent(),
+                withdrawal.getStatus(),
+                withdrawal.getAdminNote(),
+                withdrawal.getConfirmedAt(),
+                withdrawal.getCreatedAt(),
+                withdrawal.getUpdatedAt());
     }
 }

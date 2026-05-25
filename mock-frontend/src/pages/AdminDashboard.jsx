@@ -1,13 +1,24 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { useState, useMemo } from 'react'
-import { getWorkers, toggleWorkerVerification, toggleWorkerStatus } from '../services/adminService'
+import {
+  getWorkers,
+  toggleWorkerVerification,
+  toggleWorkerStatus,
+  getAdminWithdrawals,
+  getAdminWithdrawalDetail,
+  confirmAdminWithdrawal
+} from '../services/adminService'
 import { useLanguage } from '../i18n/LanguageContext'
+import { formatCoins as formatCoinsValue } from '../i18n/formatters'
 import '../styles/pages/AdminDashboard.css'
 
 export function AdminDashboard() {
-  const { t } = useLanguage()
+  const { language, t } = useLanguage()
   const queryClient = useQueryClient()
+  const [activeTab, setActiveTab] = useState('workers')
+  const [withdrawalStatus, setWithdrawalStatus] = useState('PENDING')
+  const [selectedWithdrawalId, setSelectedWithdrawalId] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [jobFilter, setJobFilter] = useState('')
   const [verifiedFilter, setVerifiedFilter] = useState('')
@@ -15,7 +26,27 @@ export function AdminDashboard() {
 
   const { data: workers, isLoading, error } = useQuery({
     queryKey: ['admin-workers'],
-    queryFn: getWorkers
+    queryFn: getWorkers,
+    enabled: activeTab === 'workers'
+  })
+
+  const {
+    data: withdrawals,
+    isLoading: withdrawalsLoading,
+    error: withdrawalsError
+  } = useQuery({
+    queryKey: ['admin-withdrawals', withdrawalStatus],
+    queryFn: () => getAdminWithdrawals(withdrawalStatus),
+    enabled: activeTab === 'withdrawals'
+  })
+
+  const {
+    data: withdrawalDetail,
+    isLoading: withdrawalDetailLoading
+  } = useQuery({
+    queryKey: ['admin-withdrawal-detail', selectedWithdrawalId],
+    queryFn: () => getAdminWithdrawalDetail(selectedWithdrawalId),
+    enabled: activeTab === 'withdrawals' && Boolean(selectedWithdrawalId)
   })
 
   const verifyMutation = useMutation({
@@ -29,6 +60,14 @@ export function AdminDashboard() {
     mutationFn: toggleWorkerStatus,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-workers'] })
+    }
+  })
+
+  const confirmWithdrawalMutation = useMutation({
+    mutationFn: (withdrawalId) => confirmAdminWithdrawal(withdrawalId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-withdrawals'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-withdrawal-detail'] })
     }
   })
 
@@ -72,21 +111,168 @@ export function AdminDashboard() {
     return [...new Set(workers.map(w => w.status))].sort()
   }, [workers])
 
-  if (isLoading) {
+  const withdrawalStatusLabel = (status) => {
+    if (status === 'COMPLETED') return t('wallet.withdraw.status.completed')
+    if (status === 'REJECTED') return t('wallet.withdraw.status.rejected')
+    return t('wallet.withdraw.status.pending')
+  }
+
+  const formatCoins = (value) => {
+    return formatCoinsValue(value, language, t('wallet.coinUnit'))
+  }
+
+  if (activeTab === 'workers' && isLoading) {
     return <div className="admin-loading">{t('admin.loading')}</div>
   }
 
-  if (error) {
+  if (activeTab === 'workers' && error) {
     return <div className="admin-error">{t('admin.loadError')}: {error.message}</div>
   }
 
   return (
     <div className="admin-dashboard">
       <header className="admin-header">
-        <h1>{t('admin.workersTitle')}</h1>
-        <p>{t('admin.workersDesc')}</p>
+        <h1>{activeTab === 'workers' ? t('admin.workersTitle') : t('admin.withdrawalsTitle')}</h1>
+        <p>{activeTab === 'workers' ? t('admin.workersDesc') : t('admin.withdrawalsDesc')}</p>
       </header>
 
+      <div className="admin-tabs">
+        <button
+          type="button"
+          className={activeTab === 'workers' ? 'active' : ''}
+          onClick={() => setActiveTab('workers')}
+        >
+          {t('admin.tab.workers')}
+        </button>
+        <button
+          type="button"
+          className={activeTab === 'withdrawals' ? 'active' : ''}
+          onClick={() => setActiveTab('withdrawals')}
+        >
+          {t('admin.tab.withdrawals')}
+        </button>
+      </div>
+
+      {activeTab === 'withdrawals' ? (
+        <>
+          <div className="admin-controls">
+            <div className="filters-container">
+              <select
+                value={withdrawalStatus}
+                onChange={(e) => {
+                  setWithdrawalStatus(e.target.value)
+                  setSelectedWithdrawalId(null)
+                }}
+                className="filter-select"
+              >
+                <option value="">{t('admin.withdrawals.allStatuses')}</option>
+                <option value="PENDING">{t('wallet.withdraw.status.pending')}</option>
+                <option value="COMPLETED">{t('wallet.withdraw.status.completed')}</option>
+                <option value="REJECTED">{t('wallet.withdraw.status.rejected')}</option>
+              </select>
+            </div>
+          </div>
+
+          {withdrawalsLoading && <div className="admin-loading">{t('admin.withdrawals.loading')}</div>}
+          {withdrawalsError && (
+            <div className="admin-error">
+              {t('admin.withdrawals.loadError', { message: withdrawalsError.message })}
+            </div>
+          )}
+
+          {!withdrawalsLoading && !withdrawalsError && (
+            <div className="withdrawal-admin-layout">
+              <div className="admin-table-container">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>{t('admin.withdrawals.code')}</th>
+                      <th>{t('admin.withdrawals.worker')}</th>
+                      <th>{t('admin.withdrawals.amount')}</th>
+                      <th>{t('admin.withdrawals.bank')}</th>
+                      <th>{t('admin.withdrawals.transferContent')}</th>
+                      <th>{t('admin.withdrawals.status')}</th>
+                      <th>{t('admin.actions')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(withdrawals || []).map((request) => (
+                      <tr key={request.id}>
+                        <td className="col-id">WD{request.id}</td>
+                        <td>{request.workerFullName || request.workerUsername || '-'}</td>
+                        <td>{formatCoins(request.amount)}</td>
+                        <td>{request.bankName}</td>
+                        <td className="txn-ref">{request.transferContent}</td>
+                        <td>
+                          <span className={`badge withdrawal-status ${request.status?.toLowerCase()}`}>
+                            {withdrawalStatusLabel(request.status)}
+                          </span>
+                        </td>
+                        <td className="actions-cell">
+                          <button
+                            type="button"
+                            className="btn-action btn-view"
+                            onClick={() => setSelectedWithdrawalId(request.id)}
+                          >
+                            {t('admin.withdrawals.viewQr')}
+                          </button>
+                          {request.status === 'PENDING' && (
+                            <button
+                              type="button"
+                              className="btn-action btn-verify approve"
+                              disabled={confirmWithdrawalMutation.isPending}
+                              onClick={() => confirmWithdrawalMutation.mutate(request.id)}
+                            >
+                              {t('admin.withdrawals.confirm')}
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    {(!withdrawals || withdrawals.length === 0) && (
+                      <tr>
+                        <td colSpan="7" className="empty-state">{t('admin.withdrawals.empty')}</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              <aside className="withdrawal-detail-panel">
+                {!selectedWithdrawalId && <p>{t('admin.withdrawals.selectPrompt')}</p>}
+                {selectedWithdrawalId && withdrawalDetailLoading && <p>{t('admin.withdrawals.renderingQr')}</p>}
+                {withdrawalDetail && (
+                  <>
+                    <h2>WD{withdrawalDetail.request.id}</h2>
+                    <img src={withdrawalDetail.qrImageDataUrl} alt={t('admin.withdrawals.qrAlt')} className="withdrawal-qr" />
+                    <dl>
+                      <dt>{t('admin.withdrawals.accountNo')}</dt>
+                      <dd>{withdrawalDetail.request.accountNo}</dd>
+                      <dt>{t('admin.withdrawals.accountName')}</dt>
+                      <dd>{withdrawalDetail.request.accountName}</dd>
+                      <dt>{t('admin.withdrawals.amount')}</dt>
+                      <dd>{formatCoins(withdrawalDetail.request.amount)}</dd>
+                      <dt>{t('admin.withdrawals.transferContent')}</dt>
+                      <dd>{withdrawalDetail.request.transferContent}</dd>
+                    </dl>
+                    {withdrawalDetail.request.status === 'PENDING' && (
+                      <button
+                        type="button"
+                        className="withdrawal-confirm-btn"
+                        disabled={confirmWithdrawalMutation.isPending}
+                        onClick={() => confirmWithdrawalMutation.mutate(withdrawalDetail.request.id)}
+                      >
+                        {t('admin.withdrawals.transferred')}
+                      </button>
+                    )}
+                  </>
+                )}
+              </aside>
+            </div>
+          )}
+        </>
+      ) : (
+        <>
       <div className="admin-controls">
         <div className="search-box">
           <input
@@ -218,6 +404,8 @@ export function AdminDashboard() {
           </tbody>
         </table>
       </div>
+        </>
+      )}
     </div>
   )
 }
