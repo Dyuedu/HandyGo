@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { confirmCompletion } from '../../../services/bookingService'
-import '../pages/BookingPages.css'
+import '../../../styles/modules/booking/pages/BookingPages.css'
 
 const bookingsKeyRoot = 'bookings'
 
@@ -19,7 +19,7 @@ function formatVnd(value) {
 /**
  * Customer confirms after paying cash to the technician.
  */
-export function CustomerConfirmationModal({ open, bookingId, booking, onClose }) {
+export function CustomerConfirmationModal({ open, bookingId, booking, onClose, onConfirmed }) {
   const queryClient = useQueryClient()
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
@@ -37,6 +37,9 @@ export function CustomerConfirmationModal({ open, bookingId, booking, onClose })
       await confirmCompletion(bookingId)
       queryClient.invalidateQueries({ queryKey: [bookingsKeyRoot] })
       queryClient.invalidateQueries({ queryKey: bookingDetailKey(bookingId) })
+      if (onConfirmed) {
+        onConfirmed()
+      }
       onClose()
     } catch (err) {
       setError(err?.message || 'Không thể xác nhận hoàn thành.')
@@ -102,7 +105,7 @@ export function CustomerConfirmationModal({ open, bookingId, booking, onClose })
             disabled={pending}
             onClick={handleConfirm}
           >
-            {pending ? 'Đang xử lý…' : 'Confirm Completion'}
+            {pending ? 'Đang xử lý…' : 'Xác nhận hoàn thành'}
           </button>
         </div>
       </div>

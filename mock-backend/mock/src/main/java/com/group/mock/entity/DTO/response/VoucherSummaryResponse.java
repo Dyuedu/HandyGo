@@ -21,6 +21,7 @@ public class VoucherSummaryResponse {
     private Integer maxUses;
     private Long usedCount;
     private Integer remainingUses;
+    private boolean used;
     /** Short label for UI preview (e.g. "Giảm 30.000 ₫" or "Giảm 10%"). */
     private String discountPreview;
 }

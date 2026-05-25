@@ -1,6 +1,6 @@
 import { Link, Navigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import './Landing.css'
+import '../styles/pages/Landing.css'
 
 const features = [
   {
@@ -13,7 +13,7 @@ const features = [
   },
   {
     title: 'Hồ sơ thợ xác minh',
-    description: 'Worker tải chứng chỉ hành nghề để hoàn tất quy trình duyệt hồ sơ.',
+    description: 'Thợ tải chứng chỉ hành nghề để hoàn tất quy trình duyệt hồ sơ.',
   },
 ]
 
@@ -32,14 +32,14 @@ export function Landing() {
 
       <header className="welcome-header">
         <Link to="/welcome" className="welcome-logo">HG</Link>
-        <nav className="welcome-actions" aria-label="Auth actions">
+        <nav className="welcome-actions" aria-label="Thao tác đăng nhập và đăng ký">
           <Link to="/auth" className="ghost-link">Đăng nhập</Link>
           <Link to="/auth" className="solid-link">Đăng ký</Link>
         </nav>
       </header>
 
       <section className="hero-section">
-        <p className="landing-eyebrow">HomeGo Premium Service</p>
+        <p className="landing-eyebrow">Dịch vụ cao cấp HomeGo</p>
         <h1>Kết nối khách hàng với thợ uy tín trong vài thao tác</h1>
         <p>
           Một nền tảng hiện đại cho đặt lịch, trò chuyện, thanh toán và quản lý hồ sơ thợ đã xác minh.
@@ -50,7 +50,7 @@ export function Landing() {
         </div>
       </section>
 
-      <section className="feature-grid" aria-label="Features">
+      <section className="feature-grid" aria-label="Tính năng">
         {features.map((feature) => (
           <article key={feature.title} className="feature-card">
             <span aria-hidden="true" />

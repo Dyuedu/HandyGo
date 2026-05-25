@@ -1,5 +1,5 @@
 import { authMessages } from '../../../constants/authMessages'
-import './AuthSessionBar.css'
+import '../../../styles/modules/auth/components/AuthSessionBar.css'
 
 export function AuthSessionBar({ session, submitting, onLogout }) {
   if (!session) return null

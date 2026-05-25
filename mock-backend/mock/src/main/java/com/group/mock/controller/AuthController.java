@@ -76,19 +76,27 @@ public class AuthController {
             throw ex;
         }
 
+        Account account = accountService.getAccountByUsername(authentication.getName());
         String accessToken = jwtProvider.generateAccessToken(authentication);
         String refreshToken = refreshTokenService.issueAndStoreRefreshToken(authentication.getName());
 
-        Account account = accountService.getAccountByUsername(authentication.getName());
+        if (request.getLatitude() != null && request.getLongitude() != null) {
+            String roleName = account.getRole() != null ? account.getRole().getName() : "ROLE_USER";
+            if ("ROLE_WORKER".equals(roleName)) {
+                accountService.updateWorkerLocation(account.getId(), request.getLatitude(), request.getLongitude());
+            }
+        }
+
         AuthTokenResponse response = new AuthTokenResponse(
                 accessToken,
                 refreshToken,
                 "Bearer",
                 jwtProvider.getAccessTokenExpirationSeconds(),
                 jwtProvider.getRefreshTokenExpirationSeconds(),
-                accountService.getAccountRole(authentication.getName()),
+                account.getRole().getName().replaceFirst("^ROLE_", ""),
                 accountService.getWorkerVerificationStatus(authentication.getName()),
-                account.getId()
+                account.getId(),
+                account.getUsername()
         );
         return ResponseEntity.ok(ApiResponse.success(response, requestId(httpRequest)));
     }
@@ -106,15 +114,23 @@ public class AuthController {
         String accessToken = jwtProvider.generateAccessToken(authentication);
         String refreshToken = refreshTokenService.issueAndStoreRefreshToken(account.getUsername());
 
+        if (request.getLatitude() != null && request.getLongitude() != null) {
+            String roleName = account.getRole() != null ? account.getRole().getName() : "ROLE_USER";
+            if ("ROLE_WORKER".equals(roleName)) {
+                accountService.updateWorkerLocation(account.getId(), request.getLatitude(), request.getLongitude());
+            }
+        }
+
         AuthTokenResponse response = new AuthTokenResponse(
                 accessToken,
                 refreshToken,
                 "Bearer",
                 jwtProvider.getAccessTokenExpirationSeconds(),
                 jwtProvider.getRefreshTokenExpirationSeconds(),
-                accountService.getAccountRole(account.getUsername()),
+                account.getRole().getName().replaceFirst("^ROLE_", ""),
                 accountService.getWorkerVerificationStatus(account.getUsername()),
-                account.getId()
+                account.getId(),
+                account.getUsername()
         );
         return ResponseEntity.ok(ApiResponse.success(response, requestId(httpRequest)));
     }
@@ -132,9 +148,10 @@ public class AuthController {
                 "Bearer",
                 jwtProvider.getAccessTokenExpirationSeconds(),
                 jwtProvider.getRefreshTokenExpirationSeconds(),
-                accountService.getAccountRole(rotationResult.subject()),
+                account.getRole().getName().replaceFirst("^ROLE_", ""),
                 accountService.getWorkerVerificationStatus(rotationResult.subject()),
-                account.getId()
+                account.getId(),
+                account.getUsername()
         );
         return ResponseEntity.ok(ApiResponse.success(response, requestId(httpRequest)));
     }

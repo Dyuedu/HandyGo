@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useCreateBooking } from '../modules/booking/hooks'
 import {
@@ -9,9 +9,12 @@ import {
   todayLocalDateString,
   validateBookingSchedule,
 } from '../modules/booking/utils/bookingDateTime'
+import { getPublicWorkerProfile } from '../services/profileService'
 import { getUserLocations } from '../services/userService'
 import { getAvailableVouchers } from '../services/voucherService'
-import './WorkerProfile.css'
+import { getReviewsByWorkerId } from '../services/reviewService'
+import { AppIcon } from '../components/AppIcon'
+import '../styles/pages/WorkerProfile.css'
 
 const translateJobType = (job) => {
   if (!job) return 'Chưa xác định'
@@ -64,7 +67,15 @@ const generateMockReviews = (workerId) => {
 export function WorkerProfile() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const { session, mode } = useAuth()
+
+  const returnPath = location.state?.from || '/app/home'
+  const returnLabel = returnPath === '/app/profile' ? 'Quay lại hồ sơ' : 'Quay lại bản đồ'
+
+  const handleBack = () => {
+    navigate(returnPath)
+  }
   const createBookingMutation = useCreateBooking()
   const currentUserId = session?.id || localStorage.getItem('my_user_id')
   const isCustomer = mode === 'CUSTOMER'
@@ -72,7 +83,7 @@ export function WorkerProfile() {
   const [worker, setWorker] = useState(null)
   const [currentUser, setCurrentUser] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [reviews] = useState(() => generateMockReviews(id))
+  const [reviews, setReviews] = useState([])
   const [bookingOpen, setBookingOpen] = useState(false)
   const [bookingData, setBookingData] = useState({
     date: '',
@@ -90,19 +101,39 @@ export function WorkerProfile() {
   useEffect(() => {
     const fetchWorker = async () => {
       try {
+        let found = null
+        try {
+          found = await getPublicWorkerProfile(id)
+        } catch {
+          const data = await getUserLocations()
+          found = data.find((u) => u.id === id) || null
+        }
         const data = await getUserLocations()
-        const found = data.find(u => u.id === id)
-        const me = data.find(u => u.id === currentUserId)
-        setWorker(found || null)
-        setCurrentUser(me || null)
+        const me = data.find((u) => u.id === currentUserId) || null
+        setWorker(found)
+        setCurrentUser(me)
       } catch (err) {
-        console.error('Failed to fetch worker data', err)
+        console.error('Không thể tải dữ liệu thợ', err)
       } finally {
         setLoading(false)
       }
     }
     fetchWorker()
   }, [id, currentUserId])
+
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      try {
+        const data = await getReviewsByWorkerId(id)
+        if (!cancelled) setReviews(Array.isArray(data) ? data : [])
+      } catch (err) {
+        console.error('Không thể tải đánh giá của thợ', err)
+      }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [id])
 
   useEffect(() => {
     if (!bookingOpen || !isCustomer) return
@@ -153,7 +184,7 @@ export function WorkerProfile() {
       window.L.marker([worker.latitude, worker.longitude], {
         icon: window.L.divIcon({
           className: 'leaflet-custom-worker-marker',
-          html: '<div class="worker-marker-dot"><span>🔧</span></div>',
+          html: '<div class="worker-marker-dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5 5L3 18v3h3l6.7-6.7a4 4 0 0 0 5-5l-2.4 2.4-3-3 2.4-2.4z"/></svg></div>',
           iconSize: [32, 32],
           iconAnchor: [16, 16],
         }),
@@ -172,9 +203,13 @@ export function WorkerProfile() {
     }
   }, [worker])
 
-  const avgRating = reviews.length > 0
-    ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length)
+  const reviewAvg = reviews.length > 0
+    ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
     : 0
+  const avgRating =
+    worker?.avgRating != null && Number(worker.avgRating) > 0
+      ? Number(worker.avgRating)
+      : reviewAvg
 
   const distance = (currentUser && worker)
     ? calculateDistance(currentUser.latitude, currentUser.longitude, worker.latitude, worker.longitude)
@@ -249,7 +284,7 @@ export function WorkerProfile() {
         <span className="wp-not-found-icon">🔍</span>
         <h2>Không tìm thấy thợ</h2>
         <p>Thông tin thợ không tồn tại hoặc đã bị xóa.</p>
-        <button onClick={() => navigate('/app/home')} className="wp-back-btn">← Quay lại bản đồ</button>
+        <button type="button" onClick={handleBack} className="wp-back-btn">← {returnLabel}</button>
       </div>
     )
   }
@@ -257,8 +292,8 @@ export function WorkerProfile() {
   return (
     <div className="wp-container">
       {/* Back navigation */}
-      <button className="wp-back-link" onClick={() => navigate('/app/home')}>
-        ← Quay lại bản đồ
+      <button type="button" className="wp-back-link" onClick={handleBack}>
+        ← {returnLabel}
       </button>
 
       <div className="wp-grid">
@@ -277,6 +312,9 @@ export function WorkerProfile() {
                 {worker.jobType && (
                   <span className="wp-badge job">{translateJobType(worker.jobType)}</span>
                 )}
+                {worker.verified && (
+                  <span className="wp-badge verified">Đã xác minh</span>
+                )}
               </div>
               <div className="wp-rating-summary">
                 {renderStars(avgRating, 18)}
@@ -289,21 +327,21 @@ export function WorkerProfile() {
           {/* Info Cards */}
           <div className="wp-info-grid">
             <div className="wp-info-card">
-              <div className="wp-info-icon">📱</div>
+              <div className="wp-info-icon"><AppIcon name="phone" size={22} /></div>
               <div className="wp-info-content">
                 <span className="wp-info-label">Số điện thoại</span>
                 <span className="wp-info-value">{worker.phone || 'Chưa cập nhật'}</span>
               </div>
             </div>
             <div className="wp-info-card">
-              <div className="wp-info-icon">🛠️</div>
+              <div className="wp-info-icon"><AppIcon name="wrench" size={22} /></div>
               <div className="wp-info-content">
                 <span className="wp-info-label">Chuyên ngành</span>
                 <span className="wp-info-value">{translateJobType(worker.jobType)}</span>
               </div>
             </div>
             <div className="wp-info-card">
-              <div className="wp-info-icon">📍</div>
+              <div className="wp-info-icon"><AppIcon name="map" size={22} /></div>
               <div className="wp-info-content">
                 <span className="wp-info-label">Trạng thái</span>
                 <span className="wp-info-value">
@@ -317,7 +355,7 @@ export function WorkerProfile() {
             </div>
             {distance !== null && (
               <div className="wp-info-card highlight">
-                <div className="wp-info-icon">🧭</div>
+                <div className="wp-info-icon"><AppIcon name="target" size={22} /></div>
                 <div className="wp-info-content">
                   <span className="wp-info-label">Khoảng cách đến bạn</span>
                   <span className="wp-info-value distance">{distance.toFixed(2)} km</span>
@@ -329,7 +367,7 @@ export function WorkerProfile() {
           {/* Mini Map */}
           {worker.latitude && worker.longitude && (
             <div className="wp-map-section">
-              <h3 className="wp-section-title">📍 Vị trí hiện tại</h3>
+              <h3 className="wp-section-title"><AppIcon name="map" size={20} /> Vị trí hiện tại</h3>
               <div className="wp-mini-map" ref={miniMapRef} />
             </div>
           )}
@@ -345,13 +383,13 @@ export function WorkerProfile() {
 
             {isCustomer && !bookingOpen && (
               <button className="wp-book-btn" onClick={() => { setBookingOpen(true); setBookingError('') }}>
-                📅 Đặt lịch với {worker.fullName?.split(' ').pop() || 'thợ'}
+                <AppIcon name="calendar" size={18} /> Đặt lịch với {worker.fullName?.split(' ').pop() || 'thợ'}
               </button>
             )}
 
             {isCustomer && bookingOpen && (
               <form className="wp-booking-form" onSubmit={handleBookingSubmit}>
-                <h3 className="wp-form-title">📅 Đặt lịch hẹn</h3>
+                <h3 className="wp-form-title"><AppIcon name="calendar" size={18} /> Đặt lịch hẹn</h3>
                 {bookingError && (
                   <div className="wp-form-error" role="alert">{bookingError}</div>
                 )}
@@ -461,7 +499,7 @@ export function WorkerProfile() {
 
           {/* Reviews */}
           <div className="wp-reviews-section">
-            <h3 className="wp-section-title">⭐ Đánh giá từ khách hàng</h3>
+            <h3 className="wp-section-title"><AppIcon name="badge" size={20} /> Đánh giá từ khách hàng</h3>
             <div className="wp-reviews-summary-bar">
               <div className="wp-avg-rating-big">
                 <span className="wp-avg-number">{avgRating.toFixed(1)}</span>
@@ -471,23 +509,27 @@ export function WorkerProfile() {
             </div>
 
             <div className="wp-reviews-list">
-              {reviews.map((review) => (
-                <div key={review.id} className="wp-review-card">
-                  <div className="wp-review-header">
-                    <div className="wp-reviewer-avatar">
-                      {review.reviewer.substring(0, 1)}
+                {reviews.map((review) => {
+                  const reviewer = review.reviewerName || 'Khách hàng'
+                  const date = review.createdAt ? new Date(review.createdAt).toLocaleDateString('vi-VN') : ''
+                  return (
+                    <div key={review.id || review.bookingId} className="wp-review-card">
+                      <div className="wp-review-header">
+                        <div className="wp-reviewer-avatar">
+                          {reviewer.substring(0, 1)}
+                        </div>
+                        <div className="wp-reviewer-info">
+                          <strong>{reviewer}</strong>
+                          <span className="wp-review-date">{date}</span>
+                        </div>
+                        <div className="wp-review-rating">
+                          {renderStars(review.rating, 14)}
+                        </div>
+                      </div>
+                      <p className="wp-review-comment">{review.comment}</p>
                     </div>
-                    <div className="wp-reviewer-info">
-                      <strong>{review.reviewer}</strong>
-                      <span className="wp-review-date">{review.date}</span>
-                    </div>
-                    <div className="wp-review-rating">
-                      {renderStars(review.rating, 14)}
-                    </div>
-                  </div>
-                  <p className="wp-review-comment">{review.comment}</p>
-                </div>
-              ))}
+                  )
+                })}
             </div>
           </div>
         </div>

@@ -5,8 +5,12 @@ import { BookingDetailPage } from '../modules/booking/pages/BookingDetailPage'
 import { AccessDenied } from '../pages/AccessDenied'
 import { Auth } from '../pages/Auth'
 import { DashboardHome } from '../pages/DashboardHome'
+import { ProfilePage } from '../pages/ProfilePage'
 import { WorkerProfile } from '../pages/WorkerProfile'
 import { Landing } from '../pages/Landing'
+import { AdminDashboard } from '../pages/AdminDashboard'
+import { AdminWorkerDetail } from '../pages/AdminWorkerDetail'
+import { AdminCatalogPage } from '../pages/AdminCatalogPage'
 import { PrivateRoute } from './PrivateRoute'
 
 export function AppRoutes() {
@@ -25,8 +29,12 @@ export function AppRoutes() {
           <Route path="/app/bookings/:bookingId" element={<BookingDetailPage />} />
           <Route path="/app/chat" element={<DashboardHome section="Chat" />} />
           <Route path="/app/wallet" element={<DashboardHome section="Wallet" />} />
-          <Route path="/app/profile" element={<DashboardHome section="Profile" />} />
+          <Route path="/app/subscription" element={<DashboardHome section="Subscription" />} />
+          <Route path="/app/profile" element={<ProfilePage />} />
           <Route path="/app/worker/:id" element={<WorkerProfile />} />
+          <Route path="/app/admin/workers" element={<AdminDashboard />} />
+          <Route path="/app/admin/workers/:id" element={<AdminWorkerDetail />} />
+          <Route path="/app/admin/catalog" element={<AdminCatalogPage />} />
         </Route>
       </Route>
 
@@ -34,4 +42,3 @@ export function AppRoutes() {
     </Routes>
   )
 }
-

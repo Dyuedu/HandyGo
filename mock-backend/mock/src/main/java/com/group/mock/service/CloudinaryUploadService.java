@@ -61,6 +61,43 @@ public class CloudinaryUploadService {
         }
     }
 
+    public String uploadFile(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new AuthServiceException(HttpStatus.BAD_REQUEST, "FILE_REQUIRED", "Tệp tải lên là bắt buộc");
+        }
+        if (file.getSize() > MAX_FILE_SIZE_BYTES) {
+            throw new AuthServiceException(HttpStatus.BAD_REQUEST, "FILE_TOO_LARGE", "Kích thước tệp tối đa 10MB");
+        }
+        validateConfiguration();
+
+        long timestamp = Instant.now().getEpochSecond();
+        String signatureBase = "folder=" + properties.getFolder() + "&timestamp=" + timestamp + properties.getApiSecret();
+        String signature = sha1Hex(signatureBase);
+
+        MultipartBodyBuilder bodyBuilder = new MultipartBodyBuilder();
+        bodyBuilder.part("file", file.getResource());
+        bodyBuilder.part("api_key", properties.getApiKey());
+        bodyBuilder.part("timestamp", timestamp);
+        bodyBuilder.part("folder", properties.getFolder());
+        bodyBuilder.part("signature", signature);
+
+        String uploadUrl = "https://api.cloudinary.com/v1_1/" + properties.getCloudName() + "/auto/upload";
+        try {
+            CloudinaryUploadResponse response = restClient.post()
+                    .uri(uploadUrl)
+                    .body(bodyBuilder.build())
+                    .retrieve()
+                    .body(CloudinaryUploadResponse.class);
+
+            if (response == null || !StringUtils.hasText(response.secure_url())) {
+                throw new AuthServiceException(HttpStatus.BAD_GATEWAY, "FILE_UPLOAD_FAILED", "Không thể tải tệp lên Cloudinary");
+            }
+            return response.secure_url();
+        } catch (RuntimeException ex) {
+            throw new AuthServiceException(HttpStatus.BAD_GATEWAY, "FILE_UPLOAD_FAILED", "Không thể tải tệp lên Cloudinary");
+        }
+    }
+
     private void validateConfiguration() {
         if (!StringUtils.hasText(properties.getCloudName())
                 || !StringUtils.hasText(properties.getApiKey())

@@ -20,6 +20,7 @@ public class MessageAttachment {
 
     @ManyToOne
     @JoinColumn(name = "message_id")
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private Message message;
 
 

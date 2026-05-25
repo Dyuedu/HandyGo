@@ -1,4 +1,4 @@
-import './AuthTabs.css'
+import '../../../styles/modules/auth/components/AuthTabs.css'
 
 const tabs = [
   { value: 'login', label: 'Đăng nhập' },
@@ -8,7 +8,7 @@ const tabs = [
 
 export function AuthTabs({ mode, onChange }) {
   return (
-    <div className="tabs" role="tablist" aria-label="Auth modes">
+    <div className="tabs" role="tablist" aria-label="Chế độ xác thực">
       {tabs.map((tab) => (
         <button
           key={tab.value}

@@ -460,9 +460,10 @@
   animation: worker-marker-breathe 3s infinite ease-in-out;
 }
 
-.worker-marker-dot span {
-  font-size: 14px;
-  line-height: 1;
+.worker-marker-dot svg {
+  width: 16px;
+  height: 16px;
+  color: white;
 }
 
 .worker-marker-dot:hover {
@@ -715,4 +716,3 @@
   opacity: 0;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
-

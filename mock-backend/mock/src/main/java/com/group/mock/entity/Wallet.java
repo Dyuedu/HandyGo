@@ -35,7 +35,7 @@ public class Wallet {
     private BigDecimal balance = BigDecimal.ZERO;
 
     @Column(name = "currency", nullable = false, length = 10)
-    private String currency = "VND";
+    private String currency = "XU";
 
     // Trường phục vụ Optimistic Locking (Khóa lạc quan) tránh tranh chấp số dư
     @Version

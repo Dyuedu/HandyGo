@@ -18,11 +18,12 @@ Date: 2026-05-16
   - vnp_OrderInfo sanitized (no accents or special characters)
 
 ## Wallet Features
-- Create wallet for authenticated user.
-- Read wallet balance.
-- Top up wallet via VNPay.
-- Retrieve transaction history.
-- Deduct balance using Redis Lua script with insufficient-funds protection.
+- Worker registration creates an initial wallet automatically.
+- Wallet APIs are limited to worker accounts.
+- Read worker wallet balance.
+- Top up worker wallet via VNPay.
+- Retrieve worker transaction history.
+- Deduct worker balance using Redis Lua script with insufficient-funds protection.
 
 ## Cache-Aside (Redis)
 - Account cached by username.
@@ -31,7 +32,7 @@ Date: 2026-05-16
 - Cache updated or invalidated on balance-changing operations.
 
 ## Primary Endpoints
-- POST /api/v1/wallet (create wallet)
+- POST /api/v1/wallet (create worker wallet if missing)
 - GET /api/v1/wallet/balance
 - POST /api/v1/wallet/topup
 - GET /api/v1/wallet/history

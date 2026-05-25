@@ -2,15 +2,18 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../../../hooks/useAuth'
 import { CustomerConfirmationModal } from '../components/CustomerConfirmationModal'
+import { ReviewModal } from '../components/ReviewModal'
 import { WorkerServiceFeeModal } from '../components/WorkerServiceFeeModal'
 import {
   useAcceptBooking,
   useBookingDetail,
   useDeclineBooking,
+  useReview,
+  useCreateReview,
   useStartProcessing,
 } from '../hooks'
 import { formatBookingDateTime } from '../utils/bookingDateTime'
-import './BookingPages.css'
+import '../../../styles/modules/booking/pages/BookingPages.css'
 
 function formatVnd(value) {
   if (value == null || value === '') return '—'
@@ -29,13 +32,29 @@ function hasServiceFee(booking) {
   return Number.isFinite(total) && total > 0
 }
 
+function statusLabel(status) {
+  switch (status) {
+    case 'PENDING': return 'Chờ thợ phản hồi'
+    case 'ACCEPTED': return 'Đã nhận việc'
+    case 'PROCESSING': return 'Đang thực hiện'
+    case 'WAITING_CUSTOMER_CONFIRMATION': return 'Chờ khách xác nhận'
+    case 'FINISHED': return 'Hoàn thành'
+    case 'DECLINED': return 'Đã từ chối'
+    case 'CANCELLED': return 'Đã hủy'
+    default: return status
+  }
+}
+
 export function BookingDetailPage() {
   const { bookingId } = useParams()
   const { mode, session } = useAuth()
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [feeModalOpen, setFeeModalOpen] = useState(false)
+  const [reviewModalOpen, setReviewModalOpen] = useState(false)
 
   const { data: booking, isLoading, isError, error } = useBookingDetail(bookingId)
+  const reviewQuery = useReview(bookingId)
+  const createReviewMutation = useCreateReview()
 
   const acceptMutation = useAcceptBooking()
   const declineMutation = useDeclineBooking()
@@ -71,7 +90,7 @@ export function BookingDetailPage() {
           {error?.message || 'Không tìm thấy đặt lịch.'}
         </div>
         <Link to="/app/activity" className="booking-detail-back">
-          ← Quay lại Activity
+          ← Quay lại hoạt động
         </Link>
       </section>
     )
@@ -85,7 +104,7 @@ export function BookingDetailPage() {
   return (
     <section className="booking-page">
       <Link to="/app/activity" className="booking-detail-back">
-        ← Quay lại Activity
+        ← Quay lại hoạt động
       </Link>
 
       <h1>Chi tiết đặt lịch</h1>
@@ -95,8 +114,8 @@ export function BookingDetailPage() {
         <article className="booking-detail-card">
           <h2>Trạng thái</h2>
           <div className="booking-detail-row">
-            <dt>Status</dt>
-            <dd>{st}</dd>
+            <dt>Trạng thái</dt>
+            <dd>{statusLabel(st)}</dd>
           </div>
           <div className="booking-detail-row">
             <dt>Giờ hẹn (khách đặt)</dt>
@@ -111,7 +130,7 @@ export function BookingDetailPage() {
         </article>
 
         <article className="booking-detail-card">
-          <h2>Thợ (technician)</h2>
+          <h2>Thợ phụ trách</h2>
           {technician ? (
             <>
               <div className="booking-detail-row">
@@ -229,6 +248,41 @@ export function BookingDetailPage() {
             <p className="muted">Không áp dụng voucher.</p>
           )}
         </article>
+
+        {isCustomerParty && st === 'FINISHED' && (
+          <article className="booking-detail-card review-card">
+            <h2>Đánh giá của bạn</h2>
+            {reviewQuery.isLoading ? (
+              <p className="muted">Đang kiểm tra đánh giá…</p>
+            ) : reviewQuery.data ? (
+              <>
+                <div className="review-stars">
+                  {Array.from({ length: 5 }, (_, index) => (
+                    <span key={index}>{index < reviewQuery.data.rating ? '★' : '☆'}</span>
+                  ))}
+                </div>
+                {reviewQuery.data.comment ? (
+                  <p className="review-comment">{reviewQuery.data.comment}</p>
+                ) : (
+                  <p className="muted">Bạn chưa thêm nhận xét cho đánh giá này.</p>
+                )}
+              </>
+            ) : (
+              <button
+                type="button"
+                className="review-btn"
+                onClick={() => setReviewModalOpen(true)}
+              >
+                Viết đánh giá
+              </button>
+            )}
+            {reviewQuery.isError && reviewQuery.error?.status !== 404 && (
+              <div className="booking-alert" role="alert" style={{ marginTop: 12 }}>
+                {reviewQuery.error?.message || 'Không thể tải đánh giá.'}
+              </div>
+            )}
+          </article>
+        )}
       </div>
 
       {isTechnician && isAssignedWorker && (
@@ -241,7 +295,7 @@ export function BookingDetailPage() {
                 disabled={busy}
                 onClick={() => acceptMutation.mutate(bookingId)}
               >
-                Accept
+                Chấp nhận
               </button>
               <button
                 type="button"
@@ -249,7 +303,7 @@ export function BookingDetailPage() {
                 disabled={busy}
                 onClick={() => declineMutation.mutate(bookingId)}
               >
-                Decline
+                Từ chối
               </button>
             </>
           )}
@@ -260,7 +314,7 @@ export function BookingDetailPage() {
               disabled={busy}
               onClick={() => startMutation.mutate(bookingId)}
             >
-              Start Processing
+              Bắt đầu xử lý
             </button>
           )}
           {st === 'PROCESSING' && (
@@ -270,7 +324,7 @@ export function BookingDetailPage() {
               disabled={busy}
               onClick={() => setFeeModalOpen(true)}
             >
-              Mark Completed
+              Báo hoàn thành
             </button>
           )}
         </div>
@@ -284,7 +338,7 @@ export function BookingDetailPage() {
             disabled={busy || confirmOpen}
             onClick={() => setConfirmOpen(true)}
           >
-            Confirm Completion
+            Xác nhận hoàn thành
           </button>
         </div>
       )}
@@ -300,6 +354,16 @@ export function BookingDetailPage() {
         bookingId={bookingId}
         booking={booking}
         onClose={() => setConfirmOpen(false)}
+        onConfirmed={() => setReviewModalOpen(true)}
+      />
+
+      <ReviewModal
+        open={reviewModalOpen}
+        onClose={() => setReviewModalOpen(false)}
+        onSubmit={async (payload) => {
+          await createReviewMutation.mutateAsync({ bookingId, payload })
+          setReviewModalOpen(false)
+        }}
       />
     </section>
   )

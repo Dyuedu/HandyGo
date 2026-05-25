@@ -5,6 +5,7 @@ import { AuthContext } from './authContextObject'
 
 function resolveInitialMode(session) {
   if (!session?.accessToken) return 'CUSTOMER'
+  if (session.role === 'ADMIN') return 'ADMIN'
   return session.role === 'WORKER' ? 'TECHNICIAN' : 'CUSTOMER'
 }
 
@@ -20,8 +21,8 @@ export function AuthProvider({ children }) {
     return response
   }
 
-  async function signInWithGoogle(accessToken) {
-    const response = await googleLoginRequest(accessToken)
+  async function signInWithGoogle(accessToken, coords) {
+    const response = await googleLoginRequest(accessToken, coords)
     saveSession(response.data)
     setSession(response.data)
     setMode(resolveInitialMode(response.data))

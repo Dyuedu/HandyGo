@@ -7,8 +7,9 @@ import lombok.Data;
 
 @Data
 @AllArgsConstructor
-public class TopUpResponse {
+public class SubscriptionPaymentResponse {
     private String paymentUrl;
     private String vnpTxnRef;
     private BigDecimal amount;
+    private WorkerSubscriptionResponse subscription;
 }

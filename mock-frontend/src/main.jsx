@@ -2,7 +2,7 @@ import { StrictMode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
-import './index.css'
+import './styles/base/index.css'
 import App from './App.jsx'
 import { AuthProvider } from './context/AuthContext.jsx'
 

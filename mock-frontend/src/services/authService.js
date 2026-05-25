@@ -4,8 +4,13 @@ export function login(credentials) {
   return axiosClient.post('/api/auth/login', credentials)
 }
 
-export function googleLogin(accessToken) {
-  return axiosClient.post('/api/auth/google-login', { accessToken })
+export function googleLogin(accessToken, coords) {
+  const payload = { accessToken }
+  if (coords) {
+    payload.latitude = coords.latitude
+    payload.longitude = coords.longitude
+  }
+  return axiosClient.post('/api/auth/google-login', payload)
 }
 
 export function registerUser(payload) {

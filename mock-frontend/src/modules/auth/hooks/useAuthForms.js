@@ -16,6 +16,20 @@ const initialWorker = {
   professionalCertificate: null,
 }
 
+const getCoordinates = () => {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) {
+      resolve(null)
+      return
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+      () => resolve(null),
+      { enableHighAccuracy: true, timeout: 5000 }
+    )
+  })
+}
+
 export function useAuthForms() {
   const { session, signIn, signInWithGoogle, signOut, clearAuthSession } = useAuth()
   const navigate = useNavigate()
@@ -33,7 +47,12 @@ export function useAuthForms() {
     if (validation) return setError(validation)
 
     await submit(async () => {
-      await signIn(loginForm)
+      const coords = await getCoordinates()
+      const loginPayload = coords
+        ? { ...loginForm, latitude: coords.latitude, longitude: coords.longitude }
+        : loginForm
+
+      await signIn(loginPayload)
       setMessage(authMessages.loginSuccess)
       setLoginForm(initialLogin)
       navigate('/app', { replace: true })
@@ -42,7 +61,8 @@ export function useAuthForms() {
 
   async function handleGoogleLogin(accessToken) {
     await submit(async () => {
-      await signInWithGoogle(accessToken)
+      const coords = await getCoordinates()
+      await signInWithGoogle(accessToken, coords)
       setMessage(authMessages.loginSuccess)
       navigate('/app', { replace: true })
     })

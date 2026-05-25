@@ -10,4 +10,7 @@ public class LoginRequest {
 
     @NotBlank(message = "Mật khẩu là bắt buộc")
     String password;
+
+    private Double latitude;
+    private Double longitude;
 }

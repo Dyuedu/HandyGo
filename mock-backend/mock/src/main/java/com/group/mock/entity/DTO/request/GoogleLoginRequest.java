@@ -7,4 +7,7 @@ import lombok.Data;
 public class GoogleLoginRequest {
     @NotBlank(message = "Access token là bắt buộc")
     private String accessToken;
+
+    private Double latitude;
+    private Double longitude;
 }
