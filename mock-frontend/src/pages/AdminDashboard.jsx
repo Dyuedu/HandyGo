@@ -10,10 +10,11 @@ import {
   confirmAdminWithdrawal
 } from '../services/adminService'
 import { useLanguage } from '../i18n/LanguageContext'
+import { formatCoins as formatCoinsValue } from '../i18n/formatters'
 import '../styles/pages/AdminDashboard.css'
 
 export function AdminDashboard() {
-  const { t } = useLanguage()
+  const { language, t } = useLanguage()
   const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState('workers')
   const [withdrawalStatus, setWithdrawalStatus] = useState('PENDING')
@@ -111,9 +112,13 @@ export function AdminDashboard() {
   }, [workers])
 
   const withdrawalStatusLabel = (status) => {
-    if (status === 'COMPLETED') return 'Đã chuyển'
-    if (status === 'REJECTED') return 'Từ chối'
-    return 'Đang chờ'
+    if (status === 'COMPLETED') return t('wallet.withdraw.status.completed')
+    if (status === 'REJECTED') return t('wallet.withdraw.status.rejected')
+    return t('wallet.withdraw.status.pending')
+  }
+
+  const formatCoins = (value) => {
+    return formatCoinsValue(value, language, t('wallet.coinUnit'))
   }
 
   if (activeTab === 'workers' && isLoading) {
@@ -127,8 +132,8 @@ export function AdminDashboard() {
   return (
     <div className="admin-dashboard">
       <header className="admin-header">
-        <h1>{activeTab === 'workers' ? t('admin.workersTitle') : 'Yêu cầu rút tiền'}</h1>
-        <p>{activeTab === 'workers' ? t('admin.workersDesc') : 'Duyệt yêu cầu rút xu và quét VietQR để chuyển khoản cho thợ.'}</p>
+        <h1>{activeTab === 'workers' ? t('admin.workersTitle') : t('admin.withdrawalsTitle')}</h1>
+        <p>{activeTab === 'workers' ? t('admin.workersDesc') : t('admin.withdrawalsDesc')}</p>
       </header>
 
       <div className="admin-tabs">
@@ -137,14 +142,14 @@ export function AdminDashboard() {
           className={activeTab === 'workers' ? 'active' : ''}
           onClick={() => setActiveTab('workers')}
         >
-          Thợ
+          {t('admin.tab.workers')}
         </button>
         <button
           type="button"
           className={activeTab === 'withdrawals' ? 'active' : ''}
           onClick={() => setActiveTab('withdrawals')}
         >
-          Yêu cầu rút tiền
+          {t('admin.tab.withdrawals')}
         </button>
       </div>
 
@@ -160,16 +165,20 @@ export function AdminDashboard() {
                 }}
                 className="filter-select"
               >
-                <option value="">Tất cả trạng thái</option>
-                <option value="PENDING">Đang chờ</option>
-                <option value="COMPLETED">Đã chuyển</option>
-                <option value="REJECTED">Từ chối</option>
+                <option value="">{t('admin.withdrawals.allStatuses')}</option>
+                <option value="PENDING">{t('wallet.withdraw.status.pending')}</option>
+                <option value="COMPLETED">{t('wallet.withdraw.status.completed')}</option>
+                <option value="REJECTED">{t('wallet.withdraw.status.rejected')}</option>
               </select>
             </div>
           </div>
 
-          {withdrawalsLoading && <div className="admin-loading">Đang tải yêu cầu rút tiền...</div>}
-          {withdrawalsError && <div className="admin-error">Không thể tải yêu cầu rút tiền: {withdrawalsError.message}</div>}
+          {withdrawalsLoading && <div className="admin-loading">{t('admin.withdrawals.loading')}</div>}
+          {withdrawalsError && (
+            <div className="admin-error">
+              {t('admin.withdrawals.loadError', { message: withdrawalsError.message })}
+            </div>
+          )}
 
           {!withdrawalsLoading && !withdrawalsError && (
             <div className="withdrawal-admin-layout">
@@ -177,12 +186,12 @@ export function AdminDashboard() {
                 <table className="admin-table">
                   <thead>
                     <tr>
-                      <th>Mã</th>
-                      <th>Thợ</th>
-                      <th>Số xu</th>
-                      <th>Ngân hàng</th>
-                      <th>Nội dung CK</th>
-                      <th>Trạng thái</th>
+                      <th>{t('admin.withdrawals.code')}</th>
+                      <th>{t('admin.withdrawals.worker')}</th>
+                      <th>{t('admin.withdrawals.amount')}</th>
+                      <th>{t('admin.withdrawals.bank')}</th>
+                      <th>{t('admin.withdrawals.transferContent')}</th>
+                      <th>{t('admin.withdrawals.status')}</th>
                       <th>{t('admin.actions')}</th>
                     </tr>
                   </thead>
@@ -191,7 +200,7 @@ export function AdminDashboard() {
                       <tr key={request.id}>
                         <td className="col-id">WD{request.id}</td>
                         <td>{request.workerFullName || request.workerUsername || '-'}</td>
-                        <td>{Number(request.amount).toLocaleString('vi-VN')} {request.currency}</td>
+                        <td>{formatCoins(request.amount)}</td>
                         <td>{request.bankName}</td>
                         <td className="txn-ref">{request.transferContent}</td>
                         <td>
@@ -205,7 +214,7 @@ export function AdminDashboard() {
                             className="btn-action btn-view"
                             onClick={() => setSelectedWithdrawalId(request.id)}
                           >
-                            Xem QR
+                            {t('admin.withdrawals.viewQr')}
                           </button>
                           {request.status === 'PENDING' && (
                             <button
@@ -214,7 +223,7 @@ export function AdminDashboard() {
                               disabled={confirmWithdrawalMutation.isPending}
                               onClick={() => confirmWithdrawalMutation.mutate(request.id)}
                             >
-                              Xác nhận
+                              {t('admin.withdrawals.confirm')}
                             </button>
                           )}
                         </td>
@@ -222,7 +231,7 @@ export function AdminDashboard() {
                     ))}
                     {(!withdrawals || withdrawals.length === 0) && (
                       <tr>
-                        <td colSpan="7" className="empty-state">Không có yêu cầu rút tiền</td>
+                        <td colSpan="7" className="empty-state">{t('admin.withdrawals.empty')}</td>
                       </tr>
                     )}
                   </tbody>
@@ -230,20 +239,20 @@ export function AdminDashboard() {
               </div>
 
               <aside className="withdrawal-detail-panel">
-                {!selectedWithdrawalId && <p>Chọn một yêu cầu để xem QR chuyển khoản.</p>}
-                {selectedWithdrawalId && withdrawalDetailLoading && <p>Đang render QR...</p>}
+                {!selectedWithdrawalId && <p>{t('admin.withdrawals.selectPrompt')}</p>}
+                {selectedWithdrawalId && withdrawalDetailLoading && <p>{t('admin.withdrawals.renderingQr')}</p>}
                 {withdrawalDetail && (
                   <>
                     <h2>WD{withdrawalDetail.request.id}</h2>
-                    <img src={withdrawalDetail.qrImageDataUrl} alt="VietQR chuyển khoản" className="withdrawal-qr" />
+                    <img src={withdrawalDetail.qrImageDataUrl} alt={t('admin.withdrawals.qrAlt')} className="withdrawal-qr" />
                     <dl>
-                      <dt>Tài khoản</dt>
+                      <dt>{t('admin.withdrawals.accountNo')}</dt>
                       <dd>{withdrawalDetail.request.accountNo}</dd>
-                      <dt>Chủ tài khoản</dt>
+                      <dt>{t('admin.withdrawals.accountName')}</dt>
                       <dd>{withdrawalDetail.request.accountName}</dd>
-                      <dt>Số xu</dt>
-                      <dd>{Number(withdrawalDetail.request.amount).toLocaleString('vi-VN')} XU</dd>
-                      <dt>Nội dung</dt>
+                      <dt>{t('admin.withdrawals.amount')}</dt>
+                      <dd>{formatCoins(withdrawalDetail.request.amount)}</dd>
+                      <dt>{t('admin.withdrawals.transferContent')}</dt>
                       <dd>{withdrawalDetail.request.transferContent}</dd>
                     </dl>
                     {withdrawalDetail.request.status === 'PENDING' && (
@@ -253,7 +262,7 @@ export function AdminDashboard() {
                         disabled={confirmWithdrawalMutation.isPending}
                         onClick={() => confirmWithdrawalMutation.mutate(withdrawalDetail.request.id)}
                       >
-                        Đã chuyển khoản
+                        {t('admin.withdrawals.transferred')}
                       </button>
                     )}
                   </>

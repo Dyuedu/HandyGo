@@ -11,6 +11,29 @@ import { useLanguage } from '../../../i18n/LanguageContext.jsx'
 import { formatCoins as formatCoinsValue, formatDateTime } from '../../../i18n/formatters.js'
 import '../../../styles/pages/WalletScreen.css'
 
+const VIETQR_BANKS = [
+  { bin: '970436', name: 'Vietcombank' },
+  { bin: '970418', name: 'BIDV' },
+  { bin: '970415', name: 'VietinBank' },
+  { bin: '970405', name: 'Agribank' },
+  { bin: '970407', name: 'Techcombank' },
+  { bin: '970422', name: 'MBBank' },
+  { bin: '970416', name: 'ACB' },
+  { bin: '970432', name: 'VPBank' },
+  { bin: '970423', name: 'TPBank' },
+  { bin: '970403', name: 'Sacombank' },
+  { bin: '970437', name: 'HDBank' },
+  { bin: '970441', name: 'VIB' },
+  { bin: '970443', name: 'SHB' },
+  { bin: '970431', name: 'Eximbank' },
+  { bin: '970426', name: 'MSB' },
+  { bin: '970448', name: 'OCB' },
+  { bin: '970440', name: 'SeABank' },
+  { bin: '970449', name: 'LPBank' },
+  { bin: '970412', name: 'PVcomBank' },
+  { bin: '970428', name: 'Nam A Bank' }
+]
+
 export function WalletScreen() {
   const { language, t } = useLanguage()
   const [balance, setBalance] = useState(null)
@@ -83,14 +106,23 @@ export function WalletScreen() {
   }
 
   const withdrawalStatusLabel = (status) => {
-    if (status === 'COMPLETED') return 'Đã chuyển'
-    if (status === 'REJECTED') return 'Từ chối'
-    return 'Đang chờ'
+    if (status === 'COMPLETED') return t('wallet.withdraw.status.completed')
+    if (status === 'REJECTED') return t('wallet.withdraw.status.rejected')
+    return t('wallet.withdraw.status.pending')
   }
 
   const handleWithdrawChange = (event) => {
     const { name, value } = event.target
     setWithdrawForm((current) => ({ ...current, [name]: value }))
+  }
+
+  const handleBankChange = (event) => {
+    const bank = VIETQR_BANKS.find((item) => item.bin === event.target.value)
+    setWithdrawForm((current) => ({
+      ...current,
+      bankBin: bank?.bin || '',
+      bankName: bank?.name || ''
+    }))
   }
 
   const handleWithdrawSubmit = async (event) => {
@@ -111,11 +143,11 @@ export function WalletScreen() {
         accountNo: '',
         accountName: ''
       })
-      setSuccessMessage('Đã tạo yêu cầu rút tiền. Số xu đã được khóa để admin xử lý.')
+      setSuccessMessage(t('wallet.withdraw.success'))
       await loadWalletData()
     } catch (err) {
       console.error('Không thể tạo yêu cầu rút tiền:', err)
-      setError(err.message || 'Không thể tạo yêu cầu rút tiền')
+      setError(err.message || t('wallet.withdraw.submitError'))
     } finally {
       setSubmittingWithdrawal(false)
     }
@@ -151,10 +183,10 @@ export function WalletScreen() {
         </div>
 
         <div className="withdraw-card">
-          <h3>Rút xu về ngân hàng</h3>
+          <h3>{t('wallet.withdraw.title')}</h3>
           <form className="withdraw-form" onSubmit={handleWithdrawSubmit}>
             <label>
-              <span>Số xu muốn rút</span>
+              <span>{t('wallet.withdraw.amount')}</span>
               <input
                 type="number"
                 name="amount"
@@ -166,29 +198,26 @@ export function WalletScreen() {
               />
             </label>
             <label>
-              <span>Ngân hàng</span>
-              <input
-                type="text"
-                name="bankName"
-                value={withdrawForm.bankName}
-                onChange={handleWithdrawChange}
-                placeholder="VD: Vietcombank"
-                required
-              />
-            </label>
-            <label>
-              <span>BIN ngân hàng</span>
-              <input
-                type="text"
+              <span>{t('wallet.withdraw.bank')}</span>
+              <select
                 name="bankBin"
                 value={withdrawForm.bankBin}
-                onChange={handleWithdrawChange}
-                placeholder="VD: 970436"
+                onChange={handleBankChange}
                 required
-              />
+              >
+                <option value="">{t('wallet.withdraw.chooseBank')}</option>
+                {VIETQR_BANKS.map((bank) => (
+                  <option key={bank.bin} value={bank.bin}>
+                    {bank.name}
+                  </option>
+                ))}
+              </select>
+              {withdrawForm.bankBin && (
+                <small className="bank-bin-preview">{t('wallet.withdraw.bankBin', { bin: withdrawForm.bankBin })}</small>
+              )}
             </label>
             <label>
-              <span>Số tài khoản</span>
+              <span>{t('wallet.withdraw.accountNo')}</span>
               <input
                 type="text"
                 name="accountNo"
@@ -198,18 +227,18 @@ export function WalletScreen() {
               />
             </label>
             <label>
-              <span>Tên chủ tài khoản</span>
+              <span>{t('wallet.withdraw.accountName')}</span>
               <input
                 type="text"
                 name="accountName"
                 value={withdrawForm.accountName}
                 onChange={handleWithdrawChange}
-                placeholder="NGUYEN VAN A"
+                placeholder={t('wallet.withdraw.accountNamePlaceholder')}
                 required
               />
             </label>
             <button className="withdraw-submit" type="submit" disabled={submittingWithdrawal}>
-              {submittingWithdrawal ? 'Đang gửi...' : 'Tạo yêu cầu rút'}
+              {submittingWithdrawal ? t('wallet.withdraw.submitting') : t('wallet.withdraw.submit')}
             </button>
           </form>
         </div>
@@ -252,19 +281,19 @@ export function WalletScreen() {
         </div>
 
         <div className="history-card">
-          <h3>Yêu cầu rút tiền</h3>
+          <h3>{t('wallet.withdraw.requestsTitle')}</h3>
           {withdrawals.length === 0 ? (
-            <p className="no-history">Chưa có yêu cầu rút tiền</p>
+            <p className="no-history">{t('wallet.withdraw.empty')}</p>
           ) : (
             <div className="history-table-wrapper">
               <table className="history-table">
                 <thead>
                   <tr>
-                    <th>Ngày tạo</th>
-                    <th>Số xu</th>
-                    <th>Ngân hàng</th>
-                    <th>Nội dung CK</th>
-                    <th>Trạng thái</th>
+                    <th>{t('wallet.date')}</th>
+                    <th>{t('wallet.amount')}</th>
+                    <th>{t('wallet.withdraw.bank')}</th>
+                    <th>{t('wallet.withdraw.transferContent')}</th>
+                    <th>{t('wallet.status')}</th>
                   </tr>
                 </thead>
                 <tbody>

@@ -158,7 +158,8 @@
   font-weight: 600;
 }
 
-.withdraw-form input {
+.withdraw-form input,
+.withdraw-form select {
   width: 100%;
   min-height: 42px;
   border: 1px solid #d1d5db;
@@ -168,10 +169,21 @@
   padding: 10px 12px;
 }
 
-.withdraw-form input:focus {
+.withdraw-form input:focus,
+.withdraw-form select:focus {
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
   outline: none;
+}
+
+.withdraw-form select {
+  background: white;
+}
+
+.bank-bin-preview {
+  color: #6b7280;
+  font-size: 0.8rem;
+  font-weight: 600;
 }
 
 .withdraw-submit {
