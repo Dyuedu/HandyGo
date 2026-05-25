@@ -24,9 +24,12 @@ import com.group.mock.repository.VoucherRepository;
 import com.group.mock.repository.VoucherUsageRepository;
 import com.group.mock.repository.WalletRepository;
 import com.group.mock.repository.WorkerProfileRepository;
+import com.group.mock.service.BookingExpiryService;
 import com.group.mock.service.BookingService;
 import com.group.mock.service.BookingStateTransitionValidator;
 import com.group.mock.service.VoucherAvailabilityHelper;
+import java.util.EnumSet;
+import java.util.Locale;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.ZoneId;
@@ -50,6 +53,11 @@ public class BookingServiceImpl implements BookingService {
 
     private static final String ROLE_USER = "ROLE_USER";
     private static final String ROLE_WORKER = "ROLE_WORKER";
+    private static final EnumSet<BookingStatus> DUPLICATE_BLOCK_STATUSES = EnumSet.of(
+            BookingStatus.PENDING,
+            BookingStatus.ACCEPTED,
+            BookingStatus.PROCESSING,
+            BookingStatus.WAITING_CUSTOMER_CONFIRMATION);
     private static final String BALANCE_CACHE_KEY_PREFIX = "cache:wallet:balance:";
     private static final String HISTORY_CACHE_KEY_PREFIX = "cache:wallet:history:";
 
@@ -64,10 +72,12 @@ public class BookingServiceImpl implements BookingService {
     private final TransactionHistoryRepository transactionHistoryRepository;
     private final StringRedisTemplate stringRedisTemplate;
     private final BookingStateTransitionValidator transitionValidator;
+    private final BookingExpiryService bookingExpiryService;
 
     @Override
     @Transactional
     public Booking createBooking(String username, CreateBookingRequest request) {
+        bookingExpiryService.expireOverduePendingBookings();
         Account account = loadAccount(username);
         requireRole(account, ROLE_USER, "Only customers can create bookings");
 
@@ -100,6 +110,12 @@ public class BookingServiceImpl implements BookingService {
             assertVoucherUsable(appliedVoucher);
         }
 
+        assertNoDuplicateBooking(
+                customer.getId(),
+                worker.getId(),
+                request.getBookingDate(),
+                request.getAddress());
+
         Booking booking = new Booking();
         booking.setCustomer(customer);
         booking.setWorker(worker);
@@ -130,6 +146,7 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional
     public Booking acceptBooking(String username, UUID bookingId) {
+        bookingExpiryService.expireOverduePendingBookings();
         Account account = loadAccount(username);
         Booking booking =
                 bookingRepository.findById(bookingId).orElseThrow(bookingNotFound());
@@ -266,6 +283,7 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional(readOnly = true)
     public List<Booking> getBookings(String username, Collection<BookingStatus> statusFilter) {
+        bookingExpiryService.expireOverduePendingBookings();
         Account account = loadAccount(username);
         Collection<BookingStatus> filter =
                 (statusFilter == null || statusFilter.isEmpty()) ? null : statusFilter;
@@ -293,6 +311,7 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional(readOnly = true)
     public Booking getBookingById(String username, UUID bookingId) {
+        bookingExpiryService.expireOverduePendingBookings();
         Account account = loadAccount(username);
         Booking booking =
                 bookingRepository.findDetailById(bookingId).orElseThrow(bookingNotFound());
@@ -367,6 +386,28 @@ public class BookingServiceImpl implements BookingService {
             }
         }
         return false;
+    }
+
+    private void assertNoDuplicateBooking(
+            UUID customerId, UUID workerId, LocalDateTime bookingDate, String address) {
+        if (bookingRepository.existsDuplicateBooking(
+                customerId,
+                workerId,
+                bookingDate,
+                normalizeAddress(address),
+                DUPLICATE_BLOCK_STATUSES)) {
+            throw new AuthServiceException(
+                    HttpStatus.CONFLICT,
+                    "BOOKING_DUPLICATE",
+                    "Không thể đặt lịch: bạn đã có đơn với cùng ngày, giờ và địa chỉ.");
+        }
+    }
+
+    private String normalizeAddress(String address) {
+        if (address == null) {
+            return "";
+        }
+        return address.trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
     }
 
     private void assertBookingDateValid(LocalDateTime bookingDate) {

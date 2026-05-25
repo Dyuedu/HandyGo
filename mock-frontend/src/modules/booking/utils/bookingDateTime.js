@@ -78,6 +78,8 @@ export function resolveBookingFormError(err) {
   const byCode = {
     BOOKING_DATE_REQUIRED: 'Vui lòng chọn ngày và giờ hẹn.',
     BOOKING_DATE_INVALID: 'Giờ hẹn không được trước thời gian hiện tại.',
+    BOOKING_DUPLICATE:
+      'Không thể đặt lịch: bạn đã có đơn với cùng ngày, giờ và địa chỉ.',
     VALIDATION_FAILED: 'Vui lòng kiểm tra lại thông tin đặt lịch.',
   }
   if (code && byCode[code]) return byCode[code]

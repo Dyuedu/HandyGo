@@ -27,13 +27,8 @@ function formatVnd(value) {
 }
 
 function statusBadgeClass(status) {
-  if (
-    status === 'FINISHED' ||
-    status === 'DECLINED' ||
-    status === 'CANCELLED'
-  ) {
-    return 'finished'
-  }
+  if (status === 'DECLINED') return 'declined'
+  if (status === 'FINISHED' || status === 'CANCELLED') return 'finished'
   if (status === 'PENDING') return 'pending'
   return 'processing'
 }
