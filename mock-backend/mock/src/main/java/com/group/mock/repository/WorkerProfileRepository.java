@@ -8,4 +8,6 @@ import java.util.UUID;
 
 public interface WorkerProfileRepository extends JpaRepository<WorkerProfile, UUID> {
     Optional<WorkerProfile> findByAccountUsername(String username);
+
+    java.util.List<WorkerProfile> findByIsVerifiedTrue();
 }

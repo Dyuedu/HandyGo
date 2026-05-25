@@ -81,6 +81,14 @@ public class UserController {
             jobType = workerProfile.getJobType();
         }
 
+        Boolean verifiedFlag = null;
+        if ("ROLE_WORKER".equals(roleName)) {
+            verifiedFlag = workerProfileRepository
+                    .findById(account.getId())
+                    .map(WorkerProfile::isVerified)
+                    .orElse(false);
+        }
+
         UserLocationResponse response = new UserLocationResponse(
                 savedProfile.getId(),
                 savedProfile.getFullName(),
@@ -88,8 +96,8 @@ public class UserController {
                 mapRole(roleName),
                 savedProfile.getLatitude(),
                 savedProfile.getLongitude(),
-                jobType
-        );
+                jobType,
+                verifiedFlag);
 
         return ResponseEntity.ok(response);
     }
@@ -100,11 +108,25 @@ public class UserController {
             throw new AuthServiceException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Bạn cần đăng nhập để xem danh sách tọa độ");
         }
 
+        String viewerRole = accountRepository
+                .findByUsername(authentication.getName())
+                .map(acc -> acc.getRole() != null ? acc.getRole().getName() : "ROLE_USER")
+                .orElse("ROLE_USER");
+        boolean customerView = "ROLE_USER".equals(viewerRole);
+
+        java.util.Set<java.util.UUID> allWorkerAccountIds = customerView
+                ? workerProfileRepository.findAll().stream()
+                        .map(WorkerProfile::getId)
+                        .collect(Collectors.toSet())
+                : java.util.Collections.emptySet();
+
         // Collect worker IDs to avoid duplicates later
         java.util.Set<java.util.UUID> workerIds = new java.util.HashSet<>();
 
-        // Fetch ALL worker profiles (not just those with worker_locations)
-        List<WorkerProfile> allWorkers = workerProfileRepository.findAll();
+        // Customers only see workers with approved certificates
+        List<WorkerProfile> allWorkers = customerView
+                ? workerProfileRepository.findByIsVerifiedTrue()
+                : workerProfileRepository.findAll();
         List<java.util.UUID> workerIdsList = allWorkers.stream().map(WorkerProfile::getId).collect(Collectors.toList());
         
         java.util.Map<java.util.UUID, UserProfile> upMap = userProfileRepository.findAllById(workerIdsList).stream()
@@ -138,15 +160,16 @@ public class UserController {
                     String fullName = up != null ? up.getFullName() : (acc != null ? acc.getUsername() : "Thợ sửa chữa");
                     String phone = up != null ? up.getPhone() : null;
                     
-                    return new UserLocationResponse(
+                    UserLocationResponse row = new UserLocationResponse(
                             wp.getId(),
                             fullName,
                             phone,
                             "TECHNICIAN",
                             lat,
                             lng,
-                            wp.getJobType()
-                    );
+                            wp.getJobType(),
+                            wp.isVerified());
+                    return row;
                 })
                 .collect(Collectors.toList());
 
@@ -154,6 +177,7 @@ public class UserController {
         List<UserProfile> profiles = userProfileRepository.findByLatitudeIsNotNullAndLongitudeIsNotNull();
         List<UserLocationResponse> userResponses = profiles.stream()
                 .filter(p -> !workerIds.contains(p.getId()))
+                .filter(p -> !customerView || !allWorkerAccountIds.contains(p.getId()))
                 .map(profile -> {
                     String roleName = profile.getAccount() != null && profile.getAccount().getRole() != null 
                             ? profile.getAccount().getRole().getName() 
@@ -165,8 +189,8 @@ public class UserController {
                             mapRole(roleName),
                             profile.getLatitude(),
                             profile.getLongitude(),
-                            null
-                    );
+                            null,
+                            null);
                 })
                 .collect(Collectors.toList());
 

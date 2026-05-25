@@ -105,8 +105,11 @@ export function WorkerProfile() {
         try {
           found = await getPublicWorkerProfile(id)
         } catch {
-          const data = await getUserLocations()
-          found = data.find((u) => u.id === id) || null
+          // Chỉ thợ xem hồ sơ của chính mình mới fallback (chưa duyệt chứng chỉ)
+          if (String(currentUserId) === String(id)) {
+            const data = await getUserLocations()
+            found = data.find((u) => u.id === id) || null
+          }
         }
         const data = await getUserLocations()
         const me = data.find((u) => u.id === currentUserId) || null
@@ -283,7 +286,7 @@ export function WorkerProfile() {
       <div className="wp-not-found">
         <span className="wp-not-found-icon">🔍</span>
         <h2>Không tìm thấy thợ</h2>
-        <p>Thông tin thợ không tồn tại hoặc đã bị xóa.</p>
+        <p>Thợ không tồn tại hoặc chưa được duyệt chứng chỉ hành nghề.</p>
         <button type="button" onClick={handleBack} className="wp-back-btn">← {returnLabel}</button>
       </div>
     )

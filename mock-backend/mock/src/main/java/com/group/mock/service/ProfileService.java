@@ -14,5 +14,5 @@ public interface ProfileService {
 
     MyProfileResponse updateMyWorkerProfile(String username, UpdateWorkerProfileRequest request);
 
-    PublicWorkerProfileResponse getPublicWorkerProfile(UUID workerId);
+    PublicWorkerProfileResponse getPublicWorkerProfile(UUID workerId, String viewerUsername);
 }

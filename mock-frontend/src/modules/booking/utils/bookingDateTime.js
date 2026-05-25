@@ -80,6 +80,7 @@ export function resolveBookingFormError(err) {
     BOOKING_DATE_INVALID: 'Giờ hẹn không được trước thời gian hiện tại.',
     BOOKING_DUPLICATE:
       'Không thể đặt lịch: bạn đã có đơn với cùng ngày, giờ và địa chỉ.',
+    WORKER_NOT_VERIFIED: 'Thợ chưa được duyệt chứng chỉ, không thể đặt lịch.',
     VALIDATION_FAILED: 'Vui lòng kiểm tra lại thông tin đặt lịch.',
   }
   if (code && byCode[code]) return byCode[code]

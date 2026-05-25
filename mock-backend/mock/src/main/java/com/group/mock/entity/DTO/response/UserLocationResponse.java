@@ -16,4 +16,6 @@ public class UserLocationResponse {
     private Double latitude;
     private Double longitude;
     private String jobType;
+    /** null for non-workers; customers only receive verified workers as TECHNICIAN. */
+    private Boolean verified;
 }

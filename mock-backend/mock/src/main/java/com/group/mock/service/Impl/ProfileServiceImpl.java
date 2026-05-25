@@ -84,11 +84,18 @@ public class ProfileServiceImpl implements ProfileService {
 
     @Override
     @Transactional(readOnly = true)
-    public PublicWorkerProfileResponse getPublicWorkerProfile(UUID workerId) {
+    public PublicWorkerProfileResponse getPublicWorkerProfile(UUID workerId, String viewerUsername) {
         WorkerProfile worker = workerProfileRepository
                 .findById(workerId)
                 .orElseThrow(() -> new AuthServiceException(
                         HttpStatus.NOT_FOUND, "WORKER_NOT_FOUND", "Không tìm thấy thợ"));
+
+        if (!worker.isVerified() && !canViewUnverifiedWorker(worker, viewerUsername)) {
+            throw new AuthServiceException(
+                    HttpStatus.NOT_FOUND,
+                    "WORKER_NOT_FOUND",
+                    "Thợ chưa được duyệt chứng chỉ hoặc không tồn tại");
+        }
 
         UserProfile userProfile = userProfileRepository
                 .findById(workerId)
@@ -163,5 +170,20 @@ public class ProfileServiceImpl implements ProfileService {
 
     private String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    /** Workers may view themselves; admins may view anyone. Customers only see verified workers. */
+    private boolean canViewUnverifiedWorker(WorkerProfile worker, String viewerUsername) {
+        if (viewerUsername == null || viewerUsername.isBlank()) {
+            return false;
+        }
+        Account viewer = accountRepository.findByUsername(viewerUsername).orElse(null);
+        if (viewer == null) {
+            return false;
+        }
+        if (worker.getId().equals(viewer.getId())) {
+            return true;
+        }
+        return viewer.getRole() != null && "ROLE_ADMIN".equals(viewer.getRole().getName());
     }
 }

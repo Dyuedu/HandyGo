@@ -115,9 +115,10 @@ export function DashboardHome({ section = 'Home' }) {
 
     userList.forEach((user) => {
       if (!user.latitude || !user.longitude) return
-      
+
       const isMe = user.id === currentUserId
       const isTechnician = user.role === 'TECHNICIAN'
+      if (mode === 'CUSTOMER' && isTechnician && user.verified === false) return
       const position = [user.latitude, user.longitude]
       
       let markerOptions = {}
@@ -232,7 +233,12 @@ export function DashboardHome({ section = 'Home' }) {
         };
       });
 
-      const filteredData = normalizedData.filter(user => user.role === 'TECHNICIAN' || user.id === currentUserId)
+      const filteredData = normalizedData.filter((user) => {
+        if (user.id === currentUserId) return true
+        if (user.role !== 'TECHNICIAN') return false
+        if (mode === 'CUSTOMER' && user.verified === false) return false
+        return true
+      })
       setUsers(filteredData)
       
       const map = mapInstanceRef.current
@@ -357,6 +363,8 @@ export function DashboardHome({ section = 'Home' }) {
 
     // Only show workers
     if (user.role !== 'TECHNICIAN') return false
+
+    if (mode === 'CUSTOMER' && user.verified === false) return false
 
     // Filter by text search
     if (searchQuery.trim() !== '') {

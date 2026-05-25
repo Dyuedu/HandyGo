@@ -97,6 +97,7 @@ public class BookingServiceImpl implements BookingService {
                 .findById(request.getWorkerId())
                 .orElseThrow(() -> new AuthServiceException(
                         HttpStatus.NOT_FOUND, "WORKER_NOT_FOUND", "Technician not found"));
+        assertWorkerVisibleToCustomer(worker);
 
         BigDecimal total = BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP);
         BigDecimal discount = BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP);
@@ -290,10 +291,10 @@ public class BookingServiceImpl implements BookingService {
 
         if (hasRole(account, ROLE_USER)) {
             UUID customerId = account.getId();
-            if (filter == null) {
-                return bookingRepository.findByCustomer_IdOrderByCreatedAtDesc(customerId);
-            }
-            return bookingRepository.findByCustomer_IdAndStatusInOrderByCreatedAtDesc(customerId, filter);
+            List<Booking> bookings = filter == null
+                    ? bookingRepository.findByCustomer_IdOrderByCreatedAtDesc(customerId)
+                    : bookingRepository.findByCustomer_IdAndStatusInOrderByCreatedAtDesc(customerId, filter);
+            return bookings.stream().filter(this::isBookingVisibleToCustomer).toList();
         }
         if (hasRole(account, ROLE_WORKER)) {
             UUID workerId = account.getId();
@@ -321,10 +322,36 @@ public class BookingServiceImpl implements BookingService {
         boolean worker = hasRole(account, ROLE_WORKER)
                 && booking.getWorker().getId().equals(account.getId());
 
-        if (customer || worker) {
+        if (customer) {
+            assertBookingVisibleToCustomer(booking);
+            return booking;
+        }
+        if (worker) {
             return booking;
         }
         throw new AuthServiceException(HttpStatus.FORBIDDEN, "BOOKING_ACCESS_DENIED", "You cannot access this booking");
+    }
+
+    private boolean isBookingVisibleToCustomer(Booking booking) {
+        return booking.getWorker() != null && booking.getWorker().isVerified();
+    }
+
+    private void assertBookingVisibleToCustomer(Booking booking) {
+        if (!isBookingVisibleToCustomer(booking)) {
+            throw new AuthServiceException(
+                    HttpStatus.NOT_FOUND,
+                    "BOOKING_NOT_FOUND",
+                    "Đặt lịch không tồn tại hoặc thợ chưa được duyệt chứng chỉ");
+        }
+    }
+
+    private void assertWorkerVisibleToCustomer(WorkerProfile worker) {
+        if (worker == null || !worker.isVerified()) {
+            throw new AuthServiceException(
+                    HttpStatus.BAD_REQUEST,
+                    "WORKER_NOT_VERIFIED",
+                    "Thợ chưa được duyệt chứng chỉ, không thể đặt lịch");
+        }
     }
 
     private void transition(Booking booking, BookingStatus next, String note) {

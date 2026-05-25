@@ -43,7 +43,9 @@ public class ProfileController {
     }
 
     @GetMapping("/api/v1/workers/{workerId}")
-    public ResponseEntity<PublicWorkerProfileResponse> getPublicWorkerProfile(@PathVariable UUID workerId) {
-        return ResponseEntity.ok(profileService.getPublicWorkerProfile(workerId));
+    public ResponseEntity<PublicWorkerProfileResponse> getPublicWorkerProfile(
+            Authentication authentication, @PathVariable UUID workerId) {
+        String viewer = authentication != null ? authentication.getName() : null;
+        return ResponseEntity.ok(profileService.getPublicWorkerProfile(workerId, viewer));
     }
 }
