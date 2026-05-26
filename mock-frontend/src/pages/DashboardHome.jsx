@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { updateLocation, getUserLocations } from '../services/userService'
@@ -54,6 +54,11 @@ export function DashboardHome({ section = 'Home' }) {
   
   const markersRef = useRef({})
   const circleRef = useRef(null)
+  const routeLayerRef = useRef(null)   // Polyline route layer
+  const routeMarkersRef = useRef([])   // Start/end decoration markers
+  const [activeRouteUserId, setActiveRouteUserId] = useState(null)  // ID of worker being routed to
+  const [routeInfo, setRouteInfo] = useState(null) // { distance, duration }
+  const [routeLoading, setRouteLoading] = useState(false)
 
   const [searchQuery, setSearchQuery] = useState('')
   const [jobTypeFilter, setJobTypeFilter] = useState('')
@@ -85,6 +90,114 @@ export function DashboardHome({ section = 'Home' }) {
       default: return job
     }
   }
+
+  // ====== ROUTE DRAWING FUNCTIONS ======
+  const clearRoute = useCallback(() => {
+    const map = mapInstanceRef.current
+    if (!map) return
+    if (routeLayerRef.current) {
+      map.removeLayer(routeLayerRef.current)
+      routeLayerRef.current = null
+    }
+    routeMarkersRef.current.forEach(m => map.removeLayer(m))
+    routeMarkersRef.current = []
+    setActiveRouteUserId(null)
+    setRouteInfo(null)
+  }, [])
+
+  const drawRoute = useCallback(async (fromLat, fromLng, toLat, toLng, workerId) => {
+    const map = mapInstanceRef.current
+    if (!map || !window.L) return
+
+    // If same route already shown — toggle off
+    if (activeRouteUserId === workerId) {
+      clearRoute()
+      return
+    }
+
+    clearRoute()
+    setRouteLoading(true)
+    setActiveRouteUserId(workerId)
+
+    try {
+      // OSRM: request shortest driving route
+      const url = `https://router.project-osrm.org/route/v1/driving/${fromLng},${fromLat};${toLng},${toLat}?overview=full&geometries=geojson&alternatives=false&steps=false`
+      const res = await fetch(url)
+      const json = await res.json()
+
+      if (json.code !== 'Ok' || !json.routes?.length) throw new Error('No route')
+
+      const route = json.routes[0]
+      const coords = route.geometry.coordinates.map(([lng, lat]) => [lat, lng])
+      const distKm = (route.distance / 1000).toFixed(1)
+      const durMin = Math.ceil(route.duration / 60)
+      setRouteInfo({ distance: distKm, duration: durMin })
+
+      // Draw animated polyline
+      const polyline = window.L.polyline(coords, {
+        color: '#3b82f6',
+        weight: 5,
+        opacity: 0.85,
+        lineJoin: 'round',
+        lineCap: 'round',
+        className: 'animated-route-line'
+      }).addTo(map)
+      routeLayerRef.current = polyline
+
+      // Fit map to route bounds with padding
+      map.fitBounds(polyline.getBounds(), { padding: [60, 60] })
+
+      // Start marker
+      const startIcon = window.L.divIcon({
+        className: '',
+        html: '<div class="route-start-pin">📍</div>',
+        iconSize: [28, 28],
+        iconAnchor: [14, 28]
+      })
+      const endIcon = window.L.divIcon({
+        className: '',
+        html: '<div class="route-end-pin">🔧</div>',
+        iconSize: [28, 28],
+        iconAnchor: [14, 28]
+      })
+      const startMarker = window.L.marker([fromLat, fromLng], { icon: startIcon }).addTo(map)
+      const endMarker   = window.L.marker([toLat, toLng],   { icon: endIcon   }).addTo(map)
+      routeMarkersRef.current = [startMarker, endMarker]
+    } catch (err) {
+      // Fallback: draw straight line
+      console.warn('OSRM route failed, drawing straight line', err)
+      const polyline = window.L.polyline([[fromLat, fromLng], [toLat, toLng]], {
+        color: '#f59e0b',
+        weight: 4,
+        opacity: 0.8,
+        dashArray: '10, 8',
+        className: 'animated-route-line'
+      }).addTo(map)
+      routeLayerRef.current = polyline
+      map.fitBounds(polyline.getBounds(), { padding: [60, 60] })
+      setRouteInfo(null)
+    } finally {
+      setRouteLoading(false)
+    }
+  }, [activeRouteUserId, clearRoute])
+
+  // Listen for route requests from Leaflet popups
+  useEffect(() => {
+    const handler = (e) => {
+      const { workerId, toLat, toLng } = e.detail || {}
+      if (!workerId || !toLat || !toLng) return
+      const currentUser = users.find(u => u.id === currentUserId)
+      const fromLat = currentUser?.latitude
+      const fromLng = currentUser?.longitude
+      if (!fromLat || !fromLng) {
+        alert('Bạn chưa có vị trí. Vui lòng cập nhật vị trí trước.')
+        return
+      }
+      drawRoute(fromLat, fromLng, toLat, toLng, workerId)
+    }
+    window.addEventListener('show-route-to-worker', handler)
+    return () => window.removeEventListener('show-route-to-worker', handler)
+  }, [drawRoute, users, currentUserId])
 
   // Listen for popup profile click events from Leaflet popups
   useEffect(() => {
@@ -188,15 +301,20 @@ export function DashboardHome({ section = 'Home' }) {
             <span style="display:inline-block;font-size:10px;font-weight:700;background:${roleBg};color:${roleColor};padding:2px 8px;border-radius:4px;text-transform:uppercase;">${roleLabel}</span>
             ${jobLabel ? `<span style="display:inline-block;font-size:10px;font-weight:700;background:${jobBg};color:${jobColor};padding:2px 8px;border-radius:4px;">${jobLabel}</span>` : ''}
           </div>
-          ${(!isMe && isTechnician) ? `<button class="popup-view-profile-btn" data-userid="${user.id}" style="margin-top:10px;width:100%;padding:6px 0;border:none;border-radius:8px;background:linear-gradient(135deg,#3b82f6,#1d4ed8);color:#fff;font-size:12px;font-weight:600;cursor:pointer;transition:opacity 0.2s;">Xem hồ sơ thợ</button>` : ''}
+          ${(!isMe && isTechnician) ? `
+            <div style="display:flex;gap:6px;margin-top:10px;">
+              <button class="popup-view-profile-btn" data-userid="${user.id}" style="flex:1;padding:6px 0;border:none;border-radius:8px;background:linear-gradient(135deg,#3b82f6,#1d4ed8);color:#fff;font-size:12px;font-weight:600;cursor:pointer;transition:opacity 0.2s;">Xem hồ sơ</button>
+              <button class="popup-route-btn" data-userid="${user.id}" data-lat="${user.latitude}" data-lng="${user.longitude}" style="flex:1;padding:6px 0;border:none;border-radius:8px;background:linear-gradient(135deg,#10b981,#059669);color:#fff;font-size:12px;font-weight:600;cursor:pointer;transition:opacity 0.2s;">🗺️ Chỉ đường</button>
+            </div>` : ''}
         </div>
       `
 
-      marker.bindPopup(popupContent, { maxWidth: 240, className: 'custom-leaflet-popup' })
+      marker.bindPopup(popupContent, { maxWidth: 260, className: 'custom-leaflet-popup' })
 
       // Attach click handlers after popup opens
       marker.on('popupopen', () => {
         setTimeout(() => {
+          // Profile link/button
           const links = document.querySelectorAll(`.popup-worker-link[data-userid="${user.id}"], .popup-view-profile-btn[data-userid="${user.id}"]`)
           links.forEach(link => {
             link.addEventListener('click', (e) => {
@@ -205,6 +323,19 @@ export function DashboardHome({ section = 'Home' }) {
               window.dispatchEvent(new CustomEvent('open-worker-profile', { detail: { userId: user.id } }))
             })
           })
+          // Route button
+          const routeBtn = document.querySelector(`.popup-route-btn[data-userid="${user.id}"]`)
+          if (routeBtn) {
+            routeBtn.addEventListener('click', (e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              const toLat = parseFloat(routeBtn.dataset.lat)
+              const toLng = parseFloat(routeBtn.dataset.lng)
+              window.dispatchEvent(new CustomEvent('show-route-to-worker', {
+                detail: { workerId: user.id, toLat, toLng }
+              }))
+            })
+          }
         }, 50)
       })
 
@@ -513,8 +644,9 @@ export function DashboardHome({ section = 'Home' }) {
                       </div>
 
                       {/* 3. Phần Nút bấm hành động */}
-                      <div className="action-buttons-group" style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                        {!isMe && isTechnician && (
+                      {/* Hàng 1: Xem hồ sơ + Chỉ đường (luôn hiển thị cho thợ) */}
+                      {!isMe && isTechnician && (
+                        <div className="action-buttons-group action-row-primary">
                           <button 
                             type="button"
                             className="sidebar-view-profile-btn"
@@ -525,9 +657,34 @@ export function DashboardHome({ section = 'Home' }) {
                           >
                             Xem hồ sơ
                           </button>
-                        )}
 
-                        {user.id === activeUserId && !isMe && (
+                          {user.latitude && user.longitude && (
+                            <button
+                              type="button"
+                              className={`sidebar-route-btn ${activeRouteUserId === user.id ? 'active' : ''}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (!myLat || !myLng) {
+                                  alert('Bạn chưa có vị trí. Vui lòng cập nhật vị trí trước.');
+                                  return;
+                                }
+                                drawRoute(myLat, myLng, user.latitude, user.longitude, user.id);
+                              }}
+                              disabled={routeLoading && activeRouteUserId === user.id}
+                            >
+                              {routeLoading && activeRouteUserId === user.id
+                                ? '⏳'
+                                : activeRouteUserId === user.id
+                                  ? '✕ Xóa đường'
+                                  : '🗺️ Chỉ đường'}
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Hàng 2: Nhắn tin (chỉ hiện khi đang chọn) */}
+                      {user.id === activeUserId && !isMe && (
+                        <div className="action-buttons-group action-row-secondary">
                           <button
                             type="button"
                             className="chat-now-btn"
@@ -535,23 +692,11 @@ export function DashboardHome({ section = 'Home' }) {
                               e.stopPropagation();
                               navigate(`/app/chat?contactId=${user.id}&name=${encodeURIComponent(user.fullName)}&role=${user.role}`);
                             }}
-                            style={{
-                              padding: '6px 12px',
-                              background: '#3b82f6',
-                              color: '#ffffff',
-                              border: 'none',
-                              borderRadius: '6px',
-                              fontSize: '0.75rem',
-                              fontWeight: 'bold',
-                              cursor: 'pointer',
-                              boxShadow: '0 2px 4px rgba(59, 130, 246, 0.2)',
-                              width: 'fit-content'
-                            }}
                           >
-                            Nhắn tin
+                            💬 Nhắn tin
                           </button>
-                        )}
-                      </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )
@@ -562,9 +707,29 @@ export function DashboardHome({ section = 'Home' }) {
 
         <div className="map-view-wrapper">
           <div ref={mapRef} className="google-map-element" id="google-map-element" />
+
+          {/* Route info banner */}
+          {routeInfo && (
+            <div className="route-info-banner">
+              <span className="route-info-icon">🗺️</span>
+              <div className="route-info-text">
+                <strong>{routeInfo.distance} km</strong>
+                <span>~{routeInfo.duration} phút lái xe</span>
+              </div>
+              <button className="route-info-close" onClick={clearRoute} title="Xóa đường đi">✕</button>
+            </div>
+          )}
+
+          {routeLoading && (
+            <div className="route-loading-overlay">
+              <div className="route-loading-spinner" />
+              <span>Đang tính tuyến đường...</span>
+            </div>
+          )}
+
           <div className="map-overlay-card">
             <h3>Bản đồ trực tuyến</h3>
-            <p>Sử dụng thao tác kéo, cuộn để khám phá khu vực xung quanh. Bản đồ tự động cập nhật điểm đánh dấu khi có tài khoản mới hoạt động.</p>
+            <p>Nhấn vào thợ trên bản đồ hoặc nhấn <strong>Chỉ đường</strong> để xem tuyến đường từ vị trí của bạn.</p>
           </div>
         </div>
       </div>

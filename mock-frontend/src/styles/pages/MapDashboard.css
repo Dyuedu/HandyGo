@@ -716,3 +716,223 @@
   opacity: 0;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+/* ====== ROUTE VISUALIZATION ====== */
+
+/* Animated polyline drawn on the map */
+.animated-route-line {
+  stroke-dasharray: 12, 6;
+  animation: route-dash 1.8s linear infinite;
+}
+
+@keyframes route-dash {
+  to { stroke-dashoffset: -36; }
+}
+
+/* Route pin markers */
+.route-start-pin,
+.route-end-pin {
+  font-size: 22px;
+  line-height: 1;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.25));
+  animation: pin-bounce 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes pin-bounce {
+  from { transform: translateY(-16px); opacity: 0; }
+  to   { transform: translateY(0);     opacity: 1; }
+}
+
+/* Route info banner — bottom-left of the map */
+.route-info-banner {
+  position: absolute;
+  bottom: 28px;
+  left: 20px;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  border-radius: 16px;
+  padding: 12px 18px;
+  box-shadow: 0 8px 32px rgba(59, 130, 246, 0.18), 0 2px 8px rgba(0,0,0,0.08);
+  animation: banner-slide-up 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  min-width: 190px;
+}
+
+@keyframes banner-slide-up {
+  from { transform: translateY(20px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.route-info-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.route-info-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.route-info-text strong {
+  font-size: 18px;
+  font-weight: 800;
+  color: #1d4ed8;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.route-info-text span {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.route-info-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.route-info-close:hover {
+  background: #fee2e2;
+  color: #dc2626;
+  transform: scale(1.1);
+}
+
+/* Route loading overlay — centered on the map */
+.route-loading-overlay {
+  position: absolute;
+  bottom: 90px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  border-radius: 12px;
+  padding: 10px 20px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.1);
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+  animation: fade-in 0.2s ease;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.route-loading-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2.5px solid #e2e8f0;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Sidebar "Chỉ đường" button */
+.sidebar-route-btn {
+  padding: 6px 12px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.25);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sidebar-route-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+}
+
+.sidebar-route-btn.active {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.25);
+}
+
+.sidebar-route-btn.active:hover:not(:disabled) {
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+}
+
+.sidebar-route-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* ====== ACTION BUTTON ROWS IN SIDEBAR ITEMS ====== */
+.action-buttons-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+/* Row 1: Xem hồ sơ + Chỉ đường — always visible for workers */
+.action-row-primary {
+  margin-top: 8px;
+}
+
+/* Row 2: Nhắn tin — only shown when item is active/selected */
+.action-row-secondary {
+  margin-top: 4px;
+}
+
+/* "Nhắn tin" button */
+.chat-now-btn {
+  padding: 6px 12px;
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.25);
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.chat-now-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+}
+
