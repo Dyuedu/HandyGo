@@ -154,10 +154,11 @@ public class BookingServiceImpl implements BookingService {
         
         // Send notification to customer
         try {
+
             notificationEventPublisher.publishBookingAccepted(
                 booking.getCustomer().getId(),
                 bookingId.getMostSignificantBits(),
-                booking.getWorker().getFullName(),
+                booking.getWorker().getAccount().getUsername(),
                 booking.getServiceCode()
             );
         } catch (Exception e) {

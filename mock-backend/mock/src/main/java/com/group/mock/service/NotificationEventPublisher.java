@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import com.group.mock.configuration.NotificationWebSocketHandler;
 
 /**
  * Service to publish notification events that trigger notification creation
@@ -19,6 +20,7 @@ public class NotificationEventPublisher {
     private final NotificationService notificationService;
     private final NotificationFactory notificationFactory;
     private final ApplicationEventPublisher eventPublisher;
+    private final NotificationWebSocketHandler webSocketHandler;
 
     /**
      * Publish booking created notification
@@ -37,8 +39,9 @@ public class NotificationEventPublisher {
                 notifData.type,
                 notifData.title,
                 notifData.message,
-                notificationFactory.toJson(notifData)
+                notifData.data
             );
+            webSocketHandler.sendNotificationToUser(workerId.toString(), response);
             
             log.info("Published BOOKING_CREATED notification for worker: {}", workerId);
         } catch (Exception e) {
@@ -63,8 +66,9 @@ public class NotificationEventPublisher {
                 notifData.type,
                 notifData.title,
                 notifData.message,
-                notificationFactory.toJson(notifData)
+                notifData.data
             );
+            webSocketHandler.sendNotificationToUser(recipientId.toString(), response);
             
             log.info("Published BOOKING_CANCELLED notification for user: {}", recipientId);
         } catch (Exception e) {
@@ -89,8 +93,9 @@ public class NotificationEventPublisher {
                 notifData.type,
                 notifData.title,
                 notifData.message,
-                notificationFactory.toJson(notifData)
+                notifData.data
             );
+            webSocketHandler.sendNotificationToUser(customerId.toString(), response);
             
             log.info("Published BOOKING_ACCEPTED notification for customer: {}", customerId);
         } catch (Exception e) {
@@ -115,8 +120,9 @@ public class NotificationEventPublisher {
                 notifData.type,
                 notifData.title,
                 notifData.message,
-                notificationFactory.toJson(notifData)
+                notifData.data
             );
+            webSocketHandler.sendNotificationToUser(customerId.toString(), response);
             
             log.info("Published BOOKING_REJECTED notification for customer: {}", customerId);
         } catch (Exception e) {
@@ -141,8 +147,9 @@ public class NotificationEventPublisher {
                 notifData.type,
                 notifData.title,
                 notifData.message,
-                notificationFactory.toJson(notifData)
+                notifData.data
             );
+            webSocketHandler.sendNotificationToUser(customerId.toString(), response);
             
             log.info("Published BOOKING_COMPLETED notification for customer: {}", customerId);
         } catch (Exception e) {
@@ -153,7 +160,7 @@ public class NotificationEventPublisher {
     /**
      * Publish new message notification
      */
-    public void publishMessageNew(UUID recipientId, Long chatId, String senderName, String messagePreview) {
+    public void publishMessageNew(UUID recipientId, String chatId, String senderName, String messagePreview) {
         try {
             var notifData = notificationFactory.createMessageNotification(chatId, senderName, messagePreview);
             
@@ -162,8 +169,9 @@ public class NotificationEventPublisher {
                 notifData.type,
                 notifData.title,
                 notifData.message,
-                notificationFactory.toJson(notifData)
+                notifData.data
             );
+            webSocketHandler.sendNotificationToUser(recipientId.toString(), response);
             
             log.info("Published MESSAGE_NEW notification for user: {}", recipientId);
         } catch (Exception e) {
@@ -188,8 +196,9 @@ public class NotificationEventPublisher {
                 notifData.type,
                 notifData.title,
                 notifData.message,
-                notificationFactory.toJson(notifData)
+                notifData.data
             );
+            webSocketHandler.sendNotificationToUser(userId.toString(), response);
             
             log.info("Published WALLET_TOPUP_SUCCESS notification for user: {}", userId);
         } catch (Exception e) {
@@ -214,8 +223,9 @@ public class NotificationEventPublisher {
                 notifData.type,
                 notifData.title,
                 notifData.message,
-                notificationFactory.toJson(notifData)
+                notifData.data
             );
+            webSocketHandler.sendNotificationToUser(userId.toString(), response);
             
             log.info("Published WALLET_TOPUP_FAILED notification for user: {}", userId);
         } catch (Exception e) {
@@ -239,8 +249,9 @@ public class NotificationEventPublisher {
                 notifData.type,
                 notifData.title,
                 notifData.message,
-                notificationFactory.toJson(notifData)
+                notifData.data
             );
+            webSocketHandler.sendNotificationToUser(userId.toString(), response);
             
             log.info("Published SUBSCRIPTION_UPGRADE notification for user: {}", userId);
         } catch (Exception e) {
@@ -264,8 +275,9 @@ public class NotificationEventPublisher {
                 notifData.type,
                 notifData.title,
                 notifData.message,
-                notificationFactory.toJson(notifData)
+                notifData.data
             );
+            webSocketHandler.sendNotificationToUser(userId.toString(), response);
             
             log.info("Published SUBSCRIPTION_EXPIRING notification for user: {}", userId);
         } catch (Exception e) {
@@ -288,8 +300,9 @@ public class NotificationEventPublisher {
                 notifData.type,
                 notifData.title,
                 notifData.message,
-                notificationFactory.toJson(notifData)
+                notifData.data
             );
+            webSocketHandler.sendNotificationToUser(workerId.toString(), response);
             
             log.info("Published PROFILE_APPROVED notification for worker: {}", workerId);
         } catch (Exception e) {
@@ -312,8 +325,9 @@ public class NotificationEventPublisher {
                 notifData.type,
                 notifData.title,
                 notifData.message,
-                notificationFactory.toJson(notifData)
+                notifData.data
             );
+            webSocketHandler.sendNotificationToUser(workerId.toString(), response);
             
             log.info("Published PROFILE_REJECTED notification for worker: {}", workerId);
         } catch (Exception e) {
@@ -333,8 +347,9 @@ public class NotificationEventPublisher {
                 notifData.type,
                 notifData.title,
                 notifData.message,
-                notificationFactory.toJson(notifData)
+                notifData.data
             );
+            webSocketHandler.sendNotificationToUser(workerId.toString(), response);
             
             log.info("Published REVIEW_CREATED notification for worker: {}", workerId);
         } catch (Exception e) {

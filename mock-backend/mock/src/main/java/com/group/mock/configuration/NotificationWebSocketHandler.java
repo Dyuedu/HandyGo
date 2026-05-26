@@ -1,34 +1,76 @@
 package com.group.mock.configuration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.group.mock.entity.DTO.response.NotificationResponse;
-import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.web.socket.*;
+import org.springframework.web.socket.handler.TextWebSocketHandler;
+
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Component
-@RequiredArgsConstructor
 @Slf4j
-public class NotificationWebSocketHandler {
+public class NotificationWebSocketHandler extends TextWebSocketHandler {
     
-    private final SimpMessagingTemplate messagingTemplate;
     private final ObjectMapper objectMapper;
     
-    // Store active user connections
-    private final Map<String, String> activeUsers = new HashMap<>();
+    // Store active user connections mapping userId -> WebSocketSession
+    private static final Map<String, WebSocketSession> userSessions = new ConcurrentHashMap<>();
+
+    public NotificationWebSocketHandler() {
+        this.objectMapper = new ObjectMapper();
+        this.objectMapper.registerModule(new JavaTimeModule());
+    }
+
+    @Override
+    public void afterConnectionEstablished(WebSocketSession session) throws Exception {
+        log.info("Notification WebSocket connection established: {}", session.getId());
+    }
+
+    @Override
+    protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
+        try {
+            JsonNode payload = objectMapper.readTree(message.getPayload());
+            if (payload.has("action") && "SUBSCRIBE".equals(payload.get("action").asText())) {
+                String target = payload.get("target").asText();
+                // target format: /queue/notifications/{userId}
+                String[] parts = target.split("/");
+                if (parts.length > 3) {
+                    String userId = parts[3];
+                    session.getAttributes().put("userId", userId);
+                    userSessions.put(userId, session);
+                    log.info("User {} subscribed to notifications on session {}", userId, session.getId());
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error processing Notification WebSocket message", e);
+        }
+    }
+
+    @Override
+    public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
+        String userId = (String) session.getAttributes().get("userId");
+        if (userId != null) {
+            userSessions.remove(userId);
+            log.info("Notification WebSocket connection closed for user: {}", userId);
+        }
+    }
 
     /**
      * Send notification to a specific user
      */
     public void sendNotificationToUser(String userId, NotificationResponse notification) {
         try {
-            String destination = "/queue/notifications/" + userId;
-            messagingTemplate.convertAndSend(destination, notification);
-            log.debug("Sent notification to user: {}", userId);
+            WebSocketSession session = userSessions.get(userId);
+            if (session != null && session.isOpen()) {
+                String jsonResponse = objectMapper.writeValueAsString(notification);
+                session.sendMessage(new TextMessage(jsonResponse));
+                log.debug("Sent notification to user: {}", userId);
+            }
         } catch (Exception e) {
             log.error("Error sending notification to user: {}", userId, e);
         }
@@ -39,54 +81,16 @@ public class NotificationWebSocketHandler {
      */
     public void broadcastNotification(NotificationResponse notification) {
         try {
-            String destination = "/topic/notifications/broadcast";
-            messagingTemplate.convertAndSend(destination, notification);
+            String jsonResponse = objectMapper.writeValueAsString(notification);
+            TextMessage message = new TextMessage(jsonResponse);
+            for (WebSocketSession session : userSessions.values()) {
+                if (session.isOpen()) {
+                    session.sendMessage(message);
+                }
+            }
             log.debug("Broadcasted notification to all users");
         } catch (Exception e) {
             log.error("Error broadcasting notification", e);
         }
-    }
-
-    /**
-     * Send notification to topic (for subscribing users)
-     */
-    public void sendToTopic(String topic, NotificationResponse notification) {
-        try {
-            String destination = "/topic/" + topic;
-            messagingTemplate.convertAndSend(destination, notification);
-            log.debug("Sent notification to topic: {}", topic);
-        } catch (Exception e) {
-            log.error("Error sending notification to topic: {}", topic, e);
-        }
-    }
-
-    /**
-     * Record user as active
-     */
-    public void recordUserActive(String userId, String sessionId) {
-        activeUsers.put(userId, sessionId);
-        log.debug("User {} connected with session {}", userId, sessionId);
-    }
-
-    /**
-     * Record user as inactive
-     */
-    public void recordUserInactive(String userId) {
-        activeUsers.remove(userId);
-        log.debug("User {} disconnected", userId);
-    }
-
-    /**
-     * Check if user is active
-     */
-    public boolean isUserActive(String userId) {
-        return activeUsers.containsKey(userId);
-    }
-
-    /**
-     * Get active users count
-     */
-    public int getActiveUsersCount() {
-        return activeUsers.size();
     }
 }

@@ -27,6 +27,7 @@ import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.group.mock.service.NotificationEventPublisher;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -62,6 +63,8 @@ public class WalletServiceImpl implements WalletService {
     private final StringRedisTemplate stringRedisTemplate;
     private final DefaultRedisScript<Long> walletDeductScript;
     private final ObjectMapper objectMapper;
+    private final NotificationEventPublisher notificationEventPublisher;
+
 
     @Value("${app.cache.wallet-balance-ttl-seconds:300}")
     private long walletBalanceTtlSeconds;
@@ -80,7 +83,8 @@ public class WalletServiceImpl implements WalletService {
             AccountService accountService,
             StringRedisTemplate stringRedisTemplate,
             DefaultRedisScript<Long> walletDeductScript,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+        NotificationEventPublisher notificationEventPublisher) {
         this.walletRepository = walletRepository;
         this.transactionHistoryRepository = transactionHistoryRepository;
         this.subscriptionRepository = subscriptionRepository;
@@ -89,6 +93,8 @@ public class WalletServiceImpl implements WalletService {
         this.stringRedisTemplate = stringRedisTemplate;
         this.walletDeductScript = walletDeductScript;
         this.objectMapper = objectMapper;
+        this.notificationEventPublisher = notificationEventPublisher;
+
     }
 
     @Override
@@ -161,6 +167,15 @@ public class WalletServiceImpl implements WalletService {
         if (success) {
             if (SUBSCRIPTION_ORDER_TYPE.equalsIgnoreCase(history.getVnpOrderType())) {
                 activateSubscriptionPayment(history);
+                try {
+                    notificationEventPublisher.publishWalletTopupSuccess(
+                        history.getWallet().getUserId(),
+                        history.getId(),
+                        toScaledAmount(history.getAmount())
+                    );
+                } catch (Exception e) {
+                    log.warn("Failed to send wallet topup success notification", e);
+                }
                 return new PaymentCallbackResponse(true, "Subscription payment success", vnpTxnRef);
             }
 
@@ -177,12 +192,30 @@ public class WalletServiceImpl implements WalletService {
 
             updateBalanceCache(wallet.getUserId(), newBalance);
             invalidateHistoryCache(wallet.getId());
+            try {
+                notificationEventPublisher.publishWalletTopupSuccess(
+                    wallet.getUserId(),
+                    history.getId(),
+                    toScaledAmount(history.getAmount())
+                );
+            } catch (Exception e) {
+                log.warn("Failed to send wallet topup success notification", e);
+            }
             return new PaymentCallbackResponse(true, "Success", vnpTxnRef);
         }
 
         history.setStatus("FAILED");
         transactionHistoryRepository.save(history);
         invalidateHistoryCache(history.getWallet().getId());
+        try {
+            notificationEventPublisher.publishWalletTopupFailed(
+                history.getWallet().getUserId(),
+                history.getId(),
+                toScaledAmount(history.getAmount())
+            );
+        } catch (Exception e) {
+            log.warn("Failed to send wallet topup failed notification", e);
+        }
         return new PaymentCallbackResponse(false, "Payment failed", vnpTxnRef);
     }
 

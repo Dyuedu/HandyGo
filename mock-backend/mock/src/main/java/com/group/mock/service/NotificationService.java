@@ -15,7 +15,7 @@ public interface NotificationService {
         String type,
         String title,
         String message,
-        String data
+        java.util.Map<String, Object> data
     );
 
     /**

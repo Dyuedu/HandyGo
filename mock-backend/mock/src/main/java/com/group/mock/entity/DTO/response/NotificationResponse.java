@@ -15,7 +15,8 @@ public class NotificationResponse {
     private String type;
     private String title;
     private String message;
-    private String data; // JSON string
+    private java.util.Map<String, Object> data; // JSON object
+
     private boolean isRead;
     private LocalDateTime readAt;
     private LocalDateTime createdAt;

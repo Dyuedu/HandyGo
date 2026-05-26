@@ -42,6 +42,7 @@ public class AdminService {
     private final VoucherRepository voucherRepository;
     private final VoucherUsageRepository voucherUsageRepository;
     private final SubscriptionRepository subscriptionRepository;
+    private final NotificationEventPublisher notificationEventPublisher;
 
     public List<AdminWorkerResponse> getAllWorkers() {
         List<WorkerProfile> workers = workerProfileRepository.findAll();
@@ -99,6 +100,16 @@ public class AdminService {
         
         worker.setVerified(!worker.isVerified());
         workerProfileRepository.save(worker);
+        
+        try {
+            if (worker.isVerified()) {
+                notificationEventPublisher.publishProfileApproved(workerId);
+            } else {
+                notificationEventPublisher.publishProfileRejected(workerId, "Hồ sơ của bạn đã bị hủy xác thực bởi Quản trị viên.");
+            }
+        } catch (Exception e) {
+            // log error silently
+        }
     }
 
     @Transactional

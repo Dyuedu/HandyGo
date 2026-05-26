@@ -133,19 +133,19 @@
 ## Remaining Tasks (16 Pending)
 
 ### Backend Integrations (4)
-- [ ] **backend-payment-integration** - VNPay callbacks trigger WALLET_TOPUP_SUCCESS/FAILED
-- [ ] **backend-subscription-integration** - Subscription upgrades + scheduled expiry notifications
-- [ ] **backend-chat-integration** - New messages trigger MESSAGE_NEW
-- [ ] **backend-profile-integration** - Profile approval/rejection notifications
+- [x] **backend-payment-integration** - VNPay callbacks trigger WALLET_TOPUP_SUCCESS/FAILED
+- [x] **backend-subscription-integration** - Subscription upgrades + scheduled expiry notifications
+- [x] **backend-chat-integration** - New messages trigger MESSAGE_NEW
+- [x] **backend-profile-integration** - Profile approval/rejection notifications
 
 ### Frontend UI Components (3)
 - [ ] **frontend-notification-styles** - Full page stylesheet
 - [ ] **frontend-notifications-page** - Full notifications page (paginated, filterable, searchable)
-- [ ] **frontend-layout-integration** - Add NotificationBell to MainLayout header
+- [x] **frontend-layout-integration** - Add NotificationBell to MainLayout header
 
 ### Frontend Integration (3)
 - [ ] **frontend-routes-integration** - Add `/app/notifications` route in AppRoutes
-- [ ] **frontend-provider-setup** - Wrap App with NotificationProvider
+- [x] **frontend-provider-setup** - Wrap App with NotificationProvider
 - [ ] **frontend-websocket-hook** - useWebSocket custom hook (if needed separately)
 
 ### Testing & Optimization (5)

@@ -3,6 +3,8 @@ package com.group.mock.controller;
 import com.group.mock.entity.DTO.response.NotificationListResponse;
 import com.group.mock.entity.DTO.response.NotificationResponse;
 import com.group.mock.service.NotificationService;
+import com.group.mock.repository.AccountRepository;
+import com.group.mock.entity.Account;
 import java.security.Principal;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +30,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class NotificationController {
     
     private final NotificationService notificationService;
+    private final AccountRepository accountRepository;
+
+    private UUID getUserIdFromPrincipal(Principal principal) {
+        return accountRepository.findByUsername(principal.getName())
+            .map(Account::getId)
+            .orElseThrow(() -> new RuntimeException("User not found"));
+    }
 
     /**
      * Get paginated notifications for the current user
@@ -41,7 +50,7 @@ public class NotificationController {
         @RequestParam(defaultValue = "10") int limit,
         @RequestParam(required = false) String type
     ) {
-        UUID userId = UUID.fromString(principal.getName());
+        UUID userId = getUserIdFromPrincipal(principal);
         Pageable pageable = PageRequest.of(page, limit, Sort.by("createdAt").descending());
 
         log.debug("Fetching notifications for user: {}, page: {}, limit: {}", userId, page, limit);
@@ -66,7 +75,7 @@ public class NotificationController {
     @GetMapping("/unread-count")
     @PreAuthorize("hasAnyRole('CUSTOMER', 'WORKER', 'ADMIN')")
     public ResponseEntity<Long> getUnreadCount(Principal principal) {
-        UUID userId = UUID.fromString(principal.getName());
+        UUID userId = getUserIdFromPrincipal(principal);
         long count = notificationService.getUnreadCount(userId);
         
         log.debug("Unread count for user {}: {}", userId, count);
@@ -83,7 +92,7 @@ public class NotificationController {
         Principal principal,
         @PathVariable Long id
     ) {
-        UUID userId = UUID.fromString(principal.getName());
+        UUID userId = getUserIdFromPrincipal(principal);
         NotificationResponse notification = notificationService.getNotificationById(id);
         
         log.debug("Fetched notification {} for user: {}", id, userId);
@@ -100,7 +109,7 @@ public class NotificationController {
         Principal principal,
         @PathVariable Long id
     ) {
-        UUID userId = UUID.fromString(principal.getName());
+        UUID userId = getUserIdFromPrincipal(principal);
         notificationService.markAsRead(id);
         
         log.info("Marked notification {} as read by user: {}", id, userId);
@@ -114,7 +123,7 @@ public class NotificationController {
     @PutMapping("/read-all")
     @PreAuthorize("hasAnyRole('CUSTOMER', 'WORKER', 'ADMIN')")
     public ResponseEntity<Void> markAllAsRead(Principal principal) {
-        UUID userId = UUID.fromString(principal.getName());
+        UUID userId = getUserIdFromPrincipal(principal);
         notificationService.markAllAsRead(userId);
         
         log.info("Marked all notifications as read for user: {}", userId);
@@ -131,7 +140,7 @@ public class NotificationController {
         Principal principal,
         @PathVariable Long id
     ) {
-        UUID userId = UUID.fromString(principal.getName());
+        UUID userId = getUserIdFromPrincipal(principal);
         notificationService.deleteNotification(id);
         
         log.info("Deleted notification {} by user: {}", id, userId);
@@ -150,6 +159,27 @@ public class NotificationController {
         int count = notificationService.deleteOldNotifications(days);
         log.info("Deleted {} old notifications (older than {} days)", count, days);
         return ResponseEntity.ok(count);
+    }
+
+    private final com.group.mock.service.NotificationEventPublisher notificationEventPublisher;
+
+    /**
+     * Generate test notifications for the current user
+     * POST /api/v1/notifications/test-generate
+     */
+    @RequestMapping(value = "/test-generate", method = org.springframework.web.bind.annotation.RequestMethod.POST)
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'WORKER', 'ADMIN')")
+    public ResponseEntity<String> generateTestNotifications(Principal principal) {
+        UUID userId = getUserIdFromPrincipal(principal);
+        
+        // Generate a few different types of notifications
+        notificationEventPublisher.publishBookingCreated(userId, 1001L, "Nguyễn Văn A", "Sửa ống nước");
+        notificationEventPublisher.publishMessageNew(userId, "chat-123", "Trần Thị B", "Chào bạn, mình muốn hỏi về dịch vụ...");
+        notificationEventPublisher.publishWalletTopupSuccess(userId, 9999L, 500000L);
+        notificationEventPublisher.publishSubscriptionExpiring(userId, "Gói Pro", 3L);
+        notificationEventPublisher.publishReviewCreated(userId, 500L, "Lê Văn C", 5, "Thợ làm rất tốt, nhiệt tình!");
+        
+        return ResponseEntity.ok("Generated 5 test notifications for user " + userId);
     }
 
     /**

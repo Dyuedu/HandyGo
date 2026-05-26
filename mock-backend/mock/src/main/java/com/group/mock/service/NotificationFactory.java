@@ -3,12 +3,14 @@ package com.group.mock.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.HashMap;
 import java.util.Map;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
+@Data
 @Slf4j
 public class NotificationFactory {
     
@@ -71,7 +73,7 @@ public class NotificationFactory {
     /**
      * Create message notification
      */
-    public NotificationData createMessageNotification(Long chatId, String senderName, String messagePreview) {
+    public NotificationData createMessageNotification(String chatId, String senderName, String messagePreview) {
         Map<String, Object> data = new HashMap<>();
         data.put("chatId", chatId);
         data.put("senderName", senderName);
@@ -166,7 +168,7 @@ public class NotificationFactory {
      */
     public String toJson(NotificationData notificationData) {
         try {
-            return objectMapper.writeValueAsString(notificationData.getData());
+            return objectMapper.writeValueAsString(notificationData.data);
         } catch (Exception e) {
             log.error("Error converting notification data to JSON", e);
             return "{}";

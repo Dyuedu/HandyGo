@@ -49,14 +49,14 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
      * Mark a notification as read
      */
     @Modifying
-    @Query("UPDATE Notification n SET n.isRead = true, n.readAt = NOW() WHERE n.id = :notificationId")
+    @Query("UPDATE Notification n SET n.isRead = true, n.readAt = CURRENT_TIMESTAMP WHERE n.id = :notificationId")
     void markAsRead(@Param("notificationId") Long notificationId);
 
     /**
      * Mark all notifications for a user as read
      */
     @Modifying
-    @Query("UPDATE Notification n SET n.isRead = true, n.readAt = NOW() WHERE n.userId = :userId")
+    @Query("UPDATE Notification n SET n.isRead = true, n.readAt = CURRENT_TIMESTAMP WHERE n.userId = :userId")
     int markAllAsRead(@Param("userId") UUID userId);
 
     /**

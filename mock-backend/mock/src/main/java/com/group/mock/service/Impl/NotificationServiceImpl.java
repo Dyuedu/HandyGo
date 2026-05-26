@@ -29,7 +29,7 @@ public class NotificationServiceImpl implements NotificationService {
         String type,
         String title,
         String message,
-        String data
+        java.util.Map<String, Object> data
     ) {
         Notification notification = Notification.builder()
             .userId(userId)
