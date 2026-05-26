@@ -1,5 +1,6 @@
-import axiosClient from '../api/axiosClient'
+import { getMyProfile } from './profileService'
 
+/** @deprecated Use getMyProfile from profileService */
 export function getProfile() {
-  return axiosClient.get('/api/profile')
+  return getMyProfile()
 }

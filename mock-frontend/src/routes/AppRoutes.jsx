@@ -6,6 +6,7 @@ import { JobPostManagement, JobPostDetail, JobPostDiscovery } from '../modules/j
 import { AccessDenied } from '../pages/AccessDenied'
 import { Auth } from '../pages/Auth'
 import { DashboardHome } from '../pages/DashboardHome'
+import { ProfilePage } from '../pages/ProfilePage'
 import { WorkerProfile } from '../pages/WorkerProfile'
 import { Landing } from '../pages/Landing'
 import { AdminDashboard } from '../pages/AdminDashboard'
@@ -33,7 +34,7 @@ export function AppRoutes() {
           <Route path="/app/chat" element={<DashboardHome section="Chat" />} />
           <Route path="/app/wallet" element={<DashboardHome section="Wallet" />} />
           <Route path="/app/subscription" element={<DashboardHome section="Subscription" />} />
-          <Route path="/app/profile" element={<DashboardHome section="Profile" />} />
+          <Route path="/app/profile" element={<ProfilePage />} />
           <Route path="/app/worker/:id" element={<WorkerProfile />} />
           <Route path="/app/admin/workers" element={<AdminDashboard />} />
           <Route path="/app/admin/workers/:id" element={<AdminWorkerDetail />} />

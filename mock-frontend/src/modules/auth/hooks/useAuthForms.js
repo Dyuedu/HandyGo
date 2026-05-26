@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../hooks/useAuth'
 import { registerUser, registerWorker } from '../../../services/authService'
-import { authMessages } from '../../../constants/authMessages'
 import { validatePassword, validatePhone, validateUsername } from '../../../utils/validation'
+import { useLanguage } from '../../../i18n/LanguageContext'
 
 const initialLogin = { username: '', password: '' }
 const initialUser = { username: '', password: '', fullName: '', phone: '' }
@@ -32,6 +32,7 @@ const getCoordinates = () => {
 
 export function useAuthForms() {
   const { session, signIn, signInWithGoogle, signOut, clearAuthSession } = useAuth()
+  const { t } = useLanguage()
   const navigate = useNavigate()
   const [mode, setMode] = useState('login')
   const [loginForm, setLoginForm] = useState(initialLogin)
@@ -43,7 +44,7 @@ export function useAuthForms() {
 
   async function handleLogin(event) {
     event.preventDefault()
-    const validation = validateUsername(loginForm.username) || (!loginForm.password ? 'Vui lòng nhập mật khẩu' : '')
+    const validation = validateUsername(loginForm.username, t) || (!loginForm.password ? t('validation.password.required') : '')
     if (validation) return setError(validation)
 
     await submit(async () => {
@@ -53,7 +54,7 @@ export function useAuthForms() {
         : loginForm
 
       await signIn(loginPayload)
-      setMessage(authMessages.loginSuccess)
+      setMessage(t('auth.success.login'))
       setLoginForm(initialLogin)
       navigate('/app', { replace: true })
     })
@@ -63,7 +64,7 @@ export function useAuthForms() {
     await submit(async () => {
       const coords = await getCoordinates()
       await signInWithGoogle(accessToken, coords)
-      setMessage(authMessages.loginSuccess)
+      setMessage(t('auth.success.login'))
       navigate('/app', { replace: true })
     })
   }
@@ -71,15 +72,15 @@ export function useAuthForms() {
   async function handleRegisterUser(event) {
     event.preventDefault()
     const validation =
-      validateUsername(userForm.username) ||
-      validatePassword(userForm.password) ||
-      (!userForm.fullName.trim() ? 'Vui lòng nhập họ tên' : '') ||
-      validatePhone(userForm.phone)
+      validateUsername(userForm.username, t) ||
+      validatePassword(userForm.password, t) ||
+      (!userForm.fullName.trim() ? t('validation.fullName.required') : '') ||
+      validatePhone(userForm.phone, t)
     if (validation) return setError(validation)
 
     await submit(async () => {
       await registerUser(userForm)
-      setMessage(authMessages.registerSuccess)
+      setMessage(t('auth.success.register'))
       setUserForm(initialUser)
       setMode('login')
     })
@@ -88,17 +89,17 @@ export function useAuthForms() {
   async function handleRegisterWorker(event) {
     event.preventDefault()
     const validation =
-      validateUsername(workerForm.username) ||
-      validatePassword(workerForm.password) ||
-      (!workerForm.fullName.trim() ? 'Vui lòng nhập họ tên' : '') ||
-      validatePhone(workerForm.phone) ||
-      (!workerForm.jobType.trim() ? 'Vui lòng nhập loại công việc' : '') ||
-      (!workerForm.professionalCertificate ? 'Vui lòng tải lên chứng chỉ hành nghề' : '')
+      validateUsername(workerForm.username, t) ||
+      validatePassword(workerForm.password, t) ||
+      (!workerForm.fullName.trim() ? t('validation.fullName.required') : '') ||
+      validatePhone(workerForm.phone, t) ||
+      (!workerForm.jobType.trim() ? t('validation.jobType.required') : '') ||
+      (!workerForm.professionalCertificate ? t('validation.certificate.required') : '')
     if (validation) return setError(validation)
 
     await submit(async () => {
       await registerWorker(workerForm)
-      setMessage(authMessages.registerSuccess)
+      setMessage(t('auth.success.register'))
       setWorkerForm(initialWorker)
       setMode('login')
     })
@@ -112,7 +113,7 @@ export function useAuthForms() {
 
     await submit(async () => {
       await signOut()
-      setMessage('Đã đăng xuất')
+      setMessage(t('auth.success.logout'))
     })
   }
 
