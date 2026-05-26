@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useCallback, useEffect } from 'react';
-import notificationService from '@/services/notificationService';
+import notificationService from '../services/notificationService';
 
 export const NotificationContext = createContext();
 
@@ -35,27 +35,36 @@ const initialState = {
 // Reducer
 const notificationReducer = (state, action) => {
   switch (action.type) {
-    case NOTIFICATION_ACTIONS.SET_NOTIFICATIONS:
+    case NOTIFICATION_ACTIONS.SET_NOTIFICATIONS: {
+      const payload = action.payload || {};
       return {
         ...state,
-        notifications: action.payload.content || [],
-        unreadCount: action.payload.unreadCount || 0,
+        notifications: payload.content || [],
+        unreadCount: payload.unreadCount || 0,
         pagination: {
-          pageNumber: action.payload.pageNumber,
-          pageSize: action.payload.pageSize,
-          totalElements: action.payload.totalElements,
-          totalPages: action.payload.totalPages,
-          hasNext: action.payload.hasNext,
-          hasPrevious: action.payload.hasPrevious
+          pageNumber: payload.pageNumber || 0,
+          pageSize: payload.pageSize || 10,
+          totalElements: payload.totalElements || 0,
+          totalPages: payload.totalPages || 0,
+          hasNext: payload.hasNext || false,
+          hasPrevious: payload.hasPrevious || false
         },
         isLoading: false
       };
+    }
 
     case NOTIFICATION_ACTIONS.ADD_NOTIFICATION:
       return {
         ...state,
         notifications: [action.payload, ...state.notifications],
-        unreadCount: state.unreadCount + 1
+        unreadCount: action.skipToastAndCount ? state.unreadCount : state.unreadCount + 1,
+        latestToast: action.skipToastAndCount ? null : action.payload
+      };
+
+    case 'CLEAR_TOAST':
+      return {
+        ...state,
+        latestToast: null
       };
 
     case NOTIFICATION_ACTIONS.REMOVE_NOTIFICATION:
@@ -123,7 +132,7 @@ export const NotificationProvider = ({ children }) => {
       const response = await notificationService.getNotifications(page, limit, type);
       dispatch({
         type: NOTIFICATION_ACTIONS.SET_NOTIFICATIONS,
-        payload: response.data
+        payload: response
       });
     } catch (error) {
       console.error('Error fetching notifications:', error);
@@ -131,6 +140,9 @@ export const NotificationProvider = ({ children }) => {
         type: NOTIFICATION_ACTIONS.SET_ERROR,
         payload: error.message
       });
+      setTimeout(() => {
+        dispatch({ type: NOTIFICATION_ACTIONS.SET_ERROR, payload: null });
+      }, 3000);
     }
   }, []);
 
@@ -140,7 +152,7 @@ export const NotificationProvider = ({ children }) => {
       const response = await notificationService.getUnreadCount();
       dispatch({
         type: NOTIFICATION_ACTIONS.UPDATE_UNREAD_COUNT,
-        payload: response.data
+        payload: response
       });
     } catch (error) {
       console.error('Error fetching unread count:', error);
@@ -201,10 +213,28 @@ export const NotificationProvider = ({ children }) => {
     wsConnection = notificationService.subscribeToNotifications(
       (notification) => {
         console.log('New notification received:', notification);
-        dispatch({
-          type: NOTIFICATION_ACTIONS.ADD_NOTIFICATION,
-          payload: notification
-        });
+        const isChatPage = window.location.pathname.startsWith('/app/chat');
+
+        if (isChatPage && notification.type === 'MESSAGE_NEW') {
+          // Auto mark as read in backend
+          if (notification.id) {
+             notificationService.markAsRead(notification.id).catch(console.error);
+          }
+          // Add it as a read notification, skip toast, skip unread increment
+          dispatch({
+            type: NOTIFICATION_ACTIONS.ADD_NOTIFICATION,
+            payload: { ...notification, isRead: true },
+            skipToastAndCount: true
+          });
+        } else {
+          dispatch({
+            type: NOTIFICATION_ACTIONS.ADD_NOTIFICATION,
+            payload: notification
+          });
+          setTimeout(() => {
+            dispatch({ type: 'CLEAR_TOAST' });
+          }, 4000);
+        }
       },
       (error) => {
         console.error('WebSocket error:', error);
@@ -212,6 +242,9 @@ export const NotificationProvider = ({ children }) => {
           type: NOTIFICATION_ACTIONS.SET_ERROR,
           payload: 'Real-time notifications unavailable'
         });
+        setTimeout(() => {
+          dispatch({ type: NOTIFICATION_ACTIONS.SET_ERROR, payload: null });
+        }, 3000);
       }
     );
 
@@ -223,6 +256,25 @@ export const NotificationProvider = ({ children }) => {
     };
   }, [fetchNotifications, fetchUnreadCount]);
 
+  // Generate test notifications
+  const generateTestNotifications = useCallback(async () => {
+    try {
+      await notificationService.generateTestNotifications();
+      // Refetch after generation
+      await fetchNotifications();
+      await fetchUnreadCount();
+    } catch (error) {
+      console.error('Error generating test notifications:', error);
+      dispatch({
+        type: NOTIFICATION_ACTIONS.SET_ERROR,
+        payload: error.message
+      });
+      setTimeout(() => {
+        dispatch({ type: NOTIFICATION_ACTIONS.SET_ERROR, payload: null });
+      }, 3000);
+    }
+  }, [fetchNotifications, fetchUnreadCount]);
+
   const value = {
     ...state,
     fetchNotifications,
@@ -230,6 +282,7 @@ export const NotificationProvider = ({ children }) => {
     markAsRead,
     markAllAsRead,
     deleteNotification,
+    generateTestNotifications,
     dispatch
   };
 

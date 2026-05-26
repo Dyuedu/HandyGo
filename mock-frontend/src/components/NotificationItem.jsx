@@ -1,5 +1,5 @@
 import React from 'react';
-import notificationService from '@/services/notificationService';
+import notificationService from '../services/notificationService';
 import './NotificationItem.css';
 
 const NotificationItem = ({ notification, onClick, onDelete }) => {

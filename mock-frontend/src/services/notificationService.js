@@ -1,4 +1,4 @@
-import axiosClient from '@/api/axiosClient';
+import axiosClient from '../api/axiosClient';
 
 const API_BASE_URL = '/api/v1/notifications';
 
@@ -82,14 +82,23 @@ const notificationService = {
   },
 
   /**
+   * Generate test notifications
+   * @returns {Promise}
+   */
+  generateTestNotifications: () => {
+    return axiosClient.post(`${API_BASE_URL}/test-generate`);
+  },
+
+  /**
    * Subscribe to WebSocket notifications
    * @param {function} onMessageCallback - Callback when notification arrives
    * @param {function} onErrorCallback - Callback on error
    * @returns {object} WebSocket connection object with close method
    */
   subscribeToNotifications: (onMessageCallback, onErrorCallback) => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws/notifications`;
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+    const wsBaseUrl = apiBaseUrl.replace(/^http/, 'ws');
+    const wsUrl = `${wsBaseUrl}/ws/notifications`;
 
     let ws = null;
     let reconnectAttempts = 0;
@@ -104,7 +113,8 @@ const notificationService = {
           console.log('WebSocket connected');
           reconnectAttempts = 0;
           // Subscribe to user's personal notification queue
-          const userId = localStorage.getItem('userId');
+          const session = JSON.parse(localStorage.getItem('mock.auth.session'));
+          const userId = session?.id || localStorage.getItem('my_user_id');
           if (userId) {
             ws.send(JSON.stringify({
               action: 'SUBSCRIBE',

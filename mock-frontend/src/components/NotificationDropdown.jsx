@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNotification } from '@/context/NotificationContext';
+import { useNotification } from '../context/NotificationContext';
 import NotificationItem from './NotificationItem';
 import './NotificationDropdown.css';
 
@@ -10,8 +10,10 @@ const NotificationDropdown = ({ onClose }) => {
     isLoading,
     pagination,
     fetchNotifications,
+    markAsRead,
     markAllAsRead,
-    deleteNotification
+    deleteNotification,
+    generateTestNotifications
   } = useNotification();
 
   const [currentPage, setCurrentPage] = useState(0);
@@ -24,7 +26,7 @@ const NotificationDropdown = ({ onClose }) => {
 
   const handleNotificationClick = (notificationId) => {
     // Mark as read when clicked
-    // markAsRead(notificationId);
+    markAsRead(notificationId);
   };
 
   const handleViewAll = () => {
@@ -64,6 +66,9 @@ const NotificationDropdown = ({ onClose }) => {
           <div className="notification-empty">
             <span className="empty-icon">📭</span>
             <p>No notifications yet</p>
+            <button className="generate-test-btn" onClick={generateTestNotifications} style={{ marginTop: '10px', padding: '6px 12px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+              Tạo thông báo mẫu
+            </button>
           </div>
         ) : (
           <div className="notification-list">

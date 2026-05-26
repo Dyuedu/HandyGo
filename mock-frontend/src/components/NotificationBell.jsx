@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNotification } from '@/context/NotificationContext';
+import { useNotification } from '../context/NotificationContext';
 import NotificationDropdown from './NotificationDropdown';
 import './NotificationBell.css';
 
 const NotificationBell = () => {
-  const { unreadCount, isLoading, error, fetchNotifications, fetchUnreadCount } = useNotification();
+  const { unreadCount, isLoading, error, latestToast, fetchNotifications, fetchUnreadCount } = useNotification();
   const [isOpen, setIsOpen] = useState(false);
   const bellRef = useRef(null);
 
@@ -54,9 +54,7 @@ const NotificationBell = () => {
           </span>
         )}
 
-        {isLoading && (
-          <span className="loading-spinner"></span>
-        )}
+
       </button>
 
       {isOpen && (
@@ -68,6 +66,19 @@ const NotificationBell = () => {
       {error && (
         <div className="notification-error-toast">
           ⚠️ {error}
+        </div>
+      )}
+
+      {/* Real-time Notification Toast */}
+      {latestToast && (
+        <div className="realtime-notification-toast">
+          <div className="toast-icon">
+            {latestToast.type === 'MESSAGE_NEW' ? '💬' : '🔔'}
+          </div>
+          <div className="toast-content">
+            <div className="toast-title">{latestToast.title}</div>
+            <div className="toast-message">{latestToast.message}</div>
+          </div>
         </div>
       )}
     </div>
