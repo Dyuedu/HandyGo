@@ -23,6 +23,10 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.group.mock.service.NotificationEventPublisher;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
+
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -39,6 +43,7 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class SubscriptionServiceImpl implements SubscriptionService {
@@ -55,6 +60,8 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     private final WalletRepository walletRepository;
     private final TransactionHistoryRepository transactionHistoryRepository;
     private final StringRedisTemplate stringRedisTemplate;
+    private final NotificationEventPublisher notificationEventPublisher;
+
 
     @Value("${vnpay.tmn-code}")
     private String vnpTmnCode;
@@ -80,7 +87,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     @Transactional
     public SubscriptionPaymentResponse subscribeWorker(String username, SubscribeRequest request, String ipAddress) {
         Account account = getWorkerAccount(username);
-        workerProfileRepository.findById(account.getId())
+        WorkerProfile worker = workerProfileRepository.findById(account.getId())
                 .orElseThrow(() -> new AuthServiceException(
                         HttpStatus.NOT_FOUND,
                         "WORKER_NOT_FOUND",
@@ -94,11 +101,29 @@ public class SubscriptionServiceImpl implements SubscriptionService {
 
         if (plan.getPrice().compareTo(BigDecimal.ZERO) <= 0) {
             activateWorkerSubscription(account.getId(), plan);
+            try {
+                notificationEventPublisher.publishSubscriptionUpgrade(
+                    account.getId(),
+                    plan.getPlanName(),
+                    (long) plan.getDurationDays()
+                );
+            } catch (Exception e) {
+                log.warn("Failed to send subscription upgrade notification", e);
+            }
             return new SubscriptionPaymentResponse(null, null, plan.getPrice(), getWorkerSubscriptionInfo(username));
         }
 
         if (isWalletPayment(request.getPaymentMethod())) {
             TransactionHistory history = paySubscriptionWithWallet(account, plan);
+            try {
+                notificationEventPublisher.publishSubscriptionUpgrade(
+                    account.getId(),
+                    plan.getPlanName(),
+                    (long) plan.getDurationDays()
+                );
+            } catch (Exception e) {
+                log.warn("Failed to send subscription upgrade notification", e);
+            }
             return new SubscriptionPaymentResponse(
                     null,
                     history.getVnpTxnRef(),
@@ -304,5 +329,41 @@ public class SubscriptionServiceImpl implements SubscriptionService {
                 subscription.getStatus(),
                 subscription.getCreatedAt()
         );
+    }
+
+
+    /**
+     * Scheduled task to check for subscriptions expiring in 7 days
+     * and send expiry notifications to workers
+     */
+    @Scheduled(cron = "0 0 * * * ?")
+    @Transactional
+    public void checkAndNotifyExpiringSubscriptions() {
+        try {
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime sevenDaysFromNow = now.plusDays(7);
+
+            List<WorkerProfile> expiringWorkers = workerProfileRepository.findByTierExpiredAtBetween(now, sevenDaysFromNow);
+
+            for (WorkerProfile worker : expiringWorkers) {
+                if (worker.getTierExpiredAt() != null && worker.getTierType() != null) {
+                    long daysRemaining = java.time.temporal.ChronoUnit.DAYS.between(now, worker.getTierExpiredAt());
+
+                    try {
+                        notificationEventPublisher.publishSubscriptionExpiring(
+                            worker.getId(),
+                            worker.getTierType(),
+                            daysRemaining
+                        );
+                    } catch (Exception e) {
+                        log.warn("Failed to send subscription expiring notification to worker: {}", worker.getId(), e);
+                    }
+                }
+            }
+
+            log.info("Checked and notified {} workers with expiring subscriptions", expiringWorkers.size());
+        } catch (Exception e) {
+            log.error("Error in checkAndNotifyExpiringSubscriptions scheduled task", e);
+        }
     }
 }

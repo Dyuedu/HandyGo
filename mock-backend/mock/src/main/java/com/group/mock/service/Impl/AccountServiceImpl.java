@@ -156,6 +156,11 @@ public class AccountServiceImpl implements AccountService {
             return cachedAccount.toAccount();
         }
 
+        return getFreshAccountByUsername(username);
+    }
+
+    @Override
+    public Account getFreshAccountByUsername(String username) {
         Optional<Account> accountOptional = accountRepository.findByUsername(username);
         if (accountOptional.isEmpty()) {
             throw new UsernameNotFoundException("User not found with username: " + username);
@@ -257,7 +262,9 @@ public class AccountServiceImpl implements AccountService {
             
             Optional<Account> accountOpt = accountRepository.findByUsername(email);
             if (accountOpt.isPresent()) {
-                return accountOpt.get();
+                Account account = accountOpt.get();
+                cacheAccount(account);
+                return account;
             }
             
             // Create a new account
