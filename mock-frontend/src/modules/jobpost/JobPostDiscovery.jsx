@@ -2,91 +2,72 @@ import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { getAllOpenJobPosts, getOpenJobPostsByJobType } from '../../services/jobPostService'
 import { useNavigate } from 'react-router-dom'
+import { useLanguage } from '../../i18n/LanguageContext'
 import '../../styles/modules/jobpost.css'
 
 function JobPostDiscovery() {
   const navigate = useNavigate()
+  const { t, language } = useLanguage()
   const [selectedJobType, setSelectedJobType] = useState('')
+  const locale = language === 'ko' ? 'ko-KR' : language === 'en' ? 'en-US' : 'vi-VN'
 
   const { data: jobPosts = [], isLoading, error } = useQuery({
     queryKey: ['openJobPosts', selectedJobType],
-    queryFn: () => {
-      if (selectedJobType) {
-        return getOpenJobPostsByJobType(selectedJobType)
-      }
-      return getAllOpenJobPosts()
-    },
+    queryFn: () => (selectedJobType ? getOpenJobPostsByJobType(selectedJobType) : getAllOpenJobPosts()),
   })
 
   const jobTypes = ['DIEN', 'NUOC', 'HARM', 'CLEAN']
 
-  if (error) return <div className="jobpost-error">Lỗi tải công việc: {error.message}</div>
+  if (error) return <div className="jobpost-error">{t('jobpost.loadError', { message: error.message })}</div>
 
   return (
     <div className="jobpost-discovery">
       <div className="discovery-header">
-        <h1>Công việc khả dụng</h1>
-        <p>Tìm và đăng ký công việc có sẵn trong khu vực của bạn</p>
+        <h1>{t('jobpost.discovery.title')}</h1>
+        <p>{t('jobpost.discovery.subtitle')}</p>
       </div>
 
       <div className="filter-section">
-        <h3>Lọc theo loại công việc</h3>
+        <h3>{t('jobpost.discovery.filterTitle')}</h3>
         <div className="filter-buttons">
-          <button
-            className={`filter-btn ${selectedJobType === '' ? 'active' : ''}`}
-            onClick={() => setSelectedJobType('')}
-          >
-            Tất cả công việc
+          <button className={`filter-btn ${selectedJobType === '' ? 'active' : ''}`} onClick={() => setSelectedJobType('')}>
+            {t('jobpost.discovery.allJobs')}
           </button>
-          {jobTypes.map((type) => {
-            const jobTypeLabels = {
-              'DIEN': 'Điện',
-              'NUOC': 'Nước',
-              'HARM': 'Sửa chữa',
-              'CLEAN': 'Vệ sinh'
-            }
-            return (
-              <button
-                key={type}
-                className={`filter-btn ${selectedJobType === type ? 'active' : ''}`}
-                onClick={() => setSelectedJobType(type)}
-              >
-                {jobTypeLabels[type] || type}
-              </button>
-            )
-          })}
+          {jobTypes.map((type) => (
+            <button
+              key={type}
+              className={`filter-btn ${selectedJobType === type ? 'active' : ''}`}
+              onClick={() => setSelectedJobType(type)}
+            >
+              {t(`jobpost.type.${type}`)}
+            </button>
+          ))}
         </div>
       </div>
 
       {isLoading ? (
         <div className="loading-container">
-          <p>Đang tải công việc khả dụng...</p>
+          <p>{t('jobpost.discovery.loading')}</p>
         </div>
       ) : jobPosts.length === 0 ? (
         <div className="empty-state">
-          <p>Hiện tại không có công việc nào. Hãy quay lại sau!</p>
+          <p>{t('jobpost.discovery.empty')}</p>
         </div>
       ) : (
         <div className="discovery-grid">
           {jobPosts.map((jobPost) => (
-            <div
-              key={jobPost.id}
-              className="discovery-card"
-              onClick={() => navigate(`/job-posts/${jobPost.id}`)}
-            >
+            <div key={jobPost.id} className="discovery-card" onClick={() => navigate(`/job-posts/${jobPost.id}`)}>
               <div className="card-header">
                 <h3>{jobPost.title}</h3>
-                <span className="job-type-badge">{jobPost.jobType}</span>
+                <span className="job-type-badge">{t(`jobpost.type.${jobPost.jobType}`)}</span>
               </div>
 
               <p className="card-address">{jobPost.address}</p>
               <p className="card-description">{jobPost.description}</p>
 
               <div className="card-footer">
-                <span className="created-date">
-                  {new Date(jobPost.createdAt).toLocaleDateString('vi-VN')}
-                </span>
-                <button className="btn-view">Xem chi tiết</button>
+                <span className="created-date">{new Date(jobPost.createdAt).toLocaleDateString(locale)}</span>
+                <button className="btn-view">{t('jobpost.action.viewDetail')}</button>
               </div>
             </div>
           ))}

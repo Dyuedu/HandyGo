@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
+import { useLanguage } from '../../i18n/LanguageContext'
 import { getUserLocations } from '../../services/userService'
 import '../../styles/modules/location-picker.css'
 
 function LocationPicker({ onLocationSelect, initialLat, initialLng }) {
   const { session } = useAuth()
+  const { t } = useLanguage()
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
   const markerRef = useRef(null)
@@ -16,7 +18,6 @@ function LocationPicker({ onLocationSelect, initialLat, initialLng }) {
   const [error, setError] = useState(null)
   const [userLocation, setUserLocation] = useState(null)
 
-  // Fetch user profile location
   useEffect(() => {
     const fetchUserLocation = async () => {
       try {
@@ -30,13 +31,12 @@ function LocationPicker({ onLocationSelect, initialLat, initialLng }) {
           })
         }
       } catch (err) {
-        console.error('Không thể tải vị trí hồ sơ:', err)
+        console.error(t('jobpost.location.profileLoadError'), err)
       }
     }
     fetchUserLocation()
-  }, [session?.id])
+  }, [session?.id, t])
 
-  // Initialize map
   useEffect(() => {
     if (!mapRef.current || !window.L) return
 
@@ -54,7 +54,6 @@ function LocationPicker({ onLocationSelect, initialLat, initialLng }) {
 
     mapInstanceRef.current = map
 
-    // Handle map clicks
     map.on('click', (e) => {
       const { lat, lng } = e.latlng
       setLatitude(lat)
@@ -64,16 +63,12 @@ function LocationPicker({ onLocationSelect, initialLat, initialLng }) {
       onLocationSelect(lat, lng)
     })
 
-    // Set initial marker if location provided
     if (initialLat && initialLng) {
       updateMarker(initialLat, initialLng, map)
       map.setView([initialLat, initialLng], 16)
     }
 
-    setTimeout(() => {
-      map.invalidateSize()
-    }, 100)
-
+    setTimeout(() => map.invalidateSize(), 100)
     return () => {
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove()
@@ -83,33 +78,28 @@ function LocationPicker({ onLocationSelect, initialLat, initialLng }) {
   }, [])
 
   const updateMarker = (lat, lng, map) => {
-    if (markerRef.current) {
-      map.removeLayer(markerRef.current)
-    }
-
-    const marker = window.L.marker([lat, lng], {
-      icon: window.L.divIcon({
-        className: 'leaflet-custom-job-marker',
-        html: `<div class="job-marker-dot"><svg viewBox="0 0 24 24" fill="#ef4444" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="8"/></svg></div>`,
-        iconSize: [32, 32],
-        iconAnchor: [16, 32],
-      }),
-    }).addTo(map)
-
-    markerRef.current = marker
+    if (markerRef.current) map.removeLayer(markerRef.current)
+    markerRef.current = window.L
+      .marker([lat, lng], {
+        icon: window.L.divIcon({
+          className: 'leaflet-custom-job-marker',
+          html: '<div class="job-marker-dot"><svg viewBox="0 0 24 24" fill="#ef4444" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="8"/></svg></div>',
+          iconSize: [32, 32],
+          iconAnchor: [16, 32],
+        }),
+      })
+      .addTo(map)
     map.setView([lat, lng], 16)
   }
 
   const handleUseCurrentLocation = () => {
     setLoading(true)
     setError(null)
-
     if (!navigator.geolocation) {
-      setError('Trình duyệt không hỗ trợ GPS')
+      setError(t('jobpost.map.status.unsupported'))
       setLoading(false)
       return
     }
-
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude: lat, longitude: lng } = pos.coords
@@ -117,102 +107,51 @@ function LocationPicker({ onLocationSelect, initialLat, initialLng }) {
         setLongitude(lng)
         setSelectedMethod('current')
         onLocationSelect(lat, lng)
-
-        if (mapInstanceRef.current) {
-          updateMarker(lat, lng, mapInstanceRef.current)
-        }
+        if (mapInstanceRef.current) updateMarker(lat, lng, mapInstanceRef.current)
         setLoading(false)
       },
       (err) => {
-        setError('Không thể lấy vị trí hiện tại: ' + err.message)
+        setError(t('jobpost.location.currentError', { message: err.message }))
         setLoading(false)
       },
       { enableHighAccuracy: true, timeout: 10000 }
     )
   }
 
-  const handleUseProfileLocation = () => {
-    if (!userLocation) {
-      setError('Không tìm thấy vị trí hồ sơ')
-      return
-    }
-
-    setLatitude(userLocation.latitude)
-    setLongitude(userLocation.longitude)
-    setSelectedMethod('profile')
-    onLocationSelect(userLocation.latitude, userLocation.longitude)
-
-    if (mapInstanceRef.current) {
-      updateMarker(userLocation.latitude, userLocation.longitude, mapInstanceRef.current)
-    }
-  }
-
-  const handleClearLocation = () => {
-    setLatitude(null)
-    setLongitude(null)
-    setSelectedMethod(null)
-    setError(null)
-
-    if (markerRef.current && mapInstanceRef.current) {
-      mapInstanceRef.current.removeLayer(markerRef.current)
-      markerRef.current = null
-    }
-
-    onLocationSelect(null, null)
-  }
-
   return (
     <div className="location-picker">
       <div className="location-picker-header">
-        <h3>Chọn vị trí công việc</h3>
-        <p>Nhấp trên bản đồ hoặc sử dụng các tùy chọn dưới đây</p>
+        <h3>{t('jobpost.location.title')}</h3>
+        <p>{t('jobpost.location.subtitle')}</p>
       </div>
-
       <div className="location-map-container" ref={mapRef} />
-
       <div className="location-options">
-        <button
-          className={`location-option-btn ${selectedMethod === 'current' ? 'active' : ''}`}
-          onClick={handleUseCurrentLocation}
-          disabled={loading}
-        >
+        <button className={`location-option-btn ${selectedMethod === 'current' ? 'active' : ''}`} onClick={handleUseCurrentLocation} disabled={loading}>
           <span className="option-icon">📍</span>
-          <span className="option-text">
-            {loading ? 'Đang lấy vị trí...' : 'Dùng vị trí hiện tại'}
-          </span>
+          <span className="option-text">{loading ? t('jobpost.location.loadingCurrent') : t('jobpost.location.useCurrent')}</span>
         </button>
-
         {userLocation && (
-          <button
-            className={`location-option-btn ${selectedMethod === 'profile' ? 'active' : ''}`}
-            onClick={handleUseProfileLocation}
-          >
+          <button className={`location-option-btn ${selectedMethod === 'profile' ? 'active' : ''}`} onClick={() => {
+            setLatitude(userLocation.latitude); setLongitude(userLocation.longitude); setSelectedMethod('profile'); onLocationSelect(userLocation.latitude, userLocation.longitude); if (mapInstanceRef.current) updateMarker(userLocation.latitude, userLocation.longitude, mapInstanceRef.current)
+          }}>
             <span className="option-icon">👤</span>
-            <span className="option-text">Dùng vị trí hồ sơ</span>
+            <span className="option-text">{t('jobpost.location.useProfile')}</span>
           </button>
         )}
-
-        <button
-          className={`location-option-btn ${selectedMethod === 'map' ? 'active' : ''}`}
-          disabled
-        >
+        <button className={`location-option-btn ${selectedMethod === 'map' ? 'active' : ''}`} disabled>
           <span className="option-icon">🗺️</span>
-          <span className="option-text">Nhấp trên bản đồ để chọn</span>
+          <span className="option-text">{t('jobpost.location.clickMap')}</span>
         </button>
       </div>
-
       {error && <div className="location-error">{error}</div>}
-
       {latitude && longitude && (
         <div className="location-display">
           <div className="location-coords">
-            <span className="coord-label">Vị trí đã chọn:</span>
-            <span className="coord-value">
-              {latitude.toFixed(6)}, {longitude.toFixed(6)}
-            </span>
+            <span className="coord-label">{t('jobpost.location.selected')}:</span>
+            <span className="coord-value">{latitude.toFixed(6)}, {longitude.toFixed(6)}</span>
           </div>
-          <button className="btn-clear-location" onClick={handleClearLocation}>
-            Xóa vị trí
+          <button className="btn-clear-location" onClick={() => { setLatitude(null); setLongitude(null); setSelectedMethod(null); setError(null); if (markerRef.current && mapInstanceRef.current) { mapInstanceRef.current.removeLayer(markerRef.current); markerRef.current = null } onLocationSelect(null, null) }}>
+            {t('jobpost.location.clear')}
           </button>
         </div>
       )}
