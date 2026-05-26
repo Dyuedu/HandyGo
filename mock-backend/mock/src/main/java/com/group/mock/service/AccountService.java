@@ -14,6 +14,7 @@ public interface AccountService extends UserDetailsService {
     void deleteAccount();
     void updateAccount();
     Account getAccountByUsername(String username);
+    Account getFreshAccountByUsername(String username);
     Account loginOrRegisterGoogleUser(String supabaseAccessToken);
     void updateWorkerLocation(java.util.UUID accountId, Double latitude, Double longitude);
 }

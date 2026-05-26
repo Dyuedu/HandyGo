@@ -7,18 +7,25 @@ import com.group.mock.entity.Account;
 import com.group.mock.entity.Subscription;
 import com.group.mock.entity.TransactionHistory;
 import com.group.mock.entity.Wallet;
+import com.group.mock.entity.WithdrawalRequest;
 import com.group.mock.entity.WorkerProfile;
+import com.group.mock.entity.UserProfile;
+import com.group.mock.entity.DTO.request.CreateWithdrawalRequest;
 import com.group.mock.entity.DTO.request.WalletDeductRequest;
 import com.group.mock.entity.DTO.response.PaymentCallbackResponse;
 import com.group.mock.entity.DTO.response.TransactionHistorySummary;
 import com.group.mock.entity.DTO.response.WalletBalanceResponse;
 import com.group.mock.entity.DTO.response.WalletDeductResponse;
+import com.group.mock.entity.DTO.response.WithdrawalResponse;
 import com.group.mock.exception.AuthServiceException;
 import com.group.mock.repository.SubscriptionRepository;
 import com.group.mock.repository.TransactionHistoryRepository;
+import com.group.mock.repository.UserProfileRepository;
 import com.group.mock.repository.WalletRepository;
+import com.group.mock.repository.WithdrawalRequestRepository;
 import com.group.mock.repository.WorkerProfileRepository;
 import com.group.mock.service.AccountService;
+import com.group.mock.service.VietQrService;
 import com.group.mock.service.WalletService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,6 +34,7 @@ import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.group.mock.service.NotificationEventPublisher;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -58,10 +66,15 @@ public class WalletServiceImpl implements WalletService {
     private final TransactionHistoryRepository transactionHistoryRepository;
     private final SubscriptionRepository subscriptionRepository;
     private final WorkerProfileRepository workerProfileRepository;
+    private final UserProfileRepository userProfileRepository;
+    private final WithdrawalRequestRepository withdrawalRequestRepository;
     private final AccountService accountService;
+    private final VietQrService vietQrService;
     private final StringRedisTemplate stringRedisTemplate;
     private final DefaultRedisScript<Long> walletDeductScript;
     private final ObjectMapper objectMapper;
+    private final NotificationEventPublisher notificationEventPublisher;
+
 
     @Value("${app.cache.wallet-balance-ttl-seconds:300}")
     private long walletBalanceTtlSeconds;
@@ -77,18 +90,27 @@ public class WalletServiceImpl implements WalletService {
             TransactionHistoryRepository transactionHistoryRepository,
             SubscriptionRepository subscriptionRepository,
             WorkerProfileRepository workerProfileRepository,
+            UserProfileRepository userProfileRepository,
+            WithdrawalRequestRepository withdrawalRequestRepository,
             AccountService accountService,
+            VietQrService vietQrService,
             StringRedisTemplate stringRedisTemplate,
             DefaultRedisScript<Long> walletDeductScript,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+        NotificationEventPublisher notificationEventPublisher) {
         this.walletRepository = walletRepository;
         this.transactionHistoryRepository = transactionHistoryRepository;
         this.subscriptionRepository = subscriptionRepository;
         this.workerProfileRepository = workerProfileRepository;
+        this.userProfileRepository = userProfileRepository;
+        this.withdrawalRequestRepository = withdrawalRequestRepository;
         this.accountService = accountService;
+        this.vietQrService = vietQrService;
         this.stringRedisTemplate = stringRedisTemplate;
         this.walletDeductScript = walletDeductScript;
         this.objectMapper = objectMapper;
+        this.notificationEventPublisher = notificationEventPublisher;
+
     }
 
     @Override
@@ -161,6 +183,15 @@ public class WalletServiceImpl implements WalletService {
         if (success) {
             if (SUBSCRIPTION_ORDER_TYPE.equalsIgnoreCase(history.getVnpOrderType())) {
                 activateSubscriptionPayment(history);
+                try {
+                    notificationEventPublisher.publishWalletTopupSuccess(
+                        history.getWallet().getUserId(),
+                        history.getId(),
+                        toScaledAmount(history.getAmount())
+                    );
+                } catch (Exception e) {
+                    log.warn("Failed to send wallet topup success notification", e);
+                }
                 return new PaymentCallbackResponse(true, "Subscription payment success", vnpTxnRef);
             }
 
@@ -177,12 +208,30 @@ public class WalletServiceImpl implements WalletService {
 
             updateBalanceCache(wallet.getUserId(), newBalance);
             invalidateHistoryCache(wallet.getId());
+            try {
+                notificationEventPublisher.publishWalletTopupSuccess(
+                    wallet.getUserId(),
+                    history.getId(),
+                    toScaledAmount(history.getAmount())
+                );
+            } catch (Exception e) {
+                log.warn("Failed to send wallet topup success notification", e);
+            }
             return new PaymentCallbackResponse(true, "Success", vnpTxnRef);
         }
 
         history.setStatus("FAILED");
         transactionHistoryRepository.save(history);
         invalidateHistoryCache(history.getWallet().getId());
+        try {
+            notificationEventPublisher.publishWalletTopupFailed(
+                history.getWallet().getUserId(),
+                history.getId(),
+                toScaledAmount(history.getAmount())
+            );
+        } catch (Exception e) {
+            log.warn("Failed to send wallet topup failed notification", e);
+        }
         return new PaymentCallbackResponse(false, "Payment failed", vnpTxnRef);
     }
 
@@ -305,11 +354,89 @@ public class WalletServiceImpl implements WalletService {
         return new WalletDeductResponse(newBalance, WALLET_UNIT);
     }
 
+    @Override
+    @Transactional
+    public WithdrawalResponse createWithdrawal(String username, CreateWithdrawalRequest request) {
+        Account account = getWorkerAccount(username);
+        Wallet wallet = walletRepository.findByUserIdForUpdate(account.getId())
+                .orElseGet(() -> getOrCreateWallet(account.getId()));
+
+        BigDecimal amount = normalizeAmount(request.getAmount());
+        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new AuthServiceException(
+                    HttpStatus.BAD_REQUEST,
+                    "INVALID_WITHDRAWAL_AMOUNT",
+                    "Withdrawal amount must be greater than 0");
+        }
+        if (wallet.getBalance().compareTo(amount) < 0) {
+            throw new AuthServiceException(
+                    HttpStatus.BAD_REQUEST,
+                    "INSUFFICIENT_BALANCE",
+                    "Insufficient wallet balance");
+        }
+
+        UserProfile profile = userProfileRepository.findById(account.getId()).orElse(null);
+        BigDecimal balanceBefore = wallet.getBalance();
+        BigDecimal newAvailable = balanceBefore.subtract(amount);
+        wallet.setBalance(newAvailable);
+        wallet.setLockedBalance(normalizeNullableAmount(wallet.getLockedBalance()).add(amount));
+        walletRepository.save(wallet);
+
+        WithdrawalRequest withdrawal = new WithdrawalRequest();
+        withdrawal.setWallet(wallet);
+        withdrawal.setWorkerId(account.getId());
+        withdrawal.setWorkerUsername(account.getUsername());
+        withdrawal.setWorkerFullName(profile != null ? profile.getFullName() : null);
+        withdrawal.setAmount(amount);
+        withdrawal.setBankBin(request.getBankBin().trim());
+        withdrawal.setBankName(request.getBankName().trim());
+        withdrawal.setAccountNo(request.getAccountNo().trim());
+        withdrawal.setAccountName(request.getAccountName().trim());
+
+        String transferContent = "RUTXU " + generateTxnRef();
+        String payload = vietQrService.buildPayload(
+                withdrawal.getBankBin(),
+                withdrawal.getAccountNo(),
+                withdrawal.getAccountName(),
+                withdrawal.getAmount(),
+                transferContent);
+        withdrawal.setTransferContent(transferContent);
+        withdrawal.setVietQrPayload(payload);
+        withdrawal = withdrawalRequestRepository.save(withdrawal);
+
+        TransactionHistory history = new TransactionHistory();
+        history.setWallet(wallet);
+        history.setVnpTxnRef("WITHDRAW-" + withdrawal.getId() + "-" + generateTxnRef());
+        history.setAmount(amount.negate());
+        history.setVnpOrderInfo(transferContent);
+        history.setVnpOrderType("WITHDRAWAL_LOCK");
+        history.setVnpCreateDate(ZonedDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"))
+                .format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+        history.setStatus("PENDING");
+        history.setBalanceBefore(balanceBefore);
+        history.setBalanceAfter(newAvailable);
+        transactionHistoryRepository.save(history);
+
+        updateBalanceCache(wallet.getUserId(), newAvailable);
+        invalidateHistoryCache(wallet.getId());
+        return toWithdrawalResponse(withdrawal);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<WithdrawalResponse> getWithdrawals(String username) {
+        Account account = getWorkerAccount(username);
+        return withdrawalRequestRepository.findByWorkerIdOrderByCreatedAtDesc(account.getId()).stream()
+                .map(this::toWithdrawalResponse)
+                .toList();
+    }
+
     private Wallet getOrCreateWallet(UUID userId) {
         return walletRepository.findByUserId(userId).orElseGet(() -> {
             Wallet wallet = new Wallet();
             wallet.setUserId(userId);
             wallet.setBalance(BigDecimal.ZERO);
+            wallet.setLockedBalance(BigDecimal.ZERO);
             wallet.setCurrency(WALLET_UNIT);
             return walletRepository.save(wallet);
         });
@@ -337,6 +464,10 @@ public class WalletServiceImpl implements WalletService {
             throw new IllegalArgumentException("Amount is required");
         }
         return amount.setScale(4, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal normalizeNullableAmount(BigDecimal amount) {
+        return amount == null ? BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP) : normalizeAmount(amount);
     }
 
     private long toScaledAmount(BigDecimal amount) {
@@ -386,6 +517,26 @@ public class WalletServiceImpl implements WalletService {
                 history.getVnpTransactionNo(),
                 history.getVnpPayDate(),
                 history.getCreatedAt());
+    }
+
+    public WithdrawalResponse toWithdrawalResponse(WithdrawalRequest withdrawal) {
+        return new WithdrawalResponse(
+                withdrawal.getId(),
+                withdrawal.getWorkerId(),
+                withdrawal.getWorkerUsername(),
+                withdrawal.getWorkerFullName(),
+                withdrawal.getAmount(),
+                WALLET_UNIT,
+                withdrawal.getBankBin(),
+                withdrawal.getBankName(),
+                withdrawal.getAccountNo(),
+                withdrawal.getAccountName(),
+                withdrawal.getTransferContent(),
+                withdrawal.getStatus(),
+                withdrawal.getAdminNote(),
+                withdrawal.getConfirmedAt(),
+                withdrawal.getCreatedAt(),
+                withdrawal.getUpdatedAt());
     }
 
     private List<TransactionHistorySummary> readHistoryCache(String cachedJson) {

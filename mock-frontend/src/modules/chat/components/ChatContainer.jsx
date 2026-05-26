@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState, Fragment } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../../hooks/useAuth'
 import { getConversations, getChatHistory, uploadChatFiles } from '../../../services/chatService'
 import { AppIcon } from '../../../components/AppIcon'
+import { useLanguage } from '../../../i18n/LanguageContext'
 import '../../../styles/modules/chat/components/ChatContainer.css'
 
 export default function ChatContainer() {
-  const { session } = useAuth()
+  const { session, mode } = useAuth()
+  const { t } = useLanguage()
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   
   // States
@@ -49,9 +52,9 @@ export default function ChatContainer() {
           const roleParam = searchParams.get('role')
           const tempChat = {
             contactId: contactIdParam,
-            contactName: nameParam ? decodeURIComponent(nameParam) : 'Người dùng mới',
+            contactName: nameParam ? decodeURIComponent(nameParam) : t('chat.newUser'),
             contactRole: roleParam || 'USER',
-            lastMessage: 'Đang bắt đầu cuộc trò chuyện...',
+            lastMessage: t('chat.starting'),
             lastMessageTime: new Date().toISOString(),
             unreadCount: 0,
             isTemp: true,
@@ -140,7 +143,7 @@ export default function ChatContainer() {
           if (index !== -1) {
             const updatedConv = {
               ...updatedList[index],
-              lastMessage: msg.content || (msg.attachments && msg.attachments.length > 0 ? '[Hình ảnh]' : '[Tin nhắn]'),
+              lastMessage: msg.content || (msg.attachments && msg.attachments.length > 0 ? t('chat.image') : t('chat.message')),
               lastMessageTime: msg.sentAt,
               isTemp: false, // It's no longer temporary once a message is sent/received
             }
@@ -406,7 +409,7 @@ export default function ChatContainer() {
       const minutes = date.getMinutes().toString().padStart(2, '0')
       const timeStr = `${hours}:${minutes}`
       if (isToday) {
-        return `Hôm nay, ${timeStr}`
+        return `${t('chat.today')}, ${timeStr}`
       } else {
         const day = date.getDate().toString().padStart(2, '0')
         const month = (date.getMonth() + 1).toString().padStart(2, '0')
@@ -418,6 +421,20 @@ export default function ChatContainer() {
     }
   }
 
+  const handleBookWorker = () => {
+    if (!activeChat?.contactId) return
+
+    const chatReturnPath = `/app/chat?contactId=${activeChat.contactId}&name=${encodeURIComponent(activeChat.contactName || '')}&role=${activeChat.contactRole || 'WORKER'}`
+    navigate(`/app/worker/${activeChat.contactId}`, {
+      state: {
+        from: chatReturnPath,
+        openBooking: true,
+      },
+    })
+  }
+
+  const canBookActiveWorker = mode === 'CUSTOMER' && activeChat?.contactRole === 'WORKER'
+
   // Filter conversations based on search text
   const filteredConversations = conversations.filter((c) =>
     c.contactName.toLowerCase().includes(searchQuery.toLowerCase())
@@ -426,14 +443,14 @@ export default function ChatContainer() {
   return (
     <div className="chat-module-container">
       {/* Sidebar - Conversations list */}
-      <aside className="chat-sidebar" aria-label="Conversation List">
+      <aside className="chat-sidebar" aria-label={t('chat.conversations')}>
         <div className="chat-sidebar-header">
-          <h3>Hội thoại</h3>
+          <h3>{t('chat.conversations')}</h3>
           <div className="search-contacts-wrapper">
             <span className="search-icon-placeholder">🔍</span>
             <input
               type="text"
-              placeholder="Tìm kiếm người nhắn..."
+              placeholder={t('chat.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="search-contacts-input"
@@ -444,7 +461,7 @@ export default function ChatContainer() {
         <div className="conversations-scroll-list">
           {filteredConversations.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '20px', color: '#94a3b8', fontSize: '0.9rem' }}>
-              Không có cuộc trò chuyện nào.
+              {t('chat.emptyConversations')}
             </div>
           ) : (
             filteredConversations.map((conv) => {
@@ -467,7 +484,7 @@ export default function ChatContainer() {
                       <span className="conversation-item-name">
                         {conv.contactName}
                         <span className={`role-tag-badge ${isWorker ? 'worker' : 'customer'}`}>
-                          {isWorker ? 'Thợ' : 'Khách'}
+                          {isWorker ? t('common.worker') : t('chat.customerShort')}
                         </span>
                       </span>
                       <span className="conversation-item-time">
@@ -486,7 +503,7 @@ export default function ChatContainer() {
       </aside>
 
       {/* Main chat window area */}
-      <section className="chat-main-area" aria-label="Khung trò chuyện">
+      <section className="chat-main-area" aria-label={t('chat.conversations')}>
         {activeChat ? (
           <>
             {/* Header info of active contact */}
@@ -497,17 +514,28 @@ export default function ChatContainer() {
                 </div>
                 <div className="active-contact-info-text">
                   <h4>{activeChat.contactName}</h4>
-                  <p>Trực tuyến</p>
+                  <p>{t('chat.online')}</p>
                 </div>
               </div>
+              {canBookActiveWorker && (
+                <button
+                  type="button"
+                  className="chat-book-worker-btn"
+                  onClick={handleBookWorker}
+                  title={t('chat.bookWorker')}
+                >
+                  <AppIcon name="calendar" size={17} />
+                  <span>{t('chat.bookWorker')}</span>
+                </button>
+              )}
             </div>
 
             {/* Connection Status indicator */}
             {socketStatus !== 'connected' && selectedFiles.length === 0 && (
               <div className={`ws-connection-status-bar ${socketStatus}`}>
                 {socketStatus === 'connecting'
-                  ? 'Đang kết nối lại máy chủ realtime...'
-                  : 'Mất kết nối realtime. Đang cố gắng kết nối lại...'}
+                  ? t('chat.reconnecting')
+                  : t('chat.disconnected')}
               </div>
             )}
 
@@ -515,7 +543,7 @@ export default function ChatContainer() {
             <div className="chat-messages-container">
               {messages.length === 0 ? (
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '0.9rem' }}>
-                  Bắt đầu gửi tin nhắn để khởi động cuộc trò chuyện này.
+                  {t('chat.startMessage')}
                 </div>
               ) : (
                 messages.map((msg, index) => {
@@ -554,20 +582,20 @@ export default function ChatContainer() {
                                     <a href={att.fileUrl} target="_blank" rel="noopener noreferrer">
                                       <img 
                                         src={att.fileUrl} 
-                                        alt="Đính kèm" 
+                                        alt={t('chat.attachmentAlt')}
                                         className="attachment-img-preview" 
                                       />
                                     </a>
                                     {msg.isSending && (
                                       <div className="attachment-upload-loader">
                                         <div className="spinner-loader" />
-                                        <span>Đang gửi...</span>
+                                        <span>{t('chat.sending')}</span>
                                       </div>
                                     )}
                                     {msg.isFailed && (
                                       <div className="attachment-upload-loader" style={{ backgroundColor: 'rgba(239, 68, 68, 0.75)' }}>
                                         <AppIcon name="alert" size={20} />
-                                        <span>Lỗi gửi ảnh</span>
+                                        <span>{t('chat.imageError')}</span>
                                       </div>
                                     )}
                                   </div>
@@ -594,12 +622,12 @@ export default function ChatContainer() {
                   const url = URL.createObjectURL(file)
                   return (
                     <div key={idx} className="file-preview-item">
-                      <img src={url} alt="Xem trước" className="file-preview-image" />
+                      <img src={url} alt={t('chat.previewAlt')} className="file-preview-image" />
                       <button
                         type="button"
                         onClick={() => handleRemoveFile(idx)}
                         className="file-preview-remove-btn"
-                        title="Xóa ảnh này"
+                        title={t('chat.removeImage')}
                       >
                         ✕
                       </button>
@@ -624,13 +652,13 @@ export default function ChatContainer() {
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   className="chat-upload-file-btn"
-                  title="Đính kèm hình ảnh"
+                  title={t('chat.attachImage')}
                 >
                   📷
                 </button>
                 <input
                   type="text"
-                  placeholder="Nhập nội dung tin nhắn..."
+                  placeholder={t('chat.inputPlaceholder')}
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   onPaste={handlePaste}
@@ -641,7 +669,7 @@ export default function ChatContainer() {
                   disabled={(!text.trim() && selectedFiles.length === 0) || (selectedFiles.length === 0 && socketStatus !== 'connected')}
                   className="chat-send-action-btn"
                 >
-                  Gửi ➔
+                  {t('chat.send')} ➔
                 </button>
               </form>
             </div>
@@ -649,8 +677,8 @@ export default function ChatContainer() {
         ) : (
           <div className="empty-chat-state-panel">
             <span className="empty-chat-illustration" aria-hidden="true"><AppIcon name="chat" size={42} /></span>
-            <h4>Chưa chọn hội thoại</h4>
-            <p>Chọn một cuộc trò chuyện từ danh sách hoặc bấm "Nhắn tin" với bất cứ ai trên bản đồ để trò chuyện trực tiếp.</p>
+            <h4>{t('chat.emptyTitle')}</h4>
+            <p>{t('chat.emptyDesc')}</p>
           </div>
         )}
       </section>

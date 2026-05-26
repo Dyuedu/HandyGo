@@ -65,4 +65,6 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
                     + "ORDER BY b.createdAt DESC")
     List<Booking> findByWorker_IdAndStatusInOrderByCreatedAtDesc(
             @Param("workerId") UUID workerId, @Param("statuses") Collection<BookingStatus> statuses);
+
+    boolean existsByWorker_IdAndStatusIn(UUID workerId, Collection<BookingStatus> statuses);
 }

@@ -22,14 +22,14 @@ export const authModes = {
 export const authHighlights = [
   {
     title: 'JWT',
-    description: 'Token truy cập và làm mới',
+    descriptionKey: 'auth.highlight.jwt',
   },
   {
     title: '10 phút',
-    description: 'Khóa khi thử sai nhiều lần',
+    descriptionKey: 'auth.highlight.lock',
   },
   {
     title: 'Cloudinary',
-    description: 'Lưu trữ chứng chỉ hành nghề',
+    descriptionKey: 'auth.highlight.cloudinary',
   },
 ]

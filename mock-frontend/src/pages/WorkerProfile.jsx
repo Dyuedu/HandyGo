@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useCreateBooking } from '../modules/booking/hooks'
 import {
@@ -9,24 +9,19 @@ import {
   todayLocalDateString,
   validateBookingSchedule,
 } from '../modules/booking/utils/bookingDateTime'
+import { getPublicWorkerProfile } from '../services/profileService'
 import { getUserLocations } from '../services/userService'
 import { getAvailableVouchers } from '../services/voucherService'
 import { getReviewsByWorkerId } from '../services/reviewService'
 import { AppIcon } from '../components/AppIcon'
+import { useLanguage } from '../i18n/LanguageContext'
+import { getBrowserLocale } from '../i18n/formatters'
 import '../styles/pages/WorkerProfile.css'
 
-const translateJobType = (job) => {
-  if (!job) return 'Chưa xác định'
+const translateJobType = (job, t) => {
+  if (!job) return t('job.unknown')
   const j = job.trim().toUpperCase()
-  switch (j) {
-    case 'DIEN': return 'Thợ Điện'
-    case 'NUOC': return 'Thợ Nước'
-    case 'DIEU_HOA': return 'Thợ Điều hòa'
-    case 'SUA_XE': return 'Thợ Sửa xe'
-    case 'XAY_DUNG': return 'Thợ Xây dựng'
-    case 'DON_DEP': return 'Dọn dẹp'
-    default: return job
-  }
+  return t(`job.${j}`) || job
 }
 
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
@@ -66,7 +61,21 @@ const generateMockReviews = (workerId) => {
 export function WorkerProfile() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const { session, mode } = useAuth()
+  const { language, t } = useLanguage()
+  const locale = getBrowserLocale(language)
+
+  const returnPath = location.state?.from || '/app/home'
+  const returnLabel = returnPath.startsWith('/app/chat')
+    ? t('worker.backChat')
+    : returnPath === '/app/profile'
+      ? t('worker.backProfile')
+      : t('worker.backMap')
+
+  const handleBack = () => {
+    navigate(returnPath)
+  }
   const createBookingMutation = useCreateBooking()
   const currentUserId = session?.id || localStorage.getItem('my_user_id')
   const isCustomer = mode === 'CUSTOMER'
@@ -75,7 +84,7 @@ export function WorkerProfile() {
   const [currentUser, setCurrentUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [reviews, setReviews] = useState([])
-  const [bookingOpen, setBookingOpen] = useState(false)
+  const [bookingOpen, setBookingOpen] = useState(Boolean(location.state?.openBooking))
   const [bookingData, setBookingData] = useState({
     date: '',
     time: '',
@@ -92,11 +101,17 @@ export function WorkerProfile() {
   useEffect(() => {
     const fetchWorker = async () => {
       try {
+        let found = null
+        try {
+          found = await getPublicWorkerProfile(id)
+        } catch {
+          const data = await getUserLocations()
+          found = data.find((u) => u.id === id) || null
+        }
         const data = await getUserLocations()
-        const found = data.find(u => u.id === id)
-        const me = data.find(u => u.id === currentUserId)
-        setWorker(found || null)
-        setCurrentUser(me || null)
+        const me = data.find((u) => u.id === currentUserId) || null
+        setWorker(found)
+        setCurrentUser(me)
       } catch (err) {
         console.error('Không thể tải dữ liệu thợ', err)
       } finally {
@@ -188,9 +203,13 @@ export function WorkerProfile() {
     }
   }, [worker])
 
-  const avgRating = reviews.length > 0
-    ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length)
+  const reviewAvg = reviews.length > 0
+    ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
     : 0
+  const avgRating =
+    worker?.avgRating != null && Number(worker.avgRating) > 0
+      ? Number(worker.avgRating)
+      : reviewAvg
 
   const distance = (currentUser && worker)
     ? calculateDistance(currentUser.latitude, currentUser.longitude, worker.latitude, worker.longitude)
@@ -200,14 +219,14 @@ export function WorkerProfile() {
     e.preventDefault()
     setBookingError('')
 
-    const scheduleError = validateBookingSchedule(bookingData.date, bookingData.time)
+    const scheduleError = validateBookingSchedule(bookingData.date, bookingData.time, t)
     if (scheduleError) {
       setBookingError(scheduleError)
       return
     }
 
     if (!bookingData.address.trim()) {
-      setBookingError('Vui lòng nhập địa chỉ dịch vụ.')
+      setBookingError(t('booking.validation.addressRequired'))
       return
     }
 
@@ -231,7 +250,7 @@ export function WorkerProfile() {
         }
       },
       onError: (err) => {
-        setBookingError(resolveBookingFormError(err))
+        setBookingError(resolveBookingFormError(err, t))
       },
     })
   }
@@ -254,7 +273,7 @@ export function WorkerProfile() {
     return (
       <div className="wp-loading">
         <div className="wp-loading-spinner" />
-        <p>Đang tải thông tin thợ...</p>
+        <p>{t('worker.loading')}</p>
       </div>
     )
   }
@@ -263,9 +282,9 @@ export function WorkerProfile() {
     return (
       <div className="wp-not-found">
         <span className="wp-not-found-icon">🔍</span>
-        <h2>Không tìm thấy thợ</h2>
-        <p>Thông tin thợ không tồn tại hoặc đã bị xóa.</p>
-        <button onClick={() => navigate('/app/home')} className="wp-back-btn">← Quay lại bản đồ</button>
+        <h2>{t('worker.notFoundTitle')}</h2>
+        <p>{t('worker.notFoundDesc')}</p>
+        <button type="button" onClick={handleBack} className="wp-back-btn">← {returnLabel}</button>
       </div>
     )
   }
@@ -273,8 +292,8 @@ export function WorkerProfile() {
   return (
     <div className="wp-container">
       {/* Back navigation */}
-      <button className="wp-back-link" onClick={() => navigate('/app/home')}>
-        ← Quay lại bản đồ
+      <button type="button" className="wp-back-link" onClick={handleBack}>
+        ← {returnLabel}
       </button>
 
       <div className="wp-grid">
@@ -289,15 +308,18 @@ export function WorkerProfile() {
               </div>
               <h1 className="wp-name">{worker.fullName}</h1>
               <div className="wp-badges">
-                <span className="wp-badge role">Thợ sửa chữa</span>
+                <span className="wp-badge role">{t('worker.roleBadge')}</span>
                 {worker.jobType && (
-                  <span className="wp-badge job">{translateJobType(worker.jobType)}</span>
+                  <span className="wp-badge job">{translateJobType(worker.jobType, t)}</span>
+                )}
+                {worker.verified && (
+                  <span className="wp-badge verified">{t('profile.verified')}</span>
                 )}
               </div>
               <div className="wp-rating-summary">
                 {renderStars(avgRating, 18)}
                 <span className="wp-rating-number">{avgRating.toFixed(1)}</span>
-                <span className="wp-rating-count">({reviews.length} đánh giá)</span>
+                <span className="wp-rating-count">{t('worker.reviewCount', { count: reviews.length })}</span>
               </div>
             </div>
           </div>
@@ -307,26 +329,26 @@ export function WorkerProfile() {
             <div className="wp-info-card">
               <div className="wp-info-icon"><AppIcon name="phone" size={22} /></div>
               <div className="wp-info-content">
-                <span className="wp-info-label">Số điện thoại</span>
-                <span className="wp-info-value">{worker.phone || 'Chưa cập nhật'}</span>
+                <span className="wp-info-label">{t('worker.phone')}</span>
+                <span className="wp-info-value">{worker.phone || t('worker.notUpdated')}</span>
               </div>
             </div>
             <div className="wp-info-card">
               <div className="wp-info-icon"><AppIcon name="wrench" size={22} /></div>
               <div className="wp-info-content">
-                <span className="wp-info-label">Chuyên ngành</span>
-                <span className="wp-info-value">{translateJobType(worker.jobType)}</span>
+                <span className="wp-info-label">{t('worker.specialty')}</span>
+                <span className="wp-info-value">{translateJobType(worker.jobType, t)}</span>
               </div>
             </div>
             <div className="wp-info-card">
               <div className="wp-info-icon"><AppIcon name="map" size={22} /></div>
               <div className="wp-info-content">
-                <span className="wp-info-label">Trạng thái</span>
+                <span className="wp-info-label">{t('worker.onlineStatus')}</span>
                 <span className="wp-info-value">
                   {worker.latitude && worker.longitude ? (
-                    <span className="wp-online">● Đang hoạt động</span>
+                    <span className="wp-online">{t('worker.online')}</span>
                   ) : (
-                    <span className="wp-offline">● Ngoại tuyến</span>
+                    <span className="wp-offline">{t('worker.offline')}</span>
                   )}
                 </span>
               </div>
@@ -335,7 +357,7 @@ export function WorkerProfile() {
               <div className="wp-info-card highlight">
                 <div className="wp-info-icon"><AppIcon name="target" size={22} /></div>
                 <div className="wp-info-content">
-                  <span className="wp-info-label">Khoảng cách đến bạn</span>
+                  <span className="wp-info-label">{t('worker.distance')}</span>
                   <span className="wp-info-value distance">{distance.toFixed(2)} km</span>
                 </div>
               </div>
@@ -345,7 +367,7 @@ export function WorkerProfile() {
           {/* Mini Map */}
           {worker.latitude && worker.longitude && (
             <div className="wp-map-section">
-              <h3 className="wp-section-title"><AppIcon name="map" size={20} /> Vị trí hiện tại</h3>
+              <h3 className="wp-section-title"><AppIcon name="map" size={20} /> {t('worker.currentLocation')}</h3>
               <div className="wp-mini-map" ref={miniMapRef} />
             </div>
           )}
@@ -356,23 +378,23 @@ export function WorkerProfile() {
           {/* Book Button */}
           <div className="wp-book-section">
             {!isCustomer && (
-              <p className="wp-book-hint">Chỉ tài khoản khách hàng mới có thể đặt lịch.</p>
+              <p className="wp-book-hint">{t('worker.customerOnly')}</p>
             )}
 
             {isCustomer && !bookingOpen && (
               <button className="wp-book-btn" onClick={() => { setBookingOpen(true); setBookingError('') }}>
-                <AppIcon name="calendar" size={18} /> Đặt lịch với {worker.fullName?.split(' ').pop() || 'thợ'}
+                <AppIcon name="calendar" size={18} /> {t('worker.bookWith', { name: worker.fullName?.split(' ').pop() || t('common.worker') })}
               </button>
             )}
 
             {isCustomer && bookingOpen && (
               <form className="wp-booking-form" onSubmit={handleBookingSubmit}>
-                <h3 className="wp-form-title"><AppIcon name="calendar" size={18} /> Đặt lịch hẹn</h3>
+                <h3 className="wp-form-title"><AppIcon name="calendar" size={18} /> {t('worker.bookingTitle')}</h3>
                 {bookingError && (
                   <div className="wp-form-error" role="alert">{bookingError}</div>
                 )}
                 <div className="wp-form-row">
-                  <label>Ngày</label>
+                  <label>{t('worker.date')}</label>
                   <input
                     type="date"
                     required
@@ -393,7 +415,7 @@ export function WorkerProfile() {
                   />
                 </div>
                 <div className="wp-form-row">
-                  <label>Giờ</label>
+                  <label>{t('worker.time')}</label>
                   <input
                     type="time"
                     required
@@ -406,50 +428,50 @@ export function WorkerProfile() {
                   />
                 </div>
                 <div className="wp-form-row">
-                  <label>Địa chỉ</label>
+                  <label>{t('worker.address')}</label>
                   <input
                     type="text"
                     required
-                    placeholder="Nhập địa chỉ của bạn..."
+                    placeholder={t('worker.addressPlaceholder')}
                     value={bookingData.address}
                     onChange={(e) => setBookingData(prev => ({ ...prev, address: e.target.value }))}
                   />
                 </div>
                 <div className="wp-form-row">
-                  <label>Mô tả vấn đề</label>
+                  <label>{t('worker.problem')}</label>
                   <textarea
                     rows={3}
-                    placeholder="Mô tả ngắn gọn vấn đề cần sửa chữa..."
+                    placeholder={t('worker.problemPlaceholder')}
                     value={bookingData.description}
                     onChange={(e) => setBookingData(prev => ({ ...prev, description: e.target.value }))}
                   />
                 </div>
                 <div className="wp-form-row">
-                  <label>Voucher (tùy chọn)</label>
+                  <label>{t('worker.voucherOptional')}</label>
                   <select
                     value={bookingData.voucherId}
                     onChange={(e) => setBookingData((prev) => ({ ...prev, voucherId: e.target.value }))}
                     className="wp-form-select"
                     disabled={vouchersLoading}
                   >
-                    <option value="">Không dùng voucher</option>
+                    <option value="">{t('worker.noVoucher')}</option>
                     {vouchers.map((v) => (
                       <option key={v.id} value={String(v.id)}>
-                        {v.code} — {v.discountPreview || 'Giảm giá'}
+                        {v.code} - {v.discountPreview || t('worker.discount')}
                       </option>
                     ))}
                   </select>
                   {vouchersLoading && (
-                    <p className="wp-voucher-hint">Đang tải danh sách voucher…</p>
+                    <p className="wp-voucher-hint">{t('worker.loadingVouchers')}</p>
                   )}
                   {!vouchersLoading && vouchers.length === 0 && (
-                    <p className="wp-voucher-hint">Không có voucher khả dụng.</p>
+                    <p className="wp-voucher-hint">{t('worker.noVouchers')}</p>
                   )}
                   {selectedVoucher && (
                     <p className="wp-voucher-preview">
-                      Ưu đãi: <strong>{selectedVoucher.discountPreview}</strong>
+                      {t('worker.offer')}: <strong>{selectedVoucher.discountPreview}</strong>
                       <span className="wp-voucher-preview-note">
-                        {' '}— áp dụng khi thợ nhập phí dịch vụ
+                        {' '}- {t('worker.offerNote')}
                       </span>
                     </p>
                   )}
@@ -461,14 +483,14 @@ export function WorkerProfile() {
                     disabled={createBookingMutation.isPending}
                     onClick={() => { setBookingOpen(false); setBookingError('') }}
                   >
-                    Hủy
+                    {t('profile.cancel')}
                   </button>
                   <button
                     type="submit"
                     className="wp-form-submit"
                     disabled={createBookingMutation.isPending}
                   >
-                    {createBookingMutation.isPending ? 'Đang gửi…' : 'Xác nhận đặt lịch'}
+                    {createBookingMutation.isPending ? t('worker.submitting') : t('worker.submitBooking')}
                   </button>
                 </div>
               </form>
@@ -477,19 +499,19 @@ export function WorkerProfile() {
 
           {/* Reviews */}
           <div className="wp-reviews-section">
-            <h3 className="wp-section-title"><AppIcon name="badge" size={20} /> Đánh giá từ khách hàng</h3>
+            <h3 className="wp-section-title"><AppIcon name="badge" size={20} /> {t('worker.reviewsTitle')}</h3>
             <div className="wp-reviews-summary-bar">
               <div className="wp-avg-rating-big">
                 <span className="wp-avg-number">{avgRating.toFixed(1)}</span>
                 {renderStars(avgRating, 20)}
               </div>
-              <span className="wp-total-reviews">{reviews.length} đánh giá</span>
+              <span className="wp-total-reviews">{t('worker.reviewCount', { count: reviews.length })}</span>
             </div>
 
             <div className="wp-reviews-list">
                 {reviews.map((review) => {
-                  const reviewer = review.reviewerName || 'Khách hàng'
-                  const date = review.createdAt ? new Date(review.createdAt).toLocaleDateString('vi-VN') : ''
+                  const reviewer = review.reviewerName || t('common.customer')
+                  const date = review.createdAt ? new Date(review.createdAt).toLocaleDateString(locale) : ''
                   return (
                     <div key={review.id || review.bookingId} className="wp-review-card">
                       <div className="wp-review-header">

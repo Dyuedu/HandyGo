@@ -1,14 +1,16 @@
 import '../../../styles/modules/auth/components/AuthTabs.css'
+import { useLanguage } from '../../../i18n/LanguageContext'
 
 const tabs = [
-  { value: 'login', label: 'Đăng nhập' },
-  { value: 'user', label: 'Khách hàng' },
-  { value: 'worker', label: 'Thợ' },
+  { value: 'login', labelKey: 'common.signIn' },
+  { value: 'user', labelKey: 'common.customer' },
+  { value: 'worker', labelKey: 'common.worker' },
 ]
 
 export function AuthTabs({ mode, onChange }) {
+  const { t } = useLanguage()
   return (
-    <div className="tabs" role="tablist" aria-label="Chế độ xác thực">
+    <div className="tabs" role="tablist" aria-label={t('auth.tabs.label')}>
       {tabs.map((tab) => (
         <button
           key={tab.value}
@@ -16,7 +18,7 @@ export function AuthTabs({ mode, onChange }) {
           className={mode === tab.value ? 'active' : ''}
           onClick={() => onChange(tab.value)}
         >
-          {tab.label}
+          {t(tab.labelKey)}
         </button>
       ))}
     </div>

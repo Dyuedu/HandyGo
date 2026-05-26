@@ -10,6 +10,9 @@ import com.group.mock.repository.AccountRepository;
 import com.group.mock.repository.BookingRepository;
 import com.group.mock.repository.ReviewRepository;
 import com.group.mock.repository.WorkerProfileRepository;
+import com.group.mock.service.NotificationEventPublisher;
+import lombok.extern.slf4j.Slf4j;
+
 import com.group.mock.service.ReviewService;
 import java.util.List;
 import java.util.UUID;
@@ -18,6 +21,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+@Slf4j
 
 @Service
 @RequiredArgsConstructor
@@ -30,6 +35,8 @@ public class ReviewServiceImpl implements ReviewService {
     private final ReviewRepository reviewRepository;
     private final WorkerProfileRepository workerProfileRepository;
     private final AccountRepository accountRepository;
+    private final NotificationEventPublisher notificationEventPublisher;
+
 
     @Override
     @Transactional
@@ -55,6 +62,18 @@ public class ReviewServiceImpl implements ReviewService {
         Review saved = reviewRepository.save(review);
 
         refreshWorkerAverageRating(booking.getWorker());
+        // Send notification to worker about new review
+        try {
+            notificationEventPublisher.publishReviewCreated(
+                booking.getWorker().getId(),
+                bookingId.getMostSignificantBits(),
+                account.getUsername(),
+                request.getRating(),
+                request.getComment()
+            );
+        } catch (Exception e) {
+            log.warn("Failed to send review notification", e);
+        }
         return saved;
     }
 

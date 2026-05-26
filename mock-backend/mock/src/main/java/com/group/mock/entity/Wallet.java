@@ -12,6 +12,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
@@ -34,6 +35,10 @@ public class Wallet {
     @Column(name = "balance", nullable = false, precision = 19, scale = 4)
     private BigDecimal balance = BigDecimal.ZERO;
 
+    @Column(name = "locked_balance", nullable = false, precision = 19, scale = 4,
+            columnDefinition = "NUMERIC(19, 4) DEFAULT 0")
+    private BigDecimal lockedBalance = BigDecimal.ZERO;
+
     @Column(name = "currency", nullable = false, length = 10)
     private String currency = "XU";
 
@@ -52,8 +57,18 @@ public class Wallet {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt = LocalDateTime.now();
 
+    @PrePersist
+    protected void onCreate() {
+        if (this.lockedBalance == null) {
+            this.lockedBalance = BigDecimal.ZERO;
+        }
+    }
+
     @PreUpdate
     protected void onUpdate() {
+        if (this.lockedBalance == null) {
+            this.lockedBalance = BigDecimal.ZERO;
+        }
         this.updatedAt = LocalDateTime.now();
     }
 }

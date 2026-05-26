@@ -1,24 +1,14 @@
 import { Link, Navigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { LanguageSwitcher } from '../components/LanguageSwitcher'
+import { useLanguage } from '../i18n/LanguageContext'
 import '../styles/pages/Landing.css'
 
-const features = [
-  {
-    title: 'Đặt dịch vụ nhanh',
-    description: 'Tìm đúng thợ theo nhu cầu và theo dõi tiến trình xử lý trong một giao diện thống nhất.',
-  },
-  {
-    title: 'Quản lý ví an toàn',
-    description: 'Theo dõi thanh toán, voucher và thu nhập với luồng xác thực JWT rõ ràng.',
-  },
-  {
-    title: 'Hồ sơ thợ xác minh',
-    description: 'Thợ tải chứng chỉ hành nghề để hoàn tất quy trình duyệt hồ sơ.',
-  },
-]
+const features = ['booking', 'wallet', 'worker']
 
 export function Landing() {
   const { isAuthenticated } = useAuth()
+  const { t } = useLanguage()
 
   if (isAuthenticated) {
     return <Navigate to="/app" replace />
@@ -32,30 +22,29 @@ export function Landing() {
 
       <header className="welcome-header">
         <Link to="/welcome" className="welcome-logo">HG</Link>
-        <nav className="welcome-actions" aria-label="Thao tác đăng nhập và đăng ký">
-          <Link to="/auth" className="ghost-link">Đăng nhập</Link>
-          <Link to="/auth" className="solid-link">Đăng ký</Link>
+        <nav className="welcome-actions" aria-label={t('landing.actionLabel')}>
+          <LanguageSwitcher tone="dark" />
+          <Link to="/auth" className="ghost-link">{t('common.signIn')}</Link>
+          <Link to="/auth" className="solid-link">{t('common.signUp')}</Link>
         </nav>
       </header>
 
       <section className="hero-section">
-        <p className="landing-eyebrow">Dịch vụ cao cấp HomeGo</p>
-        <h1>Kết nối khách hàng với thợ uy tín trong vài thao tác</h1>
-        <p>
-          Một nền tảng hiện đại cho đặt lịch, trò chuyện, thanh toán và quản lý hồ sơ thợ đã xác minh.
-        </p>
+        <p className="landing-eyebrow">{t('landing.eyebrow')}</p>
+        <h1>{t('landing.title')}</h1>
+        <p>{t('landing.description')}</p>
         <div className="hero-actions">
-          <Link to="/auth" className="cta-float">Trải nghiệm ngay</Link>
-          <Link to="/auth" className="secondary-link">Tôi đã có tài khoản</Link>
+          <Link to="/auth" className="cta-float">{t('landing.start')}</Link>
+          <Link to="/auth" className="secondary-link">{t('landing.haveAccount')}</Link>
         </div>
       </section>
 
-      <section className="feature-grid" aria-label="Tính năng">
+      <section className="feature-grid" aria-label="HomeGo">
         {features.map((feature) => (
-          <article key={feature.title} className="feature-card">
+          <article key={feature} className="feature-card">
             <span aria-hidden="true" />
-            <h2>{feature.title}</h2>
-            <p>{feature.description}</p>
+            <h2>{t(`landing.feature.${feature}.title`)}</h2>
+            <p>{t(`landing.feature.${feature}.description`)}</p>
           </article>
         ))}
       </section>

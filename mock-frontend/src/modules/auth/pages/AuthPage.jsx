@@ -8,12 +8,19 @@ import { LoginForm } from '../components/LoginForm'
 import { RegisterUserForm } from '../../customer/components/RegisterUserForm'
 import { RegisterWorkerForm } from '../../worker/components/RegisterWorkerForm'
 import { useAuthForms } from '../hooks/useAuthForms'
-import { authModes } from './authContent'
+import { LanguageSwitcher } from '../../../components/LanguageSwitcher'
+import { useLanguage } from '../../../i18n/LanguageContext'
 import '../../../styles/modules/auth/pages/AuthPage.css'
 
 export function AuthPage() {
   const auth = useAuthForms()
-  const currentMode = authModes[auth.mode]
+  const { t } = useLanguage()
+  const currentMode = {
+    eyebrow: t(`auth.${auth.mode}.eyebrow`),
+    title: t(`auth.${auth.mode}.title`),
+    description: t(`auth.${auth.mode}.description`),
+    submit: t(`auth.${auth.mode}.submit`),
+  }
 
   useEffect(() => {
     const hash = window.location.hash
@@ -29,6 +36,9 @@ export function AuthPage() {
 
   return (
     <main className="auth-shell">
+      <div className="auth-language">
+        <LanguageSwitcher />
+      </div>
       <section className="auth-card" aria-label="Authentication">
         <AuthBrandPanel />
 

@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../hooks/useAuth'
 import { registerUser, registerWorker } from '../../../services/authService'
-import { authMessages } from '../../../constants/authMessages'
 import { validatePassword, validatePhone, validateUsername } from '../../../utils/validation'
+import { useLanguage } from '../../../i18n/LanguageContext'
 
 const initialLogin = { username: '', password: '' }
 const initialUser = { username: '', password: '', fullName: '', phone: '' }
@@ -30,21 +30,47 @@ const getCoordinates = () => {
   })
 }
 
+const validationT = (key) => key
+
+function translateNotice(notice, t) {
+  if (!notice) return ''
+  if (typeof notice === 'string') return notice
+  if (notice.key) {
+    const translated = t(notice.key)
+    return translated === notice.key ? notice.fallback || translated : translated
+  }
+  return notice.fallback || ''
+}
+
+function backendErrorNotice(err) {
+  const code = err?.payload?.error?.code
+  if (code) {
+    return {
+      key: `error.${code}`,
+      fallback: err?.payload?.error?.message || err.message,
+    }
+  }
+  return { fallback: err?.message || '' }
+}
+
 export function useAuthForms() {
   const { session, signIn, signInWithGoogle, signOut, clearAuthSession } = useAuth()
+  const { t } = useLanguage()
   const navigate = useNavigate()
   const [mode, setMode] = useState('login')
   const [loginForm, setLoginForm] = useState(initialLogin)
   const [userForm, setUserForm] = useState(initialUser)
   const [workerForm, setWorkerForm] = useState(initialWorker)
-  const [message, setMessage] = useState('')
-  const [error, setError] = useState('')
+  const [message, setMessage] = useState(null)
+  const [error, setError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
+  const translatedMessage = useMemo(() => translateNotice(message, t), [message, t])
+  const translatedError = useMemo(() => translateNotice(error, t), [error, t])
 
   async function handleLogin(event) {
     event.preventDefault()
-    const validation = validateUsername(loginForm.username) || (!loginForm.password ? 'Vui lòng nhập mật khẩu' : '')
-    if (validation) return setError(validation)
+    const validation = validateUsername(loginForm.username, validationT) || (!loginForm.password ? 'validation.password.required' : '')
+    if (validation) return setError({ key: validation })
 
     await submit(async () => {
       const coords = await getCoordinates()
@@ -53,7 +79,7 @@ export function useAuthForms() {
         : loginForm
 
       await signIn(loginPayload)
-      setMessage(authMessages.loginSuccess)
+      setMessage({ key: 'auth.success.login' })
       setLoginForm(initialLogin)
       navigate('/app', { replace: true })
     })
@@ -63,7 +89,7 @@ export function useAuthForms() {
     await submit(async () => {
       const coords = await getCoordinates()
       await signInWithGoogle(accessToken, coords)
-      setMessage(authMessages.loginSuccess)
+      setMessage({ key: 'auth.success.login' })
       navigate('/app', { replace: true })
     })
   }
@@ -71,15 +97,15 @@ export function useAuthForms() {
   async function handleRegisterUser(event) {
     event.preventDefault()
     const validation =
-      validateUsername(userForm.username) ||
-      validatePassword(userForm.password) ||
-      (!userForm.fullName.trim() ? 'Vui lòng nhập họ tên' : '') ||
-      validatePhone(userForm.phone)
-    if (validation) return setError(validation)
+      validateUsername(userForm.username, validationT) ||
+      validatePassword(userForm.password, validationT) ||
+      (!userForm.fullName.trim() ? 'validation.fullName.required' : '') ||
+      validatePhone(userForm.phone, validationT)
+    if (validation) return setError({ key: validation })
 
     await submit(async () => {
       await registerUser(userForm)
-      setMessage(authMessages.registerSuccess)
+      setMessage({ key: 'auth.success.register' })
       setUserForm(initialUser)
       setMode('login')
     })
@@ -88,17 +114,17 @@ export function useAuthForms() {
   async function handleRegisterWorker(event) {
     event.preventDefault()
     const validation =
-      validateUsername(workerForm.username) ||
-      validatePassword(workerForm.password) ||
-      (!workerForm.fullName.trim() ? 'Vui lòng nhập họ tên' : '') ||
-      validatePhone(workerForm.phone) ||
-      (!workerForm.jobType.trim() ? 'Vui lòng nhập loại công việc' : '') ||
-      (!workerForm.professionalCertificate ? 'Vui lòng tải lên chứng chỉ hành nghề' : '')
-    if (validation) return setError(validation)
+      validateUsername(workerForm.username, validationT) ||
+      validatePassword(workerForm.password, validationT) ||
+      (!workerForm.fullName.trim() ? 'validation.fullName.required' : '') ||
+      validatePhone(workerForm.phone, validationT) ||
+      (!workerForm.jobType.trim() ? 'validation.jobType.required' : '') ||
+      (!workerForm.professionalCertificate ? 'validation.certificate.required' : '')
+    if (validation) return setError({ key: validation })
 
     await submit(async () => {
       await registerWorker(workerForm)
-      setMessage(authMessages.registerSuccess)
+      setMessage({ key: 'auth.success.register' })
       setWorkerForm(initialWorker)
       setMode('login')
     })
@@ -112,18 +138,18 @@ export function useAuthForms() {
 
     await submit(async () => {
       await signOut()
-      setMessage('Đã đăng xuất')
+      setMessage({ key: 'auth.success.logout' })
     })
   }
 
   async function submit(action) {
     setSubmitting(true)
-    setError('')
-    setMessage('')
+    setError(null)
+    setMessage(null)
     try {
       await action()
     } catch (err) {
-      setError(err.message)
+      setError(backendErrorNotice(err))
     } finally {
       setSubmitting(false)
     }
@@ -139,8 +165,8 @@ export function useAuthForms() {
     workerForm,
     setWorkerForm,
     session,
-    message,
-    error,
+    message: translatedMessage,
+    error: translatedError,
     submitting,
     handleLogin,
     handleGoogleLogin,

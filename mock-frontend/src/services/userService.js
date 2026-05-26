@@ -7,3 +7,7 @@ export function updateLocation(latitude, longitude) {
 export function getUserLocations() {
   return axiosClient.get('/api/v1/users/locations')
 }
+
+export function updateWorkerAvailability(available) {
+  return axiosClient.patch('/api/v1/users/worker/availability', { available })
+}
