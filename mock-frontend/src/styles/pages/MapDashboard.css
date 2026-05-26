@@ -122,6 +122,78 @@
   box-shadow: none;
 }
 
+.worker-availability-panel {
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid #dbe3ee;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.availability-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.availability-toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: #16a34a;
+}
+
+.availability-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.availability-flag,
+.busy-tag,
+.hidden-tag {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.availability-flag.visible {
+  color: #047857;
+  background: #d1fae5;
+}
+
+.availability-flag.hidden,
+.hidden-tag {
+  color: #92400e;
+  background: #fef3c7;
+}
+
+.availability-flag.busy,
+.busy-tag {
+  color: #b91c1c;
+  background: #fee2e2;
+}
+
+.availability-flag.offline,
+.availability-flag.unavailable,
+.availability-flag.unverified {
+  color: #475569;
+  background: #e2e8f0;
+}
+
+.availability-hint {
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
 .users-list-container {
   flex: 1;
   overflow-y: auto;

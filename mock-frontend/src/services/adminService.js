@@ -39,3 +39,20 @@ export async function createAdminSubscriptionPlan(payload) {
   const response = await axiosClient.post('/api/v1/admin/subscription-plans', payload)
   return response || response.data
 }
+
+export async function getAdminWithdrawals(status) {
+  const response = await axiosClient.get('/api/v1/admin/withdrawals', {
+    params: status ? { status } : undefined
+  })
+  return response || response.data
+}
+
+export async function getAdminWithdrawalDetail(withdrawalId) {
+  const response = await axiosClient.get(`/api/v1/admin/withdrawals/${withdrawalId}`)
+  return response || response.data
+}
+
+export async function confirmAdminWithdrawal(withdrawalId, payload = {}) {
+  const response = await axiosClient.put(`/api/v1/admin/withdrawals/${withdrawalId}/confirm`, payload)
+  return response || response.data
+}

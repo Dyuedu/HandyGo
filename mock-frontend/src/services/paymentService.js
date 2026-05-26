@@ -13,6 +13,14 @@ export function getWalletHistory() {
   return axiosClient.get('/api/v1/wallet/history')
 }
 
+export function createWithdrawalRequest(payload) {
+  return axiosClient.post('/api/v1/wallet/withdrawals', payload)
+}
+
+export function getWithdrawalRequests() {
+  return axiosClient.get('/api/v1/wallet/withdrawals')
+}
+
 // ===== SUBSCRIPTION OPERATIONS =====
 export function getSubscriptionPlans() {
   return axiosClient.get('/api/v1/subscriptions/plans')

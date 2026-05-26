@@ -3,6 +3,7 @@ package com.group.mock.configuration;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -39,35 +40,43 @@ public class SecurityConfig {
     private String jwtSecret;
     private final JwtAccountAuthenticationConverter jwtAccountAuthenticationConverter;
     private final JwtBlacklistFilter jwtBlacklistFilter;
+    private final MessageSource messageSource;
 
     public SecurityConfig(
             JwtAccountAuthenticationConverter jwtAccountAuthenticationConverter,
-            JwtBlacklistFilter jwtBlacklistFilter) {
+            JwtBlacklistFilter jwtBlacklistFilter,
+            MessageSource messageSource) {
         this.jwtAccountAuthenticationConverter = jwtAccountAuthenticationConverter;
         this.jwtBlacklistFilter = jwtBlacklistFilter;
+        this.messageSource = messageSource;
     }
 
     @Bean
     public AuthenticationEntryPoint authenticationEntryPoint() {
         return (request, response, authException) -> {
             int status;
-            String message;
+            String code;
 
             // Check the exception type to decide the status code
             if (authException instanceof BadCredentialsException) {
                 status = HttpServletResponse.SC_UNAUTHORIZED; // 401
-                message = "Invalid username or password";
+                code = "INVALID_CREDENTIALS";
             } else if (authException instanceof LockedException) {
                 status = HttpServletResponse.SC_FORBIDDEN; // 403
-                message = "Account is locked";
+                code = "ACCOUNT_LOCKED";
             } else {
                 status = HttpServletResponse.SC_UNAUTHORIZED; // 401 default
-                message = authException.getMessage();
+                code = "UNAUTHORIZED";
             }
+            String message = messageSource.getMessage("error." + code, null, authException.getMessage(), request.getLocale());
             // Set response properties
             response.setStatus(status);
             response.setContentType("application/json");
-            response.getWriter().write(String.format("{\"error\": \"%s\", \"status\": %d}", message, status));
+            response.getWriter().write(String.format(
+                    "{\"success\":false,\"error\":{\"code\":\"%s\",\"message\":\"%s\"},\"status\":%d}",
+                    code,
+                    message.replace("\"", "\\\""),
+                    status));
         };
     }
 

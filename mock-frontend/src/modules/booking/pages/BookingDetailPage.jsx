@@ -13,6 +13,8 @@ import {
   useStartProcessing,
 } from '../hooks'
 import { formatBookingDateTime } from '../utils/bookingDateTime'
+import { useLanguage } from '../../../i18n/LanguageContext'
+import { getBrowserLocale } from '../../../i18n/formatters'
 import '../../../styles/modules/booking/pages/BookingPages.css'
 
 function formatVnd(value) {
@@ -32,20 +34,9 @@ function hasServiceFee(booking) {
   return Number.isFinite(total) && total > 0
 }
 
-function statusLabel(status) {
-  switch (status) {
-    case 'PENDING': return 'Chờ thợ phản hồi'
-    case 'ACCEPTED': return 'Đã nhận việc'
-    case 'PROCESSING': return 'Đang thực hiện'
-    case 'WAITING_CUSTOMER_CONFIRMATION': return 'Chờ khách xác nhận'
-    case 'FINISHED': return 'Hoàn thành'
-    case 'DECLINED': return 'Đã từ chối'
-    case 'CANCELLED': return 'Đã hủy'
-    default: return status
-  }
-}
-
 export function BookingDetailPage() {
+  const { language, t } = useLanguage()
+  const locale = getBrowserLocale(language)
   const { bookingId } = useParams()
   const { mode, session } = useAuth()
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -78,7 +69,7 @@ export function BookingDetailPage() {
   if (isLoading) {
     return (
       <section className="booking-page">
-        <p className="muted">Đang tải chi tiết…</p>
+        <p className="muted">{t('booking.detailLoading')}</p>
       </section>
     )
   }
@@ -87,10 +78,10 @@ export function BookingDetailPage() {
     return (
       <section className="booking-page">
         <div className="booking-alert" role="alert">
-          {error?.message || 'Không tìm thấy đặt lịch.'}
+          {error?.message || t('booking.notFound')}
         </div>
         <Link to="/app/activity" className="booking-detail-back">
-          ← Quay lại hoạt động
+          ← {t('booking.backActivity')}
         </Link>
       </section>
     )
@@ -104,48 +95,48 @@ export function BookingDetailPage() {
   return (
     <section className="booking-page">
       <Link to="/app/activity" className="booking-detail-back">
-        ← Quay lại hoạt động
+        ← {t('booking.backActivity')}
       </Link>
 
-      <h1>Chi tiết đặt lịch</h1>
-      <p className="muted">Mã: {booking.id}</p>
+      <h1>{t('booking.detailTitle')}</h1>
+      <p className="muted">{t('booking.id')}: {booking.id}</p>
 
       <div className="booking-detail-grid">
         <article className="booking-detail-card">
-          <h2>Trạng thái</h2>
+          <h2>{t('booking.status')}</h2>
           <div className="booking-detail-row">
-            <dt>Trạng thái</dt>
-            <dd>{statusLabel(st)}</dd>
+            <dt>{t('booking.status')}</dt>
+            <dd>{t(`status.${st}`)}</dd>
           </div>
           <div className="booking-detail-row">
-            <dt>Giờ hẹn (khách đặt)</dt>
-            <dd>{formatBookingDateTime(booking.bookingDate)}</dd>
+            <dt>{t('booking.scheduledAt')}</dt>
+            <dd>{formatBookingDateTime(booking.bookingDate, locale)}</dd>
           </div>
           {booking.createdAt && (
             <div className="booking-detail-row">
-              <dt>Tạo đơn lúc</dt>
-              <dd>{formatBookingDateTime(booking.createdAt)}</dd>
+              <dt>{t('booking.createdAt')}</dt>
+              <dd>{formatBookingDateTime(booking.createdAt, locale)}</dd>
             </div>
           )}
         </article>
 
         <article className="booking-detail-card">
-          <h2>Thợ phụ trách</h2>
+          <h2>{t('booking.worker')}</h2>
           {technician ? (
             <>
               <div className="booking-detail-row">
-                <dt>Loại nghề</dt>
+                <dt>{t('profile.job')}</dt>
                 <dd>{technician.jobType || '—'}</dd>
               </div>
               <div className="booking-detail-row">
-                <dt>Đánh giá TB</dt>
+                <dt>{t('profile.avgRating')}</dt>
                 <dd>
                   {technician.avgRating != null ? Number(technician.avgRating).toFixed(1) : '—'}
                 </dd>
               </div>
               <div className="booking-detail-row">
-                <dt>Xác minh</dt>
-                <dd>{technician.isVerified ? 'Đã xác minh' : 'Chưa xác minh'}</dd>
+                <dt>{t('profile.verification')}</dt>
+                <dd>{technician.isVerified ? t('profile.verified') : t('profile.pendingVerification')}</dd>
               </div>
             </>
           ) : (
@@ -155,72 +146,71 @@ export function BookingDetailPage() {
 
         {isTechnician && booking.customer && (
           <article className="booking-detail-card">
-            <h2>Khách hàng</h2>
+            <h2>{t('booking.customer')}</h2>
             <div className="booking-detail-row">
-              <dt>Họ tên</dt>
+              <dt>{t('profile.fullName')}</dt>
               <dd>{booking.customer.fullName || '—'}</dd>
             </div>
             <div className="booking-detail-row">
-              <dt>Số điện thoại</dt>
+              <dt>{t('profile.phone')}</dt>
               <dd>{booking.customer.phone || '—'}</dd>
             </div>
           </article>
         )}
 
         <article className="booking-detail-card">
-          <h2>Địa chỉ</h2>
+          <h2>{t('booking.address')}</h2>
           <div className="booking-detail-row">
-            <dt>Địa chỉ dịch vụ</dt>
+            <dt>{t('booking.serviceAddress')}</dt>
             <dd>{booking.address?.trim() || '—'}</dd>
           </div>
         </article>
 
         <article className="booking-detail-card">
-          <h2>Dịch vụ</h2>
+          <h2>{t('booking.service')}</h2>
           <div className="booking-detail-row">
-            <dt>Mã / tên dịch vụ (tạm)</dt>
+            <dt>{t('booking.serviceCode')}</dt>
             <dd>{serviceLabel}</dd>
           </div>
           {feeReady ? (
             <>
               <div className="booking-detail-row">
-                <dt>Phí dịch vụ</dt>
+                <dt>{t('booking.serviceFee')}</dt>
                 <dd>{formatVnd(booking.totalAmount)}</dd>
               </div>
               <div className="booking-detail-row">
-                <dt>Giảm giá (voucher)</dt>
+                <dt>{t('booking.discount')}</dt>
                 <dd>{formatVnd(booking.discountAmount)}</dd>
               </div>
               <div className="booking-detail-row">
-                <dt>Khách trả tiền mặt</dt>
+                <dt>{t('booking.cash')}</dt>
                 <dd>{formatVnd(booking.finalAmount)}</dd>
               </div>
             </>
           ) : (
-            <p className="muted">Phí dịch vụ sẽ do thợ nhập khi hoàn thành công việc.</p>
+            <p className="muted">{t('booking.feePending')}</p>
           )}
         </article>
 
         {isCustomerParty && st === 'WAITING_CUSTOMER_CONFIRMATION' && feeReady && (
           <article className="booking-detail-card booking-payment-card">
-            <h2>Thanh toán tiền mặt</h2>
+            <h2>{t('booking.cashPayment')}</h2>
             <p className="booking-cash-instruction">
-              Vui lòng thanh toán <strong>{formatVnd(booking.finalAmount)}</strong> trực tiếp cho thợ
-              sau khi kiểm tra công việc. Sau đó bấm xác nhận hoàn thành.
+              {t('booking.cashInstruction', { amount: formatVnd(booking.finalAmount) })}
             </p>
             <div className="booking-payment-summary">
               <div className="booking-payment-row">
-                <span>Phí dịch vụ</span>
+                <span>{t('booking.serviceFee')}</span>
                 <strong>{formatVnd(booking.totalAmount)}</strong>
               </div>
               {Number(booking.discountAmount) > 0 && (
                 <div className="booking-payment-row">
-                  <span>Voucher</span>
+                  <span>{t('booking.voucher')}</span>
                   <strong>-{formatVnd(booking.discountAmount)}</strong>
                 </div>
               )}
               <div className="booking-payment-row highlight">
-                <span>Tiền mặt trả thợ</span>
+                <span>{t('booking.cashToWorker')}</span>
                 <strong>{formatVnd(booking.finalAmount)}</strong>
               </div>
             </div>
@@ -228,32 +218,32 @@ export function BookingDetailPage() {
         )}
 
         <article className="booking-detail-card">
-          <h2>Voucher</h2>
+          <h2>{t('booking.voucher')}</h2>
           {voucher?.voucher ? (
             <>
               <div className="booking-detail-row">
-                <dt>Mã</dt>
+                <dt>{t('booking.code')}</dt>
                 <dd>{voucher.voucher.code || '—'}</dd>
               </div>
               <div className="booking-detail-row">
-                <dt>Giá trị</dt>
+                <dt>{t('booking.value')}</dt>
                 <dd>{formatVnd(voucher.voucher.value)}</dd>
               </div>
               <div className="booking-detail-row">
-                <dt>Trạng thái sử dụng</dt>
+                <dt>{t('booking.usageStatus')}</dt>
                 <dd>{voucher.status}</dd>
               </div>
             </>
           ) : (
-            <p className="muted">Không áp dụng voucher.</p>
+            <p className="muted">{t('booking.noVoucher')}</p>
           )}
         </article>
 
         {isCustomerParty && st === 'FINISHED' && (
           <article className="booking-detail-card review-card">
-            <h2>Đánh giá của bạn</h2>
+            <h2>{t('booking.yourReview')}</h2>
             {reviewQuery.isLoading ? (
-              <p className="muted">Đang kiểm tra đánh giá…</p>
+              <p className="muted">{t('booking.checkingReview')}</p>
             ) : reviewQuery.data ? (
               <>
                 <div className="review-stars">
@@ -264,7 +254,7 @@ export function BookingDetailPage() {
                 {reviewQuery.data.comment ? (
                   <p className="review-comment">{reviewQuery.data.comment}</p>
                 ) : (
-                  <p className="muted">Bạn chưa thêm nhận xét cho đánh giá này.</p>
+                  <p className="muted">{t('booking.noReviewComment')}</p>
                 )}
               </>
             ) : (
@@ -273,12 +263,12 @@ export function BookingDetailPage() {
                 className="review-btn"
                 onClick={() => setReviewModalOpen(true)}
               >
-                Viết đánh giá
+                {t('booking.writeReview')}
               </button>
             )}
             {reviewQuery.isError && reviewQuery.error?.status !== 404 && (
               <div className="booking-alert" role="alert" style={{ marginTop: 12 }}>
-                {reviewQuery.error?.message || 'Không thể tải đánh giá.'}
+                {reviewQuery.error?.message || t('booking.reviewLoadError')}
               </div>
             )}
           </article>
@@ -295,7 +285,7 @@ export function BookingDetailPage() {
                 disabled={busy}
                 onClick={() => acceptMutation.mutate(bookingId)}
               >
-                Chấp nhận
+                {t('booking.accept')}
               </button>
               <button
                 type="button"
@@ -303,7 +293,7 @@ export function BookingDetailPage() {
                 disabled={busy}
                 onClick={() => declineMutation.mutate(bookingId)}
               >
-                Từ chối
+                {t('booking.decline')}
               </button>
             </>
           )}
@@ -314,7 +304,7 @@ export function BookingDetailPage() {
               disabled={busy}
               onClick={() => startMutation.mutate(bookingId)}
             >
-              Bắt đầu xử lý
+              {t('booking.start')}
             </button>
           )}
           {st === 'PROCESSING' && (
@@ -324,7 +314,7 @@ export function BookingDetailPage() {
               disabled={busy}
               onClick={() => setFeeModalOpen(true)}
             >
-              Báo hoàn thành
+              {t('booking.complete')}
             </button>
           )}
         </div>
@@ -338,7 +328,7 @@ export function BookingDetailPage() {
             disabled={busy || confirmOpen}
             onClick={() => setConfirmOpen(true)}
           >
-            Xác nhận hoàn thành
+            {t('booking.confirmComplete')}
           </button>
         </div>
       )}

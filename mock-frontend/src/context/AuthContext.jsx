@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { login as loginRequest, logout as logoutRequest, googleLogin as googleLoginRequest } from '../services/authService'
-import { clearSession, loadSession, saveSession } from '../state/authStore'
+import { clearSession, loadSession, saveSession, subscribeSessionChange } from '../state/authStore'
 import { AuthContext } from './authContextObject'
 
 function resolveInitialMode(session) {
@@ -12,6 +12,13 @@ function resolveInitialMode(session) {
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(loadSession)
   const [mode, setMode] = useState(() => resolveInitialMode(loadSession()))
+
+  useEffect(() => {
+    return subscribeSessionChange((nextSession) => {
+      setSession(nextSession)
+      setMode(resolveInitialMode(nextSession))
+    })
+  }, [])
 
   async function signIn(credentials) {
     const response = await loginRequest(credentials)
@@ -30,18 +37,19 @@ export function AuthProvider({ children }) {
   }
 
   async function signOut() {
-    if (session?.accessToken) {
-      await logoutRequest(session.refreshToken)
+    try {
+      if (session?.accessToken) {
+        await logoutRequest(session.refreshToken)
+      }
+    } catch (error) {
+      console.warn('Logout request failed; clearing local session anyway.', error)
+    } finally {
+      clearSession()
     }
-    clearSession()
-    setSession(null)
-    setMode('CUSTOMER')
   }
 
   function clearAuthSession() {
     clearSession()
-    setSession(null)
-    setMode('CUSTOMER')
   }
 
   const value = {

@@ -3,40 +3,36 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { getMyProfile, updateMyProfile, updateMyWorkerProfile } from '../services/profileService'
 import { AppIcon } from '../components/AppIcon'
+import { useLanguage } from '../i18n/LanguageContext'
 import '../styles/pages/ProfilePage.css'
 
 const JOB_OPTIONS = [
-  { value: 'DIEN', label: 'Thợ Điện' },
-  { value: 'NUOC', label: 'Thợ Nước' },
-  { value: 'DIEU_HOA', label: 'Thợ Điều hòa' },
-  { value: 'SUA_XE', label: 'Thợ Sửa xe' },
-  { value: 'XAY_DUNG', label: 'Thợ Xây dựng' },
-  { value: 'DON_DEP', label: 'Dọn dẹp' },
+  { value: 'DIEN', labelKey: 'job.DIEN' },
+  { value: 'NUOC', labelKey: 'job.NUOC' },
+  { value: 'DIEU_HOA', labelKey: 'job.DIEU_HOA' },
+  { value: 'SUA_XE', labelKey: 'job.SUA_XE' },
+  { value: 'XAY_DUNG', labelKey: 'job.XAY_DUNG' },
+  { value: 'DON_DEP', labelKey: 'job.DON_DEP' },
 ]
 
-function translateJobType(job) {
+function translateJobType(job, t) {
   if (!job) return '—'
   const found = JOB_OPTIONS.find((o) => o.value === job.trim().toUpperCase())
-  return found ? found.label : job
+  return found ? t(found.labelKey) : job
 }
 
-function translateTier(tier) {
-  switch (tier) {
-    case 'BASIC': return 'Cơ bản'
-    case 'PRO': return 'Chuyên nghiệp'
-    case 'FREE':
-    default: return 'Miễn phí'
-  }
+function translateTier(tier, t) {
+  return t(`tier.${tier || 'FREE'}`)
 }
 
-function verificationLabel(status, verified) {
+function verificationLabel(status, verified, t) {
   if (verified || status === 'VERIFIED') {
-    return { text: 'Đã xác minh', className: 'verified' }
+    return { text: t('profile.verified'), className: 'verified' }
   }
-  return { text: 'Chờ duyệt chứng chỉ', className: 'pending' }
+  return { text: t('profile.pendingVerification'), className: 'pending' }
 }
 
-function resolveProfileError(err) {
+function resolveProfileError(err, t) {
   const error = err?.payload?.error
   const details = error?.details
   if (details && typeof details === 'object') {
@@ -44,16 +40,17 @@ function resolveProfileError(err) {
     if (first) return first
   }
   const byCode = {
-    PHONE_EXISTS: 'Số điện thoại đã được sử dụng.',
-    VALIDATION_FAILED: 'Vui lòng kiểm tra lại thông tin.',
-    FORBIDDEN: 'Bạn không có quyền thực hiện thao tác này.',
+    PHONE_EXISTS: t('error.PHONE_EXISTS'),
+    VALIDATION_FAILED: t('error.VALIDATION_FAILED'),
+    FORBIDDEN: t('error.FORBIDDEN'),
   }
   if (error?.code && byCode[error.code]) return byCode[error.code]
-  return err?.message || 'Không thể lưu hồ sơ. Vui lòng thử lại.'
+  return err?.message || t('profile.saveError')
 }
 
 export function ProfilePage() {
   const { mode, session } = useAuth()
+  const { t } = useLanguage()
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -87,7 +84,7 @@ export function ProfilePage() {
       setPhone(data.phone || '')
       setJobType(data.worker?.jobType || 'DIEN')
     } catch (err) {
-      setError(resolveProfileError(err))
+      setError(resolveProfileError(err, t))
     } finally {
       setLoading(false)
     }
@@ -128,10 +125,10 @@ export function ProfilePage() {
         setProfile(updated)
       }
 
-      setSuccess('Đã cập nhật hồ sơ thành công.')
+      setSuccess(t('profile.saveSuccess'))
       setEditing(false)
     } catch (err) {
-      setError(resolveProfileError(err))
+      setError(resolveProfileError(err, t))
     } finally {
       setSaving(false)
     }
@@ -141,11 +138,11 @@ export function ProfilePage() {
     return (
       <section className="profile-page">
         <div className="profile-hero">
-          <h1>Hồ sơ quản trị</h1>
-          <p>Tài khoản: {session?.username || '—'}</p>
+          <h1>{t('profile.adminTitle')}</h1>
+          <p>{t('profile.account')}: {session?.username || '—'}</p>
         </div>
-        <p className="profile-muted">Quản trị viên quản lý thợ tại mục Quản lý thợ.</p>
-        <Link to="/app/admin/workers" className="profile-link-btn">Mở quản lý thợ</Link>
+        <p className="profile-muted">{t('profile.adminHint')}</p>
+        <Link to="/app/admin/workers" className="profile-link-btn">{t('profile.openWorkerManagement')}</Link>
       </section>
     )
   }
@@ -153,19 +150,19 @@ export function ProfilePage() {
   if (loading) {
     return (
       <section className="profile-page">
-        <p className="profile-muted">Đang tải hồ sơ…</p>
+        <p className="profile-muted">{t('profile.loading')}</p>
       </section>
     )
   }
 
   const worker = profile?.worker
-  const verification = verificationLabel(worker?.verificationStatus, worker?.verified)
+  const verification = verificationLabel(worker?.verificationStatus, worker?.verified, t)
 
   return (
     <section className="profile-page">
       <div className="profile-hero">
-        <h1>{isTechnician ? 'Hồ sơ thợ' : 'Hồ sơ cá nhân'}</h1>
-        <p>Quản lý thông tin hiển thị với khách hàng và trên bản đồ.</p>
+        <h1>{isTechnician ? t('profile.workerTitle') : t('profile.customerTitle')}</h1>
+        <p>{t('profile.description')}</p>
       </div>
 
       {error && <div className="profile-alert error" role="alert">{error}</div>}
@@ -174,14 +171,14 @@ export function ProfilePage() {
       {editing ? (
         <form id="profile-edit-form" className="profile-grid" onSubmit={handleSave}>
           <article className="profile-card">
-            <h2>Thông tin chung</h2>
+            <h2>{t('profile.commonInfo')}</h2>
             <div className="profile-form">
               <label>
-                <span>Tên đăng nhập</span>
+                <span>{t('profile.username')}</span>
                 <input type="text" value={profile?.username || ''} disabled />
               </label>
               <label>
-                <span>Họ tên</span>
+                <span>{t('profile.fullName')}</span>
                 <input
                   type="text"
                   required
@@ -191,10 +188,10 @@ export function ProfilePage() {
                 />
               </label>
               <label>
-                <span>Số điện thoại</span>
+                <span>{t('profile.phone')}</span>
                 <input
                   type="tel"
-                  placeholder="0xxxxxxxxx hoặc +84..."
+                  placeholder={t('profile.phonePlaceholder')}
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                 />
@@ -204,38 +201,38 @@ export function ProfilePage() {
 
           {isTechnician && worker && (
             <article className="profile-card">
-              <h2>Thông tin thợ</h2>
+              <h2>{t('profile.workerInfo')}</h2>
               <dl className="profile-dl">
                 <div>
-                  <dt>Xác minh</dt>
+                  <dt>{t('profile.verification')}</dt>
                   <dd>
                     <span className={`profile-badge ${verification.className}`}>{verification.text}</span>
                   </dd>
                 </div>
-                <div><dt>Gói cước</dt><dd>{translateTier(worker.tierType)}</dd></div>
+                <div><dt>{t('profile.subscription')}</dt><dd>{translateTier(worker.tierType, t)}</dd></div>
                 <div>
-                  <dt>Đánh giá TB</dt>
+                  <dt>{t('profile.avgRating')}</dt>
                   <dd>{worker.avgRating != null ? Number(worker.avgRating).toFixed(1) : '—'} ★</dd>
                 </div>
               </dl>
               <div className="profile-worker-edit">
                 <label>
-                  <span>Loại công việc</span>
+                  <span>{t('profile.jobType')}</span>
                   <select value={jobType} onChange={(e) => setJobType(e.target.value)}>
                     {JOB_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      <option key={opt.value} value={opt.value}>{t(opt.labelKey)}</option>
                     ))}
                   </select>
                 </label>
                 <label>
-                  <span>Cập nhật chứng chỉ (tùy chọn)</span>
+                  <span>{t('profile.updateCertificate')}</span>
                   <input
                     type="file"
                     accept=".pdf,.jpg,.jpeg,.png,.webp"
                     onChange={(e) => setCertificateFile(e.target.files?.[0] || null)}
                   />
                   <small className="profile-hint">
-                    Tải chứng chỉ mới sẽ đưa trạng thái về chờ duyệt lại.
+                    {t('profile.certificateHint')}
                   </small>
                 </label>
               </div>
@@ -246,16 +243,16 @@ export function ProfilePage() {
         <div className="profile-grid">
           <article className="profile-card">
             <div className="profile-card-head">
-              <h2>Thông tin chung</h2>
+              <h2>{t('profile.commonInfo')}</h2>
               <button type="button" className="profile-edit-btn" onClick={() => setEditing(true)}>
-                Chỉnh sửa
+                {t('profile.edit')}
               </button>
             </div>
             <dl className="profile-dl">
-              <div><dt>Tên đăng nhập</dt><dd>{profile?.username || '—'}</dd></div>
-              <div><dt>Họ tên</dt><dd>{profile?.fullName || '—'}</dd></div>
-              <div><dt>Số điện thoại</dt><dd>{profile?.phone || '—'}</dd></div>
-              <div><dt>Vai trò</dt><dd>{profile?.role === 'WORKER' ? 'Thợ' : 'Khách hàng'}</dd></div>
+              <div><dt>{t('profile.username')}</dt><dd>{profile?.username || '—'}</dd></div>
+              <div><dt>{t('profile.fullName')}</dt><dd>{profile?.fullName || '—'}</dd></div>
+              <div><dt>{t('profile.phone')}</dt><dd>{profile?.phone || '—'}</dd></div>
+              <div><dt>{t('profile.role')}</dt><dd>{profile?.role === 'WORKER' ? t('common.worker') : t('common.customer')}</dd></div>
               {isTechnician && (
                 <div className="profile-actions-inline">
                   <Link
@@ -263,7 +260,7 @@ export function ProfilePage() {
                     state={{ from: '/app/profile' }}
                     className="profile-link-btn subtle"
                   >
-                    Xem hồ sơ công khai
+                    {t('profile.publicProfile')}
                   </Link>
                 </div>
               )}
@@ -272,23 +269,23 @@ export function ProfilePage() {
 
           {isTechnician && worker && (
             <article className="profile-card">
-              <h2>Thông tin thợ</h2>
+              <h2>{t('profile.workerInfo')}</h2>
               <dl className="profile-dl">
                 <div>
-                  <dt>Xác minh</dt>
+                  <dt>{t('profile.verification')}</dt>
                   <dd>
                     <span className={`profile-badge ${verification.className}`}>{verification.text}</span>
                   </dd>
                 </div>
-                <div><dt>Loại nghề</dt><dd>{translateJobType(worker.jobType)}</dd></div>
-                <div><dt>Gói cước</dt><dd>{translateTier(worker.tierType)}</dd></div>
+                <div><dt>{t('profile.job')}</dt><dd>{translateJobType(worker.jobType, t)}</dd></div>
+                <div><dt>{t('profile.subscription')}</dt><dd>{translateTier(worker.tierType, t)}</dd></div>
                 <div>
-                  <dt>Đánh giá TB</dt>
+                  <dt>{t('profile.avgRating')}</dt>
                   <dd>{worker.avgRating != null ? Number(worker.avgRating).toFixed(1) : '—'} ★</dd>
                 </div>
                 {worker.professionalCertificateUrl && (
                   <div>
-                    <dt>Chứng chỉ</dt>
+                    <dt>{t('profile.certificate')}</dt>
                     <dd>
                       <a
                         href={worker.professionalCertificateUrl}
@@ -296,25 +293,25 @@ export function ProfilePage() {
                         rel="noreferrer"
                         className="profile-cert-link"
                       >
-                        Xem chứng chỉ hành nghề
+                        {t('profile.viewCertificate')}
                       </a>
                     </dd>
                   </div>
                 )}
               </dl>
               <p className="profile-hint">
-                Bấm Chỉnh sửa để đổi họ tên, số điện thoại, loại nghề hoặc chứng chỉ.
+                {t('profile.editHint')}
               </p>
             </article>
           )}
 
           {isTechnician && (
             <article className="profile-card highlight">
-              <h2>Gói &amp; dịch vụ</h2>
-              <p className="profile-muted">Nâng cấp gói để hiển thị ưu tiên trên bản đồ và danh sách tìm kiếm.</p>
+              <h2>{t('profile.planTitle')}</h2>
+              <p className="profile-muted">{t('profile.planHint')}</p>
               <Link to="/app/subscription" className="profile-link-btn">
                 <AppIcon name="crown" size={18} />
-                Quản lý gói cước
+                {t('profile.managePlan')}
               </Link>
             </article>
           )}
@@ -324,16 +321,16 @@ export function ProfilePage() {
       {editing ? (
         <div className="profile-page-footer">
           <button type="button" className="secondary" onClick={handleCancelEdit} disabled={saving}>
-            Hủy
+            {t('profile.cancel')}
           </button>
           <button type="submit" form="profile-edit-form" className="primary" disabled={saving}>
-            {saving ? 'Đang lưu…' : 'Lưu hồ sơ'}
+            {saving ? t('profile.saving') : t('profile.save')}
           </button>
         </div>
       ) : (
         <button type="button" className="profile-refresh" onClick={loadProfile} disabled={loading}>
           <AppIcon name="refresh" size={18} />
-          Làm mới
+          {t('profile.refresh')}
         </button>
       )}
     </section>

@@ -1,44 +1,46 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { updateLocation, getUserLocations } from '../services/userService'
+import { updateLocation, getUserLocations, updateWorkerAvailability } from '../services/userService'
 import ChatContainer from '../modules/chat/components/ChatContainer'
 import WalletScreen from '../modules/payment/components/WalletScreen'
 import SubscriptionScreen from '../modules/payment/components/SubscriptionScreen'
 import { AppIcon } from '../components/AppIcon'
+import { useLanguage } from '../i18n/LanguageContext'
 import '../styles/pages/DashboardHome.css'
 import '../styles/pages/MapDashboard.css'
 
 const content = {
   Activity: {
-    customerTitle: 'Hoạt động',
-    technicianTitle: 'Hoạt động',
-    description: 'Theo dõi lịch sử đặt lịch, trạng thái công việc và các cập nhật mới nhất.',
+    customerTitleKey: 'section.activity',
+    technicianTitleKey: 'section.activity',
+    descriptionKey: 'booking.description',
   },
   Chat: {
-    customerTitle: 'Tin nhắn',
-    technicianTitle: 'Tin nhắn',
-    description: 'Không gian nhắn tin giữa khách hàng và thợ.',
+    customerTitleKey: 'section.chat',
+    technicianTitleKey: 'section.chat',
+    descriptionKey: 'section.chat',
   },
   Wallet: {
-    customerTitle: 'Ví xu',
-    technicianTitle: 'Ví xu · Voucher/Thu nhập',
-    description: 'Theo dõi thu nhập, ví tiền và voucher dành cho thợ.',
+    customerTitleKey: 'section.wallet',
+    technicianTitleKey: 'section.wallet',
+    descriptionKey: 'wallet.description',
   },
   Subscription: {
-    customerTitle: 'Gói cước',
-    technicianTitle: 'Nâng cấp tài khoản',
-    description: 'Chọn gói cước phù hợp để mở rộng khả năng của bạn.',
+    customerTitleKey: 'section.subscription',
+    technicianTitleKey: 'subscription.title',
+    descriptionKey: 'subscription.description',
   },
   Profile: {
-    customerTitle: 'Hồ sơ',
-    technicianTitle: 'Hồ sơ',
-    description: 'Quản lý thông tin cá nhân và trạng thái xác minh.',
+    customerTitleKey: 'section.profile',
+    technicianTitleKey: 'section.profile',
+    descriptionKey: 'profile.description',
   },
 }
 
 export function DashboardHome({ section = 'Home' }) {
   const { mode, session } = useAuth()
+  const { t } = useLanguage()
   const navigate = useNavigate()
   const currentUserId = session?.id || localStorage.getItem('my_user_id')
   const page = content[section]
@@ -50,7 +52,8 @@ export function DashboardHome({ section = 'Home' }) {
   const [users, setUsers] = useState([])
   const [activeUserId, setActiveUserId] = useState(null)
   const [status, setStatus] = useState('pending') // pending, active, error
-  const [statusText, setStatusText] = useState('Đang kết nối GPS...')
+  const [statusTextKey, setStatusTextKey] = useState('dashboard.map.status.connecting')
+  const [availabilityUpdating, setAvailabilityUpdating] = useState(false)
   
   const markersRef = useRef({})
   const circleRef = useRef(null)
@@ -76,12 +79,12 @@ export function DashboardHome({ section = 'Home' }) {
     if (!job) return ''
     const j = job.trim().toUpperCase()
     switch (j) {
-      case 'DIEN': return 'Điện'
-      case 'NUOC': return 'Nước'
-      case 'DIEU_HOA': return 'Điều hòa'
-      case 'SUA_XE': return 'Sửa xe'
-      case 'XAY_DUNG': return 'Xây dựng'
-      case 'DON_DEP': return 'Dọn dẹp'
+      case 'DIEN': return t('job.DIEN')
+      case 'NUOC': return t('job.NUOC')
+      case 'DIEU_HOA': return t('job.DIEU_HOA')
+      case 'SUA_XE': return t('job.SUA_XE')
+      case 'XAY_DUNG': return t('job.XAY_DUNG')
+      case 'DON_DEP': return t('job.DON_DEP')
       default: return job
     }
   }
@@ -160,8 +163,8 @@ export function DashboardHome({ section = 'Home' }) {
 
       const marker = window.L.marker(position, markerOptions).addTo(map)
       
-      const isMeTag = isMe ? ' (Bạn)' : ''
-      const roleLabel = isTechnician ? 'Thợ sửa chữa' : 'Khách hàng'
+      const isMeTag = isMe ? ` (${t('dashboard.map.you')})` : ''
+      const roleLabel = isTechnician ? t('dashboard.map.workerRole') : t('common.customer')
       const jobLabel = isTechnician && user.jobType ? translateJobType(user.jobType) : ''
       const roleBg = isTechnician ? '#fef3c7' : '#e0f2fe'
       const roleColor = isTechnician ? '#d97706' : '#0369a1'
@@ -176,12 +179,12 @@ export function DashboardHome({ section = 'Home' }) {
       let popupContent = `
         <div class="marker-popup-content">
           ${nameHtml}
-          <span style="display:block;font-size:11px;color:#64748b;margin-top:2px;">${user.phone || 'Không có SĐT'}</span>
+          <span style="display:block;font-size:11px;color:#64748b;margin-top:2px;">${user.phone || t('dashboard.map.noPhone')}</span>
       `
 
       if (!isMe && myLat && myLng) {
         const dist = calculateDistance(myLat, myLng, user.latitude, user.longitude)
-        popupContent += `<span style="display:block;font-size:11px;color:#2563eb;font-weight:600;margin-top:3px;">Cách bạn: ${dist.toFixed(2)} km</span>`
+        popupContent += `<span style="display:block;font-size:11px;color:#2563eb;font-weight:600;margin-top:3px;">${t('dashboard.map.distance', { distance: dist.toFixed(2) })}</span>`
       }
 
       popupContent += `
@@ -189,7 +192,7 @@ export function DashboardHome({ section = 'Home' }) {
             <span style="display:inline-block;font-size:10px;font-weight:700;background:${roleBg};color:${roleColor};padding:2px 8px;border-radius:4px;text-transform:uppercase;">${roleLabel}</span>
             ${jobLabel ? `<span style="display:inline-block;font-size:10px;font-weight:700;background:${jobBg};color:${jobColor};padding:2px 8px;border-radius:4px;">${jobLabel}</span>` : ''}
           </div>
-          ${(!isMe && isTechnician) ? `<button class="popup-view-profile-btn" data-userid="${user.id}" style="margin-top:10px;width:100%;padding:6px 0;border:none;border-radius:8px;background:linear-gradient(135deg,#3b82f6,#1d4ed8);color:#fff;font-size:12px;font-weight:600;cursor:pointer;transition:opacity 0.2s;">Xem hồ sơ thợ</button>` : ''}
+          ${(!isMe && isTechnician) ? `<button class="popup-view-profile-btn" data-userid="${user.id}" style="margin-top:10px;width:100%;padding:6px 0;border:none;border-radius:8px;background:linear-gradient(135deg,#3b82f6,#1d4ed8);color:#fff;font-size:12px;font-weight:600;cursor:pointer;transition:opacity 0.2s;">${t('dashboard.map.workerProfile')}</button>` : ''}
         </div>
       `
 
@@ -256,12 +259,12 @@ export function DashboardHome({ section = 'Home' }) {
   const triggerGeolocation = () => {
     if (!navigator.geolocation) {
       setStatus('error')
-      setStatusText('Trình duyệt không hỗ trợ GPS')
+      setStatusTextKey('dashboard.map.status.unsupported')
       return
     }
 
     setStatus('pending')
-    setStatusText('Đang kết nối GPS...')
+    setStatusTextKey('dashboard.map.status.connecting')
 
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
@@ -272,17 +275,17 @@ export function DashboardHome({ section = 'Home' }) {
             localStorage.setItem('my_user_id', myProfile.id.toString())
           }
           setStatus('active')
-          setStatusText('Vị trí của bạn đã đồng bộ')
+          setStatusTextKey('dashboard.map.status.synced')
           fetchLocations(latitude, longitude)
         } catch (err) {
           setStatus('error')
-          setStatusText('Lỗi lưu tọa độ lên máy chủ')
+          setStatusTextKey('dashboard.map.status.saveError')
           fetchLocations()
         }
       },
       (err) => {
         setStatus('error')
-        setStatusText('Quyền truy cập vị trí bị từ chối')
+        setStatusTextKey('dashboard.map.status.denied')
         fetchLocations()
       },
       { enableHighAccuracy: true, timeout: 10000 }
@@ -302,6 +305,24 @@ export function DashboardHome({ section = 'Home' }) {
     } else if (user.role === 'TECHNICIAN') {
       // Worker without location: navigate to profile page
       navigate(`/app/worker/${user.id}`)
+    }
+  }
+
+  const currentUser = users.find(u => u.id === currentUserId)
+  const myLat = currentUser?.latitude
+  const myLng = currentUser?.longitude
+
+  const handleWorkerAvailabilityChange = async (available) => {
+    try {
+      setAvailabilityUpdating(true)
+      const updated = await updateWorkerAvailability(available)
+      setUsers((current) => current.map((user) => user.id === updated.id ? { ...user, ...updated } : user))
+      await fetchLocations(myLat, myLng)
+    } catch (err) {
+      setStatus('error')
+      setStatusTextKey('dashboard.map.status.saveError')
+    } finally {
+      setAvailabilityUpdating(false)
     }
   }
 
@@ -350,11 +371,6 @@ export function DashboardHome({ section = 'Home' }) {
       }
     }
   }, [section])
-
-  // Get coordinates of the currently logged-in user
-  const currentUser = users.find(u => u.id === currentUserId)
-  const myLat = currentUser?.latitude
-  const myLng = currentUser?.longitude
 
   // Filter list
   const filteredUsers = users.filter(user => {
@@ -421,30 +437,54 @@ export function DashboardHome({ section = 'Home' }) {
   if (section === 'Home') {
     return (
       <div className="map-dashboard-container">
-        <aside className="map-sidebar" aria-label="Bảng điều khiển vị trí">
+        <aside className="map-sidebar" aria-label={t('dashboard.map.sidebarLabel')}>
           <div className="map-sidebar-header">
-            <h2>Định vị trực tuyến</h2>
-            <p>Tìm kiếm thợ sửa chữa và người dùng xung quanh bạn theo thời gian thực.</p>
+            <h2>{t('dashboard.map.title')}</h2>
+            <p>{t('dashboard.map.description')}</p>
             
             <div className={`location-status-badge ${status}`}>
               <span className={`status-dot ${status === 'pending' ? 'pulsing' : ''}`} />
-              <span>{statusText}</span>
+              <span>{t(statusTextKey)}</span>
             </div>
 
-            <button 
+            <button
               type="button" 
               className="update-location-btn" 
               onClick={triggerGeolocation}
               disabled={status === 'pending'}
             >
-              Cập nhật vị trí hiện tại
+              {t('dashboard.map.updateLocation')}
             </button>
+
+            {mode === 'TECHNICIAN' && currentUser && (
+              <div className="worker-availability-panel">
+                <label className="availability-toggle">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(currentUser.available)}
+                    disabled={availabilityUpdating}
+                    onChange={(event) => handleWorkerAvailabilityChange(event.target.checked)}
+                  />
+                  <span>{currentUser.available ? t('dashboard.map.acceptingJobs') : t('dashboard.map.notAcceptingJobs')}</span>
+                </label>
+                <div className="availability-flags">
+                  <span className={currentUser.eligible ? 'availability-flag visible' : 'availability-flag hidden'}>
+                    {currentUser.eligible ? t('dashboard.map.visible') : t('dashboard.map.hidden')}
+                  </span>
+                  {currentUser.busy && <span className="availability-flag busy">{t('dashboard.map.busy')}</span>}
+                  {!currentUser.online && <span className="availability-flag offline">{t('dashboard.map.offline')}</span>}
+                  {!currentUser.available && <span className="availability-flag unavailable">{t('dashboard.map.unavailable')}</span>}
+                  {!currentUser.verified && <span className="availability-flag unverified">{t('dashboard.map.unverified')}</span>}
+                </div>
+                <p className="availability-hint">{t('dashboard.map.availabilityHint')}</p>
+              </div>
+            )}
           </div>
 
           <div className="map-search-filters">
             <input 
               type="text" 
-              placeholder="Tìm thợ theo tên, SĐT, nghề..." 
+              placeholder={t('dashboard.map.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="search-input"
@@ -456,13 +496,13 @@ export function DashboardHome({ section = 'Home' }) {
                 onChange={(e) => setJobTypeFilter(e.target.value)}
                 className="filter-select"
               >
-                <option value="">Tất cả nghề</option>
-                <option value="DIEN">Điện</option>
-                <option value="NUOC">Nước</option>
-                <option value="DIEU_HOA">Điều hòa</option>
-                <option value="SUA_XE">Sửa xe</option>
-                <option value="XAY_DUNG">Xây dựng</option>
-                <option value="DON_DEP">Dọn dẹp</option>
+                <option value="">{t('dashboard.map.allJobs')}</option>
+                <option value="DIEN">{t('job.DIEN')}</option>
+                <option value="NUOC">{t('job.NUOC')}</option>
+                <option value="DIEU_HOA">{t('job.DIEU_HOA')}</option>
+                <option value="SUA_XE">{t('job.SUA_XE')}</option>
+                <option value="XAY_DUNG">{t('job.XAY_DUNG')}</option>
+                <option value="DON_DEP">{t('job.DON_DEP')}</option>
               </select>
 
               <label className="nearby-toggle-label">
@@ -471,15 +511,15 @@ export function DashboardHome({ section = 'Home' }) {
                   checked={onlyNearby} 
                   onChange={(e) => setOnlyNearby(e.target.checked)} 
                 />
-                <span>Gần đây (≤ 10km)</span>
+                <span>{t('dashboard.map.nearby')}</span>
               </label>
             </div>
           </div>
 
           <div className="users-list-container">
-            <h3 className="users-list-title">Đang hoạt động ({sortedFilteredUsers.filter(u => u.latitude && u.longitude).length})</h3>
+            <h3 className="users-list-title">{t('dashboard.map.active', { count: sortedFilteredUsers.filter(u => u.eligible && u.latitude && u.longitude).length })}</h3>
             {sortedFilteredUsers.length === 0 ? (
-              <p className="no-users-notice">Không tìm thấy thợ phù hợp.</p>
+              <p className="no-users-notice">{t('dashboard.map.noWorkers')}</p>
             ) : (
               sortedFilteredUsers.map((user) => {
                 const isMe = user.id === currentUserId
@@ -501,13 +541,13 @@ export function DashboardHome({ section = 'Home' }) {
 
                     {/* 2. Phần thông tin chữ */}
                     <div className="user-info-text" style={{ display: 'flex', flexDirection: 'column' }}>
-                      <strong>{user.fullName} {isMe ? '(Bạn)' : ''}</strong>
-                      <span>{user.phone || 'Không có SĐT'}</span>
+                      <strong>{user.fullName} {isMe ? `(${t('dashboard.map.you')})` : ''}</strong>
+                      <span>{user.phone || t('dashboard.map.noPhone')}</span>
                       
                       {/* Cụm tag thông tin */}
                       <div className="role-job-tags">
                         <span className={`role-tag ${user.role?.toLowerCase()}`}>
-                          {isTechnician ? 'Thợ sửa chữa' : user.role}
+                          {isTechnician ? t('dashboard.map.workerRole') : user.role}
                         </span>
                         {user.jobType && (
                           <span className="job-tag">{translateJobType(user.jobType)}</span>
@@ -516,7 +556,16 @@ export function DashboardHome({ section = 'Home' }) {
                           <span className="distance-tag">{distance.toFixed(1)} km</span>
                         )}
                         {!user.latitude && !user.longitude && (
-                          <span className="no-location-tag">Chưa có vị trí</span>
+                          <span className="no-location-tag">{t('dashboard.map.noLocation')}</span>
+                        )}
+                        {isTechnician && user.busy && (
+                          <span className="busy-tag">{t('dashboard.map.busy')}</span>
+                        )}
+                        {isTechnician && user.id === currentUserId && !user.verified && (
+                          <span className="hidden-tag">{t('dashboard.map.unverified')}</span>
+                        )}
+                        {isTechnician && user.id === currentUserId && !user.eligible && (
+                          <span className="hidden-tag">{t('dashboard.map.hidden')}</span>
                         )}
                       </div>
 
@@ -531,7 +580,7 @@ export function DashboardHome({ section = 'Home' }) {
                               navigate(`/app/worker/${user.id}`); 
                             }}
                           >
-                            Xem hồ sơ
+                            {t('dashboard.map.viewProfile')}
                           </button>
                         )}
 
@@ -556,7 +605,7 @@ export function DashboardHome({ section = 'Home' }) {
                               width: 'fit-content'
                             }}
                           >
-                            Nhắn tin
+                            {t('dashboard.map.chat')}
                           </button>
                         )}
                       </div>
@@ -571,8 +620,8 @@ export function DashboardHome({ section = 'Home' }) {
         <div className="map-view-wrapper">
           <div ref={mapRef} className="google-map-element" id="google-map-element" />
           <div className="map-overlay-card">
-            <h3>Bản đồ trực tuyến</h3>
-            <p>Sử dụng thao tác kéo, cuộn để khám phá khu vực xung quanh. Bản đồ tự động cập nhật điểm đánh dấu khi có tài khoản mới hoạt động.</p>
+            <h3>{t('dashboard.map.overlayTitle')}</h3>
+            <p>{t('dashboard.map.overlayDescription')}</p>
           </div>
         </div>
       </div>
@@ -600,27 +649,27 @@ export function DashboardHome({ section = 'Home' }) {
   }
 
   // Render normal tabs if not Home page
-  const title = mode === 'TECHNICIAN' ? page.technicianTitle : page.customerTitle
-  const sectionLabel = page?.customerTitle || section
+  const title = mode === 'TECHNICIAN' ? t(page.technicianTitleKey) : t(page.customerTitleKey)
+  const sectionLabel = page?.customerTitleKey ? t(page.customerTitleKey) : section
   return (
     <section className="dashboard-surface">
       <div className="dashboard-hero">
-        <p>{mode === 'TECHNICIAN' ? 'Chế độ thợ' : 'Chế độ khách hàng'}</p>
+        <p>{mode === 'TECHNICIAN' ? t('dashboard.mode.worker') : t('dashboard.mode.customer')}</p>
         <h1>{title}</h1>
-        <span>{page.description}</span>
+        <span>{t(page.descriptionKey)}</span>
       </div>
 
       <div className="dashboard-grid">
         <article>
-          <strong>Trạng thái</strong>
-          <span>Sẵn sàng tích hợp phân hệ nghiệp vụ.</span>
+          <strong>{t('dashboard.status')}</strong>
+          <span>{t('dashboard.ready')}</span>
         </article>
         <article>
-          <strong>Vai trò hiện tại</strong>
-          <span>{mode === 'TECHNICIAN' ? 'Thợ' : mode === 'ADMIN' ? 'Quản trị viên' : 'Khách hàng'}</span>
+          <strong>{t('dashboard.currentRole')}</strong>
+          <span>{mode === 'TECHNICIAN' ? t('common.worker') : mode === 'ADMIN' ? t('common.admin') : t('common.customer')}</span>
         </article>
         <article>
-          <strong>Phân hệ</strong>
+          <strong>{t('dashboard.module')}</strong>
           <span>{sectionLabel}</span>
         </article>
       </div>

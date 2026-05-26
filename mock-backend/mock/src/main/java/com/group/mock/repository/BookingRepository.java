@@ -2,7 +2,6 @@ package com.group.mock.repository;
 
 import com.group.mock.entity.Booking;
 import com.group.mock.entity.enums.BookingStatus;
-import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -67,16 +66,5 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
     List<Booking> findByWorker_IdAndStatusInOrderByCreatedAtDesc(
             @Param("workerId") UUID workerId, @Param("statuses") Collection<BookingStatus> statuses);
 
-    @Query(
-            "SELECT COUNT(b) > 0 FROM Booking b WHERE b.customer.id = :customerId "
-                    + "AND b.worker.id = :workerId AND b.bookingDate = :bookingDate "
-                    + "AND LOWER(TRIM(b.address)) = :normalizedAddress AND b.status IN :statuses")
-    boolean existsDuplicateBooking(
-            @Param("customerId") UUID customerId,
-            @Param("workerId") UUID workerId,
-            @Param("bookingDate") LocalDateTime bookingDate,
-            @Param("normalizedAddress") String normalizedAddress,
-            @Param("statuses") Collection<BookingStatus> statuses);
-
-    List<Booking> findByStatusAndBookingDateBefore(BookingStatus status, LocalDateTime bookingDate);
+    boolean existsByWorker_IdAndStatusIn(UUID workerId, Collection<BookingStatus> statuses);
 }

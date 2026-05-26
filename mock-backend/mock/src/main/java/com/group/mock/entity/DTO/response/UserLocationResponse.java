@@ -1,5 +1,6 @@
 package com.group.mock.entity.DTO.response;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -16,6 +17,21 @@ public class UserLocationResponse {
     private Double latitude;
     private Double longitude;
     private String jobType;
-    /** null for non-workers; customers only receive verified workers as TECHNICIAN. */
+    private Boolean available;
+    private Boolean online;
+    private Boolean busy;
+    private Boolean eligible;
     private Boolean verified;
+    private LocalDateTime lastUpdate;
+
+    public UserLocationResponse(
+            UUID id,
+            String fullName,
+            String phone,
+            String role,
+            Double latitude,
+            Double longitude,
+            String jobType) {
+        this(id, fullName, phone, role, latitude, longitude, jobType, null, null, null, null, null, null);
+    }
 }
