@@ -1,12 +1,16 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNotification } from '../context/NotificationContext';
+import { useLanguage } from '../i18n/LanguageContext';
+import { localizeNotification } from '../utils/notificationLocale';
 import NotificationDropdown from './NotificationDropdown';
 import './NotificationBell.css';
 
 const NotificationBell = () => {
-  const { unreadCount, isLoading, error, latestToast, fetchNotifications, fetchUnreadCount } = useNotification();
+  const { unreadCount, error, latestToast, fetchNotifications, fetchUnreadCount } = useNotification();
+  const { language, t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const bellRef = useRef(null);
+  const localizedToast = latestToast ? localizeNotification(latestToast, t, language) : null;
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -43,8 +47,8 @@ const NotificationBell = () => {
       <button
         className={`notification-bell-button ${error ? 'error' : ''}`}
         onClick={handleBellClick}
-        title="Notifications"
-        aria-label="Notifications"
+        title={t('notification.title')}
+        aria-label={t('notification.title')}
       >
         <span className="bell-icon">🔔</span>
         
@@ -70,14 +74,14 @@ const NotificationBell = () => {
       )}
 
       {/* Real-time Notification Toast */}
-      {latestToast && (
+      {latestToast && localizedToast && (
         <div className="realtime-notification-toast">
           <div className="toast-icon">
             {latestToast.type === 'MESSAGE_NEW' ? '💬' : '🔔'}
           </div>
           <div className="toast-content">
-            <div className="toast-title">{latestToast.title}</div>
-            <div className="toast-message">{latestToast.message}</div>
+            <div className="toast-title">{localizedToast.title}</div>
+            <div className="toast-message">{localizedToast.message}</div>
           </div>
         </div>
       )}

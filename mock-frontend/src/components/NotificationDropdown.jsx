@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNotification } from '../context/NotificationContext';
+import { useLanguage } from '../i18n/LanguageContext';
 import NotificationItem from './NotificationItem';
 import './NotificationDropdown.css';
 
-const NotificationDropdown = ({ onClose }) => {
+const NotificationDropdown = () => {
+  const { t } = useLanguage();
   const {
     notifications,
     unreadCount,
@@ -39,7 +41,7 @@ const NotificationDropdown = ({ onClose }) => {
       {/* Header */}
       <div className="notification-dropdown-header">
         <h3 className="notification-dropdown-title">
-          Notifications
+          {t('notification.title')}
           {unreadCount > 0 && (
             <span className="unread-badge">{unreadCount}</span>
           )}
@@ -48,7 +50,7 @@ const NotificationDropdown = ({ onClose }) => {
           <button
             className="mark-all-read-btn"
             onClick={markAllAsRead}
-            title="Mark all as read"
+            title={t('notification.markAllRead')}
           >
             ✓
           </button>
@@ -60,14 +62,14 @@ const NotificationDropdown = ({ onClose }) => {
         {isLoading && notifications.length === 0 ? (
           <div className="notification-loading">
             <div className="spinner"></div>
-            <p>Loading notifications...</p>
+            <p>{t('notification.loading')}</p>
           </div>
         ) : notifications.length === 0 ? (
           <div className="notification-empty">
             <span className="empty-icon">📭</span>
-            <p>No notifications yet</p>
+            <p>{t('notification.empty')}</p>
             <button className="generate-test-btn" onClick={generateTestNotifications} style={{ marginTop: '10px', padding: '6px 12px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-              Tạo thông báo mẫu
+              {t('notification.generateTest')}
             </button>
           </div>
         ) : (
@@ -93,14 +95,14 @@ const NotificationDropdown = ({ onClose }) => {
               onClick={handleLoadMore}
               disabled={isLoading}
             >
-              {isLoading ? 'Loading...' : 'Load More'}
+              {isLoading ? t('common.loading') : t('notification.loadMore')}
             </button>
           )}
           <button
             className="view-all-btn"
             onClick={handleViewAll}
           >
-            View All →
+            {t('notification.viewAll')} →
           </button>
         </div>
       )}
