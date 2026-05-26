@@ -48,6 +48,11 @@ export function localizeNotification(notification, t, language) {
         title: t('notification.BOOKING_REJECTED.title'),
         message: t('notification.BOOKING_REJECTED.message'),
       }
+    case 'BOOKING_EXPIRED':
+      return {
+        title: t('notification.BOOKING_EXPIRED.title'),
+        message: t('notification.BOOKING_EXPIRED.message', { reason }),
+      }
     case 'BOOKING_PROCESSING':
       return {
         title: t('notification.BOOKING_PROCESSING.title'),

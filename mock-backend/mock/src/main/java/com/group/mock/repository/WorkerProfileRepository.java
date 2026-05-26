@@ -8,5 +8,10 @@ import java.util.UUID;
 
 public interface WorkerProfileRepository extends JpaRepository<WorkerProfile, UUID> {
     Optional<WorkerProfile> findByAccountUsername(String username);
+
     java.util.List<WorkerProfile> findByTierExpiredAtBetween(java.time.LocalDateTime start, java.time.LocalDateTime end);
+
+    java.util.List<WorkerProfile> findByIsVerifiedTrue();
+
+    java.util.List<WorkerProfile> findByJobTypeAndIsVerifiedTrue(String jobType);
 }

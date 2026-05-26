@@ -47,7 +47,20 @@ public class JobPost {
     private Double longitude;
 
     @Column(name = "status")
-    private String status; // OPEN, CLOSED
+    private String status; // OPEN, ASSIGNED, CLOSED, CANCELLED
+
+    // Nullable at schema level to avoid hbm2ddl failing on existing rows.
+    // Business validation enforces required scheduledAt on create/update.
+    @Column(name = "scheduled_at")
+    private LocalDateTime scheduledAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assigned_worker_id")
+    private WorkerProfile assignedWorker;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "booking_id")
+    private Booking booking;
 
     @Column(name = "created_at")
     @CreationTimestamp

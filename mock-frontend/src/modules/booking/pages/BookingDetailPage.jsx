@@ -7,6 +7,7 @@ import { WorkerServiceFeeModal } from '../components/WorkerServiceFeeModal'
 import {
   useAcceptBooking,
   useBookingDetail,
+  useCancelBooking,
   useDeclineBooking,
   useReview,
   useCreateReview,
@@ -49,6 +50,7 @@ export function BookingDetailPage() {
 
   const acceptMutation = useAcceptBooking()
   const declineMutation = useDeclineBooking()
+  const cancelMutation = useCancelBooking()
   const startMutation = useStartProcessing()
 
   const isCustomer = mode === 'CUSTOMER'
@@ -62,6 +64,7 @@ export function BookingDetailPage() {
   const busy =
     acceptMutation.isPending ||
     declineMutation.isPending ||
+    cancelMutation.isPending ||
     startMutation.isPending
 
   const feeReady = hasServiceFee(booking)
@@ -91,6 +94,14 @@ export function BookingDetailPage() {
   const technician = booking.worker
   const voucher = booking.voucherUsage
   const serviceLabel = booking.serviceCode?.trim() || '—'
+
+  const scheduledAt = booking.bookingDate ? new Date(booking.bookingDate) : null
+  const now = new Date()
+  const canCancel =
+    isCustomerParty &&
+    st === 'PENDING' &&
+    scheduledAt &&
+    (scheduledAt.getTime() - now.getTime()) >= 30 * 60 * 1000
 
   return (
     <section className="booking-page">
@@ -329,6 +340,27 @@ export function BookingDetailPage() {
             onClick={() => setConfirmOpen(true)}
           >
             {t('booking.confirmComplete')}
+          </button>
+        </div>
+      )}
+
+      {isCustomer && isCustomerParty && st === 'PENDING' && (
+        <div className="booking-actions">
+          <button
+            type="button"
+            className="danger"
+            disabled={busy}
+            onClick={() => {
+              if (!canCancel) {
+                window.alert(t('booking.cancelTooLate'))
+                return
+              }
+              if (window.confirm(t('booking.confirmCancel'))) {
+                cancelMutation.mutate(bookingId)
+              }
+            }}
+          >
+            {t('booking.cancel')}
           </button>
         </div>
       )}

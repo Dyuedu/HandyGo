@@ -1,8 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useLanguage } from '../../i18n/LanguageContext'
 import { getMyJobPosts, createJobPost, updateJobPost, deleteJobPost } from '../../services/jobPostService'
 import LocationPicker from './LocationPicker'
+import {
+  buildBookingDateTime,
+  formatBookingDateTime,
+  minTimeForDate,
+  resolveJobPostFormError,
+  splitScheduledAt,
+  todayLocalDateString,
+  validateBookingSchedule,
+} from './utils/jobPostSchedule'
 import '../../styles/modules/jobpost.css'
 
 function JobPostManagement() {
@@ -19,7 +29,10 @@ function JobPostManagement() {
     address: '',
     latitude: 0,
     longitude: 0,
+    date: '',
+    time: '',
   })
+  const [formError, setFormError] = useState('')
 
   const { data: jobPosts = [], isLoading, error } = useQuery({
     queryKey: ['myJobPosts'],
@@ -49,20 +62,56 @@ function JobPostManagement() {
     onSuccess: () => {
       queryClient.invalidateQueries(['myJobPosts'])
     },
+    onError: (err) => {
+      // Previously delete failures were silent; surface message for debugging/user clarity
+      window.alert(err?.message || t('common.serverConnectionError'))
+    },
   })
 
   const resetForm = () => {
-    setFormData({ title: '', description: '', jobType: '', address: '', latitude: 0, longitude: 0 })
+    setFormData({
+      title: '',
+      description: '',
+      jobType: '',
+      address: '',
+      latitude: 0,
+      longitude: 0,
+      date: '',
+      time: '',
+    })
+    setFormError('')
     setShowLocationPicker(false)
+  }
+
+  const buildPayload = () => {
+    const scheduledAt = buildBookingDateTime(formData.date, formData.time)
+    const { date: _d, time: _t, ...rest } = formData
+    return { ...rest, scheduledAt }
   }
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    if (editingId) updateMutation.mutate({ id: editingId, data: formData })
-    else createMutation.mutate(formData)
+    setFormError('')
+    const scheduleError = validateBookingSchedule(formData.date, formData.time, t)
+    if (scheduleError) {
+      setFormError(scheduleError)
+      return
+    }
+    const payload = buildPayload()
+    if (editingId) {
+      updateMutation.mutate(
+        { id: editingId, data: payload },
+        { onError: (err) => setFormError(resolveJobPostFormError(err, t)) }
+      )
+    } else {
+      createMutation.mutate(payload, {
+        onError: (err) => setFormError(resolveJobPostFormError(err, t)),
+      })
+    }
   }
 
   const handleEdit = (jobPost) => {
+    const { date, time } = splitScheduledAt(jobPost.scheduledAt)
     setFormData({
       title: jobPost.title,
       description: jobPost.description,
@@ -70,6 +119,8 @@ function JobPostManagement() {
       address: jobPost.address,
       latitude: jobPost.latitude,
       longitude: jobPost.longitude,
+      date,
+      time,
     })
     setEditingId(jobPost.id)
     setIsCreateMode(false)
@@ -128,7 +179,34 @@ function JobPostManagement() {
               <input id="address" type="text" name="address" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} placeholder={t('jobpost.manage.placeholderAddress')} required />
             </div>
 
+            <div className="form-row jobpost-schedule-row">
+              <div className="form-group">
+                <label htmlFor="jobDate">{t('jobpost.field.scheduledDate')}</label>
+                <input
+                  id="jobDate"
+                  type="date"
+                  min={todayLocalDateString()}
+                  value={formData.date}
+                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="jobTime">{t('jobpost.field.scheduledTime')}</label>
+                <input
+                  id="jobTime"
+                  type="time"
+                  min={minTimeForDate(formData.date)}
+                  value={formData.time}
+                  onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                  required
+                />
+              </div>
+            </div>
+
             {showLocationPicker && <LocationPicker onLocationSelect={(lat, lng) => setFormData({ ...formData, latitude: lat || 0, longitude: lng || 0 })} initialLat={formData.latitude} initialLng={formData.longitude} />}
+
+            {formError && <p className="jobpost-error-inline">{formError}</p>}
 
             {!showLocationPicker && (
               <button type="button" className="btn-location-picker" onClick={() => setShowLocationPicker(true)}>
@@ -168,7 +246,13 @@ function JobPostManagement() {
                 <div className="jobpost-header-card">
                   <h3>{jobPost.title}</h3>
                   <span className={`status-badge status-${jobPost.status?.toLowerCase()}`}>
-                    {jobPost.status === 'OPEN' ? t('jobpost.status.open') : t('jobpost.status.closed')}
+                    {jobPost.status === 'OPEN'
+                      ? t('jobpost.status.open')
+                      : jobPost.status === 'ASSIGNED'
+                        ? t('jobpost.status.assigned')
+                        : jobPost.status === 'CANCELLED'
+                          ? t('jobpost.status.cancelled')
+                          : t('jobpost.status.closed')}
                   </span>
                 </div>
 
@@ -177,16 +261,31 @@ function JobPostManagement() {
                 <p className="jobpost-description">{jobPost.description}</p>
 
                 <div className="jobpost-meta">
+                  <span className="scheduled-date">
+                    {t('jobpost.field.scheduledAt')}: {formatBookingDateTime(jobPost.scheduledAt, locale)}
+                  </span>
                   <span className="created-date">
                     {t('jobpost.field.createdAt')}: {new Date(jobPost.createdAt).toLocaleDateString(locale)}
                   </span>
                 </div>
 
                 <div className="jobpost-actions">
-                  <button className="btn-edit" onClick={() => handleEdit(jobPost)} disabled={editingId === jobPost.id}>
+                  <Link to={`/app/job-posts/${jobPost.id}/applicants`} className="btn-view-applicants">
+                    {t('jobpost.applicants.view')}
+                  </Link>
+                  <button
+                    className="btn-edit"
+                    onClick={() => handleEdit(jobPost)}
+                    disabled={editingId === jobPost.id || jobPost.status !== 'OPEN'}
+                  >
                     {t('jobpost.action.edit')}
                   </button>
-                  <button className="btn-delete" onClick={() => handleDelete(jobPost.id)} disabled={deleteMutation.isPending}>
+                  <button
+                    className="btn-delete"
+                    onClick={() => handleDelete(jobPost.id)}
+                    disabled={deleteMutation.isPending || jobPost.status === 'ASSIGNED'}
+                    title={jobPost.status === 'ASSIGNED' ? t('jobpost.manage.deleteDisabledAssigned') : undefined}
+                  >
                     {t('jobpost.action.delete')}
                   </button>
                 </div>

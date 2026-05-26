@@ -75,3 +75,23 @@ export function getOpenJobPostsByJobType(jobType) {
 export function getJobPostById(jobPostId) {
   return axiosClient.get(`${JOBPOSTS_BASE}/${jobPostId}`)
 }
+
+export function applyToJobPost(jobPostId, payload = {}) {
+  return axiosClient.post(`${JOBPOSTS_BASE}/${jobPostId}/applications`, payload)
+}
+
+export function getMyApplicationForJobPost(jobPostId) {
+  return axiosClient.get(`${JOBPOSTS_BASE}/${jobPostId}/applications/me`)
+}
+
+export function getJobPostApplications(jobPostId) {
+  return axiosClient.get(`${JOBPOSTS_BASE}/${jobPostId}/applications`)
+}
+
+export function acceptJobApplication(jobPostId, applicationId) {
+  return axiosClient.patch(`${JOBPOSTS_BASE}/${jobPostId}/applications/${applicationId}/accept`)
+}
+
+export function rejectJobApplication(jobPostId, applicationId) {
+  return axiosClient.patch(`${JOBPOSTS_BASE}/${jobPostId}/applications/${applicationId}/reject`)
+}

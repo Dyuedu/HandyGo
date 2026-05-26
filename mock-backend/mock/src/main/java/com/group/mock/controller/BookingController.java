@@ -45,6 +45,11 @@ public class BookingController {
         return ResponseEntity.ok(bookingService.declineBooking(authentication.getName(), id));
     }
 
+    @PatchMapping("/{id}/cancel")
+    public ResponseEntity<Booking> cancelBooking(Authentication authentication, @PathVariable("id") UUID id) {
+        return ResponseEntity.ok(bookingService.cancelBooking(authentication.getName(), id));
+    }
+
     @PatchMapping("/{id}/processing")
     public ResponseEntity<Booking> startProcessing(Authentication authentication, @PathVariable("id") UUID id) {
         return ResponseEntity.ok(bookingService.startProcessing(authentication.getName(), id));
