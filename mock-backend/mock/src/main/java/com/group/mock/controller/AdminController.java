@@ -1,10 +1,13 @@
 package com.group.mock.controller;
 
+import com.group.mock.entity.DTO.request.ConfirmWithdrawalRequest;
 import com.group.mock.entity.DTO.request.CreateSubscriptionPlanRequest;
 import com.group.mock.entity.DTO.request.CreateVoucherRequest;
 import com.group.mock.entity.DTO.response.AdminWorkerResponse;
 import com.group.mock.entity.DTO.response.SubscriptionPlanResponse;
 import com.group.mock.entity.DTO.response.VoucherSummaryResponse;
+import com.group.mock.entity.DTO.response.WithdrawalDetailResponse;
+import com.group.mock.entity.DTO.response.WithdrawalResponse;
 import com.group.mock.service.AdminService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -63,5 +66,23 @@ public class AdminController {
     public ResponseEntity<SubscriptionPlanResponse> createSubscriptionPlan(
             @Valid @RequestBody CreateSubscriptionPlanRequest request) {
         return ResponseEntity.ok(adminService.createSubscriptionPlan(request));
+    }
+
+    @GetMapping("/withdrawals")
+    public ResponseEntity<List<WithdrawalResponse>> getWithdrawalRequests(
+            @RequestParam(required = false) String status) {
+        return ResponseEntity.ok(adminService.getWithdrawalRequests(status));
+    }
+
+    @GetMapping("/withdrawals/{id}")
+    public ResponseEntity<WithdrawalDetailResponse> getWithdrawalRequest(@PathVariable Long id) {
+        return ResponseEntity.ok(adminService.getWithdrawalRequest(id));
+    }
+
+    @PutMapping("/withdrawals/{id}/confirm")
+    public ResponseEntity<WithdrawalResponse> confirmWithdrawalRequest(
+            @PathVariable Long id,
+            @Valid @RequestBody(required = false) ConfirmWithdrawalRequest request) {
+        return ResponseEntity.ok(adminService.confirmWithdrawalRequest(id, request));
     }
 }

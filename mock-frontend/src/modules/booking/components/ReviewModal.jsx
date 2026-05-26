@@ -1,9 +1,11 @@
 import { useState } from 'react'
+import { useLanguage } from '../../../i18n/LanguageContext'
 import '../pages/BookingDetailPage'
 
 const STAR_COUNT = 5
 
 export function ReviewModal({ open, onClose, onSubmit }) {
+  const { t } = useLanguage()
   const [rating, setRating] = useState(5)
   const [hoverRating, setHoverRating] = useState(0)
   const [comment, setComment] = useState('')
@@ -14,7 +16,7 @@ export function ReviewModal({ open, onClose, onSubmit }) {
 
   async function handleSubmit() {
     if (!rating || rating < 1 || rating > STAR_COUNT) {
-      setError('Vui lòng chọn đánh giá từ 1 đến 5 sao.')
+      setError(t('review.ratingError'))
       return
     }
     setError('')
@@ -25,7 +27,7 @@ export function ReviewModal({ open, onClose, onSubmit }) {
       setRating(5)
       setHoverRating(0)
     } catch (e) {
-      setError(e?.message || 'Không thể gửi đánh giá.')
+      setError(e?.message || t('review.submitError'))
     } finally {
       setPending(false)
     }
@@ -41,13 +43,13 @@ export function ReviewModal({ open, onClose, onSubmit }) {
         onClick={(e) => e.stopPropagation()}
       >
         <h2 id="review-modal-title" style={{ margin: '0 0 8px', fontSize: '1.1rem' }}>
-          Đánh giá đơn hàng
+          {t('review.title')}
         </h2>
         <p className="booking-modal-hint">
-          Hãy cho thợ điểm số và nhận xét ngắn gọn về trải nghiệm làm việc.
+          {t('review.hint')}
         </p>
 
-        <div className="review-stars-interactive" aria-label="Chọn số sao">
+        <div className="review-stars-interactive" aria-label={t('review.chooseStars')}>
           {Array.from({ length: STAR_COUNT }, (_, index) => {
             const value = index + 1
             const filled = value <= (hoverRating || rating)
@@ -59,7 +61,7 @@ export function ReviewModal({ open, onClose, onSubmit }) {
                 onClick={() => setRating(value)}
                 onMouseEnter={() => setHoverRating(value)}
                 onMouseLeave={() => setHoverRating(0)}
-                aria-label={`${value} sao`}
+                aria-label={t('review.starLabel', { count: value })}
               >
                 ★
               </button>
@@ -68,7 +70,7 @@ export function ReviewModal({ open, onClose, onSubmit }) {
         </div>
 
         <label className="booking-modal-field-label" htmlFor="review-comment">
-          Nhận xét (tùy chọn)
+          {t('review.comment')}
         </label>
         <textarea
           id="review-comment"
@@ -76,7 +78,7 @@ export function ReviewModal({ open, onClose, onSubmit }) {
           rows="5"
           value={comment}
           onChange={(event) => setComment(event.target.value)}
-          placeholder="Viết thêm cảm nhận của bạn..."
+          placeholder={t('review.placeholder')}
         />
 
         {error && (
@@ -87,10 +89,10 @@ export function ReviewModal({ open, onClose, onSubmit }) {
 
         <div className="booking-modal-actions booking-modal-actions--confirm">
           <button type="button" disabled={pending} onClick={onClose}>
-            Hủy
+            {t('profile.cancel')}
           </button>
           <button type="button" className="confirm" disabled={pending} onClick={handleSubmit}>
-            {pending ? 'Đang gửi…' : 'Gửi đánh giá'}
+            {pending ? t('worker.submitting') : t('review.submit')}
           </button>
         </div>
       </div>

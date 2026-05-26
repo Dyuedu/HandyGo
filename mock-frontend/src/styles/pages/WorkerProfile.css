@@ -127,6 +127,11 @@
   color: #475569;
 }
 
+.wp-badge.verified {
+  background: #dcfce7;
+  color: #166534;
+}
+
 .wp-rating-summary {
   display: flex;
   align-items: center;

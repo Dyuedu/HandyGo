@@ -3,8 +3,12 @@ package com.group.mock.controller;
 import com.group.mock.entity.Account;
 import com.group.mock.entity.UserProfile;
 import com.group.mock.entity.DTO.request.UpdateLocationRequest;
+import com.group.mock.entity.DTO.request.UpdateWorkerAvailabilityRequest;
 import com.group.mock.entity.DTO.response.UserLocationResponse;
+import com.group.mock.entity.enums.BookingStatus;
+import com.group.mock.entity.enums.Status;
 import com.group.mock.repository.AccountRepository;
+import com.group.mock.repository.BookingRepository;
 import com.group.mock.repository.UserProfileRepository;
 import com.group.mock.repository.WorkerProfileRepository;
 import com.group.mock.repository.WorkerLocationRepository;
@@ -14,6 +18,7 @@ import com.group.mock.exception.AuthServiceException;
 import java.time.LocalDateTime;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -27,11 +32,20 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
 public class UserController {
+    private static final List<BookingStatus> BUSY_STATUSES = List.of(
+            BookingStatus.ACCEPTED,
+            BookingStatus.PROCESSING,
+            BookingStatus.WAITING_CUSTOMER_CONFIRMATION
+    );
 
     private final AccountRepository accountRepository;
     private final UserProfileRepository userProfileRepository;
     private final WorkerProfileRepository workerProfileRepository;
     private final WorkerLocationRepository workerLocationRepository;
+    private final BookingRepository bookingRepository;
+
+    @Value("${app.location.worker-online-window-minutes:15}")
+    private long workerOnlineWindowMinutes;
 
     @PutMapping("/location")
     @Transactional
@@ -70,12 +84,12 @@ public class UserController {
                     .orElseGet(() -> {
                         WorkerLocation newLoc = new WorkerLocation();
                         newLoc.setWorkerProfile(workerProfile);
+                        newLoc.setAvailable(true);
                         return newLoc;
                     });
             workerLoc.setLatitude(request.getLatitude());
             workerLoc.setLongitude(request.getLongitude());
             workerLoc.setLastUpdate(LocalDateTime.now());
-            workerLoc.setAvailable(true);
             workerLocationRepository.save(workerLoc);
             
             jobType = workerProfile.getJobType();
@@ -88,10 +102,65 @@ public class UserController {
                 mapRole(roleName),
                 savedProfile.getLatitude(),
                 savedProfile.getLongitude(),
-                jobType
+                jobType,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
         );
 
         return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/worker/availability")
+    @Transactional
+    public ResponseEntity<UserLocationResponse> updateWorkerAvailability(
+            Authentication authentication,
+            @Valid @RequestBody UpdateWorkerAvailabilityRequest request) {
+        if (authentication == null) {
+            throw new AuthServiceException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Bạn cần đăng nhập để cập nhật trạng thái nhận việc");
+        }
+
+        Account account = accountRepository.findByUsername(authentication.getName())
+                .orElseThrow(() -> new AuthServiceException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "Không tìm thấy tài khoản người dùng"));
+
+        String roleName = account.getRole() != null ? account.getRole().getName() : "ROLE_USER";
+        if (!"ROLE_WORKER".equals(roleName)) {
+            throw new AuthServiceException(HttpStatus.FORBIDDEN, "FORBIDDEN", "Chỉ tài khoản thợ mới có thể cập nhật trạng thái nhận việc");
+        }
+
+        WorkerProfile workerProfile = workerProfileRepository.findById(account.getId())
+                .orElseThrow(() -> new AuthServiceException(HttpStatus.NOT_FOUND, "WORKER_PROFILE_NOT_FOUND", "Không tìm thấy hồ sơ thợ"));
+        WorkerLocation workerLocation = workerLocationRepository.findById(account.getId())
+                .orElseThrow(() -> new AuthServiceException(HttpStatus.BAD_REQUEST, "LOCATION_REQUIRED", "Vui lòng cập nhật vị trí trước khi bật nhận việc"));
+
+        workerLocation.setAvailable(Boolean.TRUE.equals(request.getAvailable()));
+        workerLocationRepository.save(workerLocation);
+
+        UserProfile profile = userProfileRepository.findById(account.getId()).orElse(null);
+        boolean busy = isWorkerBusy(workerProfile.getId());
+        boolean active = account.getStatus() == Status.ACTIVE;
+        boolean online = isLocationFresh(workerLocation);
+        boolean verified = workerProfile.isVerified();
+        boolean eligible = active && verified && workerLocation.isAvailable() && online && !busy;
+
+        return ResponseEntity.ok(new UserLocationResponse(
+                workerProfile.getId(),
+                profile != null ? profile.getFullName() : account.getUsername(),
+                profile != null ? profile.getPhone() : null,
+                "TECHNICIAN",
+                workerLocation.getLatitude(),
+                workerLocation.getLongitude(),
+                workerProfile.getJobType(),
+                workerLocation.isAvailable(),
+                online,
+                busy,
+                eligible,
+                verified,
+                workerLocation.getLastUpdate()
+        ));
     }
 
     @GetMapping("/locations")
@@ -138,6 +207,18 @@ public class UserController {
                     String fullName = up != null ? up.getFullName() : (acc != null ? acc.getUsername() : "Thợ sửa chữa");
                     String phone = up != null ? up.getPhone() : null;
                     
+                    boolean active = acc == null || acc.getStatus() == Status.ACTIVE;
+                    boolean manuallyAvailable = wl != null && wl.isAvailable();
+                    boolean online = isLocationFresh(wl);
+                    boolean busy = isWorkerBusy(wp.getId());
+                    boolean verified = wp.isVerified();
+                    boolean eligible = active && verified && manuallyAvailable && online && !busy;
+                    boolean isCurrentWorker = authentication.getName().equals(acc != null ? acc.getUsername() : null);
+
+                    if (!eligible && !isCurrentWorker) {
+                        return null;
+                    }
+
                     return new UserLocationResponse(
                             wp.getId(),
                             fullName,
@@ -145,9 +226,16 @@ public class UserController {
                             "TECHNICIAN",
                             lat,
                             lng,
-                            wp.getJobType()
+                            wp.getJobType(),
+                            manuallyAvailable,
+                            online,
+                            busy,
+                            eligible,
+                            verified,
+                            wl != null ? wl.getLastUpdate() : null
                     );
                 })
+                .filter(java.util.Objects::nonNull)
                 .collect(Collectors.toList());
 
         // Fetch non-worker user profiles (filtering out workers to avoid duplicates)
@@ -183,5 +271,17 @@ public class UserController {
             return rawRole.replaceFirst("^ROLE_", "");
         }
         return "USER";
+    }
+
+    private boolean isWorkerBusy(java.util.UUID workerId) {
+        return bookingRepository.existsByWorker_IdAndStatusIn(workerId, BUSY_STATUSES);
+    }
+
+    private boolean isLocationFresh(WorkerLocation workerLocation) {
+        if (workerLocation == null || workerLocation.getLastUpdate() == null) {
+            return false;
+        }
+        LocalDateTime threshold = LocalDateTime.now().minusMinutes(workerOnlineWindowMinutes);
+        return !workerLocation.getLastUpdate().isBefore(threshold);
     }
 }

@@ -1,20 +1,22 @@
-export function validateUsername(username) {
-  if (!username.trim()) return 'Vui lòng nhập tên đăng nhập'
-  if (username.length < 4 || username.length > 50) return 'Tên đăng nhập phải từ 4 đến 50 ký tự'
-  if (/\s/.test(username)) return 'Tên đăng nhập không được chứa khoảng trắng'
+const fallbackT = (key) => key
+
+export function validateUsername(username, t = fallbackT) {
+  if (!username.trim()) return t('validation.username.required')
+  if (username.length < 4 || username.length > 50) return t('validation.username.length')
+  if (/\s/.test(username)) return t('validation.username.noWhitespace')
   return ''
 }
 
-export function validatePassword(password) {
-  if (!password) return 'Vui lòng nhập mật khẩu'
+export function validatePassword(password, t = fallbackT) {
+  if (!password) return t('validation.password.required')
   if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/.test(password)) {
-    return 'Mật khẩu cần chữ hoa, chữ thường, số và ký tự đặc biệt'
+    return t('validation.password.weak')
   }
   return ''
 }
 
-export function validatePhone(phone) {
+export function validatePhone(phone, t = fallbackT) {
   if (!phone) return ''
-  if (!/^(0|\+84)(3|5|7|8|9)[0-9]{8}$/.test(phone)) return 'Số điện thoại Việt Nam không hợp lệ'
+  if (!/^(0|\+84)(3|5|7|8|9)[0-9]{8}$/.test(phone)) return t('validation.phone.invalid')
   return ''
 }
