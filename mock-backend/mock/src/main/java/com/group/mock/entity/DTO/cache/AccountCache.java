@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import com.group.mock.entity.Account;
 import com.group.mock.entity.Role;
+import com.group.mock.entity.enums.Status;
 
 public class AccountCache implements Serializable {
     private UUID id;
@@ -12,6 +13,7 @@ public class AccountCache implements Serializable {
     private String password;
     private Integer roleId;
     private String roleName;
+    private Status status;
 
     public AccountCache() {
     }
@@ -25,6 +27,7 @@ public class AccountCache implements Serializable {
         cache.id = account.getId();
         cache.username = account.getUsername();
         cache.password = account.getPassword();
+        cache.status = account.getStatus();
         if (account.getRole() != null) {
             cache.roleId = account.getRole().getId();
             cache.roleName = account.getRole().getName();
@@ -37,6 +40,7 @@ public class AccountCache implements Serializable {
         account.setId(id);
         account.setUsername(username);
         account.setPassword(password);
+        account.setStatus(status);
         if (roleId != null || roleName != null) {
             Role role = new Role();
             if (roleId != null) {
@@ -86,5 +90,13 @@ public class AccountCache implements Serializable {
 
     public void setRoleName(String roleName) {
         this.roleName = roleName;
+    }
+
+    public Status getStatus() {
+        return status;
+    }
+
+    public void setStatus(Status status) {
+        this.status = status;
     }
 }
