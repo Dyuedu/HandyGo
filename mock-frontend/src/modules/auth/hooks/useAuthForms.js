@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../hooks/useAuth'
 import { registerUser, registerWorker } from '../../../services/authService'
@@ -30,6 +30,29 @@ const getCoordinates = () => {
   })
 }
 
+const validationT = (key) => key
+
+function translateNotice(notice, t) {
+  if (!notice) return ''
+  if (typeof notice === 'string') return notice
+  if (notice.key) {
+    const translated = t(notice.key)
+    return translated === notice.key ? notice.fallback || translated : translated
+  }
+  return notice.fallback || ''
+}
+
+function backendErrorNotice(err) {
+  const code = err?.payload?.error?.code
+  if (code) {
+    return {
+      key: `error.${code}`,
+      fallback: err?.payload?.error?.message || err.message,
+    }
+  }
+  return { fallback: err?.message || '' }
+}
+
 export function useAuthForms() {
   const { session, signIn, signInWithGoogle, signOut, clearAuthSession } = useAuth()
   const { t } = useLanguage()
@@ -38,14 +61,16 @@ export function useAuthForms() {
   const [loginForm, setLoginForm] = useState(initialLogin)
   const [userForm, setUserForm] = useState(initialUser)
   const [workerForm, setWorkerForm] = useState(initialWorker)
-  const [message, setMessage] = useState('')
-  const [error, setError] = useState('')
+  const [message, setMessage] = useState(null)
+  const [error, setError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
+  const translatedMessage = useMemo(() => translateNotice(message, t), [message, t])
+  const translatedError = useMemo(() => translateNotice(error, t), [error, t])
 
   async function handleLogin(event) {
     event.preventDefault()
-    const validation = validateUsername(loginForm.username, t) || (!loginForm.password ? t('validation.password.required') : '')
-    if (validation) return setError(validation)
+    const validation = validateUsername(loginForm.username, validationT) || (!loginForm.password ? 'validation.password.required' : '')
+    if (validation) return setError({ key: validation })
 
     await submit(async () => {
       const coords = await getCoordinates()
@@ -54,7 +79,7 @@ export function useAuthForms() {
         : loginForm
 
       await signIn(loginPayload)
-      setMessage(t('auth.success.login'))
+      setMessage({ key: 'auth.success.login' })
       setLoginForm(initialLogin)
       navigate('/app', { replace: true })
     })
@@ -64,7 +89,7 @@ export function useAuthForms() {
     await submit(async () => {
       const coords = await getCoordinates()
       await signInWithGoogle(accessToken, coords)
-      setMessage(t('auth.success.login'))
+      setMessage({ key: 'auth.success.login' })
       navigate('/app', { replace: true })
     })
   }
@@ -72,15 +97,15 @@ export function useAuthForms() {
   async function handleRegisterUser(event) {
     event.preventDefault()
     const validation =
-      validateUsername(userForm.username, t) ||
-      validatePassword(userForm.password, t) ||
-      (!userForm.fullName.trim() ? t('validation.fullName.required') : '') ||
-      validatePhone(userForm.phone, t)
-    if (validation) return setError(validation)
+      validateUsername(userForm.username, validationT) ||
+      validatePassword(userForm.password, validationT) ||
+      (!userForm.fullName.trim() ? 'validation.fullName.required' : '') ||
+      validatePhone(userForm.phone, validationT)
+    if (validation) return setError({ key: validation })
 
     await submit(async () => {
       await registerUser(userForm)
-      setMessage(t('auth.success.register'))
+      setMessage({ key: 'auth.success.register' })
       setUserForm(initialUser)
       setMode('login')
     })
@@ -89,17 +114,17 @@ export function useAuthForms() {
   async function handleRegisterWorker(event) {
     event.preventDefault()
     const validation =
-      validateUsername(workerForm.username, t) ||
-      validatePassword(workerForm.password, t) ||
-      (!workerForm.fullName.trim() ? t('validation.fullName.required') : '') ||
-      validatePhone(workerForm.phone, t) ||
-      (!workerForm.jobType.trim() ? t('validation.jobType.required') : '') ||
-      (!workerForm.professionalCertificate ? t('validation.certificate.required') : '')
-    if (validation) return setError(validation)
+      validateUsername(workerForm.username, validationT) ||
+      validatePassword(workerForm.password, validationT) ||
+      (!workerForm.fullName.trim() ? 'validation.fullName.required' : '') ||
+      validatePhone(workerForm.phone, validationT) ||
+      (!workerForm.jobType.trim() ? 'validation.jobType.required' : '') ||
+      (!workerForm.professionalCertificate ? 'validation.certificate.required' : '')
+    if (validation) return setError({ key: validation })
 
     await submit(async () => {
       await registerWorker(workerForm)
-      setMessage(t('auth.success.register'))
+      setMessage({ key: 'auth.success.register' })
       setWorkerForm(initialWorker)
       setMode('login')
     })
@@ -113,18 +138,18 @@ export function useAuthForms() {
 
     await submit(async () => {
       await signOut()
-      setMessage(t('auth.success.logout'))
+      setMessage({ key: 'auth.success.logout' })
     })
   }
 
   async function submit(action) {
     setSubmitting(true)
-    setError('')
-    setMessage('')
+    setError(null)
+    setMessage(null)
     try {
       await action()
     } catch (err) {
-      setError(err.message)
+      setError(backendErrorNotice(err))
     } finally {
       setSubmitting(false)
     }
@@ -140,8 +165,8 @@ export function useAuthForms() {
     workerForm,
     setWorkerForm,
     session,
-    message,
-    error,
+    message: translatedMessage,
+    error: translatedError,
     submitting,
     handleLogin,
     handleGoogleLogin,

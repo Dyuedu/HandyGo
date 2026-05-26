@@ -77,6 +77,21 @@ public class GlobalExceptionHandler {
     private String validationMessage(FieldError fieldError) {
         Locale locale = LocaleContextHolder.getLocale();
         String key = "validation." + fieldError.getObjectName() + "." + fieldError.getField() + "." + fieldError.getCode();
-        return messageSource.getMessage(key, null, fieldError.getDefaultMessage(), locale);
+        String fallback = messageSource.getMessage(key, null, null, locale);
+        if (fallback != null) {
+            return fallback;
+        }
+
+        String objectName = fieldError.getObjectName();
+        if (objectName != null && !objectName.isBlank()) {
+            String capitalizedObjectName = Character.toUpperCase(objectName.charAt(0)) + objectName.substring(1);
+            String capitalizedKey = "validation." + capitalizedObjectName + "." + fieldError.getField() + "." + fieldError.getCode();
+            fallback = messageSource.getMessage(capitalizedKey, null, null, locale);
+            if (fallback != null) {
+                return fallback;
+            }
+        }
+
+        return fieldError.getDefaultMessage();
     }
 }
