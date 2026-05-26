@@ -1,14 +1,15 @@
-import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useMemo, useState, useEffect } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../../hooks/useAuth'
 import { registerUser, registerWorker } from '../../../services/authService'
 import { validatePassword, validatePhone, validateUsername } from '../../../utils/validation'
 import { useLanguage } from '../../../i18n/LanguageContext'
 
 const initialLogin = { username: '', password: '' }
-const initialUser = { username: '', password: '', fullName: '', phone: '' }
+const initialUser = { username: '', email: '', password: '', fullName: '', phone: '' }
 const initialWorker = {
   username: '',
+  email: '',
   password: '',
   fullName: '',
   phone: '',
@@ -57,13 +58,27 @@ export function useAuthForms() {
   const { session, signIn, signInWithGoogle, signOut, clearAuthSession } = useAuth()
   const { t } = useLanguage()
   const navigate = useNavigate()
-  const [mode, setMode] = useState('login')
+  const location = useLocation()
+  
+  const [mode, setMode] = useState(location.state?.mode || 'login')
   const [loginForm, setLoginForm] = useState(initialLogin)
   const [userForm, setUserForm] = useState(initialUser)
   const [workerForm, setWorkerForm] = useState(initialWorker)
-  const [message, setMessage] = useState(null)
+  const [verifyForm, setVerifyForm] = useState({ 
+    email: location.state?.email || '', 
+    otp: '', 
+    isEmailFixed: !!location.state?.email 
+  })
+  const [message, setMessage] = useState(location.state?.message ? { key: location.state.message } : null)
   const [error, setError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
+
+  // Clear state after reading
+  useEffect(() => {
+    if (location.state) {
+      window.history.replaceState({}, document.title)
+    }
+  }, [location.state])
   const translatedMessage = useMemo(() => translateNotice(message, t), [message, t])
   const translatedError = useMemo(() => translateNotice(error, t), [error, t])
 
@@ -73,15 +88,34 @@ export function useAuthForms() {
     if (validation) return setError({ key: validation })
 
     await submit(async () => {
-      const coords = await getCoordinates()
-      const loginPayload = coords
-        ? { ...loginForm, latitude: coords.latitude, longitude: coords.longitude }
-        : loginForm
+      try {
+        const coords = await getCoordinates()
+        const loginPayload = coords
+          ? { ...loginForm, latitude: coords.latitude, longitude: coords.longitude }
+          : loginForm
 
-      await signIn(loginPayload)
-      setMessage({ key: 'auth.success.login' })
-      setLoginForm(initialLogin)
-      navigate('/app', { replace: true })
+        await signIn(loginPayload)
+        setMessage({ key: 'auth.success.login' })
+        setLoginForm(initialLogin)
+        navigate('/app', { replace: true })
+      } catch (err) {
+        if (err?.payload?.error?.code === 'ACCOUNT_DISABLED') {
+          navigate('/unverified', { state: { username: loginForm.username } })
+          return
+        }
+        throw err
+      }
+    })
+  }
+
+  async function handleResendVerification(event) {
+    if (event) event.preventDefault()
+    await submit(async () => {
+      const { resendVerification } = await import('../../../services/authService')
+      await resendVerification({ username: loginForm.username })
+      setMessage({ key: 'auth.success.resend' })
+      setVerifyForm({ email: '', otp: '', isEmailFixed: false })
+      setMode('verify')
     })
   }
 
@@ -98,6 +132,7 @@ export function useAuthForms() {
     event.preventDefault()
     const validation =
       validateUsername(userForm.username, validationT) ||
+      (!userForm.email.trim() ? 'validation.email.required' : '') ||
       validatePassword(userForm.password, validationT) ||
       (!userForm.fullName.trim() ? 'validation.fullName.required' : '') ||
       validatePhone(userForm.phone, validationT)
@@ -105,9 +140,10 @@ export function useAuthForms() {
 
     await submit(async () => {
       await registerUser(userForm)
-      setMessage({ key: 'auth.success.register' })
+      setMessage({ key: 'auth.success.register_verify' })
+      setVerifyForm({ email: userForm.email, otp: '', isEmailFixed: true })
       setUserForm(initialUser)
-      setMode('login')
+      setMode('verify')
     })
   }
 
@@ -115,6 +151,7 @@ export function useAuthForms() {
     event.preventDefault()
     const validation =
       validateUsername(workerForm.username, validationT) ||
+      (!workerForm.email.trim() ? 'validation.email.required' : '') ||
       validatePassword(workerForm.password, validationT) ||
       (!workerForm.fullName.trim() ? 'validation.fullName.required' : '') ||
       validatePhone(workerForm.phone, validationT) ||
@@ -124,8 +161,23 @@ export function useAuthForms() {
 
     await submit(async () => {
       await registerWorker(workerForm)
-      setMessage({ key: 'auth.success.register' })
+      setMessage({ key: 'auth.success.register_verify' })
+      setVerifyForm({ email: workerForm.email, otp: '', isEmailFixed: true })
       setWorkerForm(initialWorker)
+      setMode('verify')
+    })
+  }
+
+  async function handleVerifyEmail(event) {
+    event.preventDefault()
+    if (!verifyForm.email.trim()) return setError({ key: 'validation.email.required' })
+    if (!verifyForm.otp.trim()) return setError({ key: 'validation.otp.required' })
+    
+    await submit(async () => {
+      const { verifyEmail } = await import('../../../services/authService')
+      await verifyEmail(verifyForm)
+      setMessage({ key: 'auth.success.verify' })
+      setVerifyForm({ email: '', otp: '', isEmailFixed: false })
       setMode('login')
     })
   }
@@ -164,6 +216,8 @@ export function useAuthForms() {
     setUserForm,
     workerForm,
     setWorkerForm,
+    verifyForm,
+    setVerifyForm,
     session,
     message: translatedMessage,
     error: translatedError,
@@ -172,6 +226,8 @@ export function useAuthForms() {
     handleGoogleLogin,
     handleRegisterUser,
     handleRegisterWorker,
+    handleVerifyEmail,
+    handleResendVerification,
     handleLogout,
   }
 }

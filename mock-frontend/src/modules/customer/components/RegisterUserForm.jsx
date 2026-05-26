@@ -6,6 +6,7 @@ export function RegisterUserForm({ form, onChange, onSubmit, submitting, submitL
   return (
     <form className="auth-form two-column" onSubmit={onSubmit}>
       <Field label={t('form.username')} value={form.username} onChange={(value) => onChange({ ...form, username: value })} />
+      <Field label={t('form.email')} type="email" value={form.email} onChange={(value) => onChange({ ...form, email: value })} />
       <Field label={t('form.password')} type="password" value={form.password} onChange={(value) => onChange({ ...form, password: value })} />
       <Field label={t('form.fullName')} value={form.fullName} onChange={(value) => onChange({ ...form, fullName: value })} />
       <Field label={t('form.phone')} value={form.phone} onChange={(value) => onChange({ ...form, phone: value })} />
