@@ -557,10 +557,129 @@
   font-weight: 500;
 }
 
+.wp-review-composer {
+  margin-bottom: 16px;
+  padding: 18px 20px;
+  background: linear-gradient(180deg, #fff7ed 0%, #ffffff 100%);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: 14px;
+}
+
+.wp-review-composer-title {
+  margin: 0 0 10px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.wp-review-composer-note {
+  margin: 0;
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.wp-review-composer-note.success {
+  color: #166534;
+}
+
+.wp-review-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.wp-review-rating-input {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.wp-review-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.wp-review-star-picker {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.wp-review-star-btn {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: 28px;
+  line-height: 1;
+  color: #cbd5e1;
+  cursor: pointer;
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.wp-review-star-btn.active {
+  color: #f59e0b;
+}
+
+.wp-review-star-btn:hover {
+  transform: scale(1.08);
+}
+
+.wp-review-textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  font-size: 14px;
+  font-family: inherit;
+  color: #1e293b;
+  background: white;
+  resize: vertical;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.wp-review-textarea:focus {
+  outline: none;
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.12);
+}
+
+.wp-review-submit {
+  align-self: flex-start;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 10px;
+  background: #0f172a;
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.wp-review-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .wp-reviews-list {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.wp-review-empty {
+  padding: 18px 20px;
+  background: white;
+  border: 1px dashed #cbd5e1;
+  border-radius: 14px;
+  color: #64748b;
+  font-size: 13px;
 }
 
 .wp-review-card {

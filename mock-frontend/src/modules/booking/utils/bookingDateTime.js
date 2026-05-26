@@ -80,6 +80,7 @@ export function resolveBookingFormError(err, t = fallbackT) {
   const byCode = {
     BOOKING_DATE_REQUIRED: t('booking.validation.dateTimeRequired'),
     BOOKING_DATE_INVALID: t('booking.validation.todayFuture'),
+    DUPLICATE_BOOKING: t('booking.validation.duplicateBooking'),
     VALIDATION_FAILED: t('booking.validation.checkInfo'),
   }
   if (code && byCode[code]) return byCode[code]

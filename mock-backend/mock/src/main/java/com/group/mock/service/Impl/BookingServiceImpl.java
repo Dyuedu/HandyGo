@@ -28,6 +28,7 @@ import com.group.mock.service.BookingService;
 import com.group.mock.service.BookingStateTransitionValidator;
 import com.group.mock.service.NotificationEventPublisher;
 import com.group.mock.service.VoucherAvailabilityHelper;
+import com.group.mock.util.AddressNormalizer;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.ZoneId;
@@ -36,6 +37,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.LocalDateTime;
 import java.time.Duration;
 import java.util.Collection;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -55,6 +57,7 @@ public class BookingServiceImpl implements BookingService {
     private static final String ROLE_WORKER = "ROLE_WORKER";
     private static final String BALANCE_CACHE_KEY_PREFIX = "cache:wallet:balance:";
     private static final String HISTORY_CACHE_KEY_PREFIX = "cache:wallet:history:";
+    private static final int DUPLICATE_CHECK_TIME_WINDOW_MINUTES = 30;
 
     private final BookingRepository bookingRepository;
     private final BookingStatusHistoryRepository bookingStatusHistoryRepository;
@@ -115,6 +118,9 @@ public class BookingServiceImpl implements BookingService {
         booking.setTotalAmount(total);
         booking.setDiscountAmount(discount);
         booking.setFinalAmount(BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP));
+
+        // Check for duplicate bookings (same address + time window)
+        checkDuplicateBooking(request.getAddress(), request.getBookingDate());
 
         booking = bookingRepository.save(booking);
         recordHistory(booking, null, BookingStatus.PENDING, "Booking created");
@@ -559,5 +565,48 @@ public class BookingServiceImpl implements BookingService {
                 String.valueOf(wallet.getBalance().movePointRight(4).longValueExact()),
                 Duration.ofSeconds(300));
         stringRedisTemplate.delete(HISTORY_CACHE_KEY_PREFIX + wallet.getId());
+    }
+
+    /**
+     * Check if there are duplicate bookings with the same address within a time window.
+     * Duplicate: same normalized address + booking time within ±30 minutes
+     * Checks only PENDING and ACCEPTED bookings (excludes terminal states).
+     *
+     * @param address     the address to check
+     * @param bookingDate the booking date/time to check
+     * @throws AuthServiceException with 409 CONFLICT if duplicate found
+     */
+    private void checkDuplicateBooking(String address, LocalDateTime bookingDate) {
+        if (address == null || bookingDate == null) {
+            return;
+        }
+
+        // Calculate time window: ±30 minutes from booking date
+        LocalDateTime windowStart = bookingDate.minusMinutes(DUPLICATE_CHECK_TIME_WINDOW_MINUTES);
+        LocalDateTime windowEnd = bookingDate.plusMinutes(DUPLICATE_CHECK_TIME_WINDOW_MINUTES);
+
+        // Find all PENDING and ACCEPTED bookings in the time window
+        List<BookingStatus> statuses = List.of(BookingStatus.PENDING, BookingStatus.ACCEPTED);
+        List<Booking> bookingsInWindow = bookingRepository.findByStatusInAndBookingDateBetween(
+                statuses, windowStart, windowEnd);
+
+        if (bookingsInWindow.isEmpty()) {
+            return;
+        }
+
+        // Normalize the incoming address
+        String normalizedIncoming = AddressNormalizer.normalize(address);
+
+        // Check if any booking in the window has the same normalized address
+        for (Booking existing : bookingsInWindow) {
+            String normalizedExisting = AddressNormalizer.normalize(existing.getAddress());
+            if (normalizedIncoming.equals(normalizedExisting)) {
+                throw new AuthServiceException(
+                        HttpStatus.CONFLICT,
+                        "DUPLICATE_BOOKING",
+                        "A booking already exists at this address within ±30 minutes of the selected time. "
+                                + "Address: " + existing.getAddress() + ", Time: " + existing.getBookingDate());
+            }
+        }
     }
 }
