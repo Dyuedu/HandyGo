@@ -285,7 +285,7 @@ spring:
 
 app:
   jwt:
-    expiration-ms: 480000000000      # Access token expiry (15 min effective)
+    expiration-ms: 900000            # Access token expiry (15 min)
     refresh-expiration-ms: 604800000  # Refresh token expiry (7 days)
     secret: dhfjkahsdjhkjdfhksfksfhklfjklfjksl@111
 

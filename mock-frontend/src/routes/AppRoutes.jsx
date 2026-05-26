@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { MainLayout } from '../layouts/MainLayout'
 import { BookingActivityPage } from '../modules/booking/pages/BookingActivityPage'
 import { BookingDetailPage } from '../modules/booking/pages/BookingDetailPage'
+import { JobPostManagement, JobPostDetail, JobPostDiscovery, JobPostDiscoveryMap } from '../modules/jobpost'
 import { AccessDenied } from '../pages/AccessDenied'
 import { Auth } from '../pages/Auth'
 import { DashboardHome } from '../pages/DashboardHome'
@@ -26,6 +27,10 @@ export function AppRoutes() {
         <Route element={<MainLayout />}>
           <Route path="/app" element={<Navigate to="/app/home" replace />} />
           <Route path="/app/home" element={<DashboardHome />} />
+          <Route path="/app/job-posts/manage" element={<JobPostManagement />} />
+          <Route path="/app/job-posts/discover" element={<JobPostDiscovery />} />
+          <Route path="/app/job-posts/map" element={<JobPostDiscoveryMap />} />
+          <Route path="/app/job-posts/:jobPostId" element={<JobPostDetail />} />
           <Route path="/app/activity" element={<BookingActivityPage />} />
           <Route path="/app/bookings/:bookingId" element={<BookingDetailPage />} />
           <Route path="/app/chat" element={<DashboardHome section="Chat" />} />

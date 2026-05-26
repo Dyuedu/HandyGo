@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { login as loginRequest, logout as logoutRequest, googleLogin as googleLoginRequest } from '../services/authService'
 import { clearSession, loadSession, saveSession, subscribeSessionChange } from '../state/authStore'
 import { AuthContext } from './authContextObject'
@@ -10,6 +11,7 @@ function resolveInitialMode(session) {
 }
 
 export function AuthProvider({ children }) {
+  const queryClient = useQueryClient()
   const [session, setSession] = useState(loadSession)
   const [mode, setMode] = useState(() => resolveInitialMode(loadSession()))
 
@@ -22,6 +24,7 @@ export function AuthProvider({ children }) {
 
   async function signIn(credentials) {
     const response = await loginRequest(credentials)
+    queryClient.clear()
     saveSession(response.data)
     setSession(response.data)
     setMode(resolveInitialMode(response.data))
@@ -30,6 +33,7 @@ export function AuthProvider({ children }) {
 
   async function signInWithGoogle(accessToken, coords) {
     const response = await googleLoginRequest(accessToken, coords)
+    queryClient.clear()
     saveSession(response.data)
     setSession(response.data)
     setMode(resolveInitialMode(response.data))
@@ -44,11 +48,13 @@ export function AuthProvider({ children }) {
     } catch (error) {
       console.warn('Logout request failed; clearing local session anyway.', error)
     } finally {
+      queryClient.clear()
       clearSession()
     }
   }
 
   function clearAuthSession() {
+    queryClient.clear()
     clearSession()
   }
 

@@ -19,7 +19,10 @@ export function LanguageProvider({ children }) {
   const [language, setLanguageState] = useState(getInitialLanguage)
 
   const setLanguage = (nextLanguage) => {
-    setLanguageState(normalizeLanguage(nextLanguage))
+    const normalizedLanguage = normalizeLanguage(nextLanguage)
+    localStorage.setItem(STORAGE_KEY, normalizedLanguage)
+    document.documentElement.lang = normalizedLanguage
+    setLanguageState(normalizedLanguage)
   }
 
   useEffect(() => {

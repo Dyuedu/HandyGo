@@ -20,11 +20,21 @@ export function saveSession(session) {
 
 export function clearSession() {
   localStorage.removeItem(STORAGE_KEY)
+  localStorage.removeItem('my_user_id')
   notifySessionChange(null)
 }
 
 export function subscribeSessionChange(listener) {
   const handleSessionChange = (event) => listener(event.detail)
+  const handleStorageChange = (event) => {
+    if (event.key === STORAGE_KEY) {
+      listener(loadSession())
+    }
+  }
   window.addEventListener(SESSION_CHANGE_EVENT, handleSessionChange)
-  return () => window.removeEventListener(SESSION_CHANGE_EVENT, handleSessionChange)
+  window.addEventListener('storage', handleStorageChange)
+  return () => {
+    window.removeEventListener(SESSION_CHANGE_EVENT, handleSessionChange)
+    window.removeEventListener('storage', handleStorageChange)
+  }
 }
