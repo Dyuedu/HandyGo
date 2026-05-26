@@ -38,6 +38,7 @@ const sectionNames = {
   '/app/wallet': 'section.wallet',
   '/app/subscription': 'section.subscription',
   '/app/profile': 'section.profile',
+  '/app/notifications': 'notification.title',
   '/app/admin/workers': 'section.adminWorkers',
   '/app/admin/catalog': 'section.adminCatalog',
 }
