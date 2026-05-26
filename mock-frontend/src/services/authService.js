@@ -17,6 +17,7 @@ export function registerUser(payload) {
   const formData = new FormData()
   formData.append('role', 'USER')
   formData.append('username', payload.username)
+  formData.append('email', payload.email)
   formData.append('password', payload.password)
   formData.append('fullName', payload.fullName)
   formData.append('phone', payload.phone)
@@ -28,6 +29,7 @@ export function registerWorker(payload) {
   const formData = new FormData()
   formData.append('role', 'WORKER')
   formData.append('username', payload.username)
+  formData.append('email', payload.email)
   formData.append('password', payload.password)
   formData.append('fullName', payload.fullName)
   formData.append('phone', payload.phone)
@@ -37,6 +39,14 @@ export function registerWorker(payload) {
   }
 
   return axiosClient.post('/api/auth/register', formData)
+}
+
+export function verifyEmail(payload) {
+  return axiosClient.post('/api/auth/verify-email', payload)
+}
+
+export function resendVerification(payload) {
+  return axiosClient.post('/api/auth/resend-verification', payload)
 }
 
 export function logout(refreshToken) {

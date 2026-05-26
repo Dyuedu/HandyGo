@@ -5,6 +5,7 @@ import { BookingDetailPage } from '../modules/booking/pages/BookingDetailPage'
 import { JobPostManagement, JobPostDetail, JobPostDiscovery, JobPostDiscoveryMap } from '../modules/jobpost'
 import { AccessDenied } from '../pages/AccessDenied'
 import { Auth } from '../pages/Auth'
+import { UnverifiedPage } from '../pages/UnverifiedPage'
 import { DashboardHome } from '../pages/DashboardHome'
 import { ProfilePage } from '../pages/ProfilePage'
 import { NotificationsPage } from '../pages/NotificationsPage'
@@ -21,6 +22,7 @@ export function AppRoutes() {
       <Route path="/" element={<Navigate to="/welcome" replace />} />
       <Route path="/welcome" element={<Landing />} />
       <Route path="/auth" element={<Auth />} />
+      <Route path="/unverified" element={<UnverifiedPage />} />
       <Route path="/access-denied" element={<AccessDenied />} />
 
       <Route element={<PrivateRoute />}>
