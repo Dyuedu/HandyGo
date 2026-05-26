@@ -3,6 +3,7 @@ package com.group.mock.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +22,7 @@ public class NotificationFactory {
     public static final String BOOKING_CANCELLED = "BOOKING_CANCELLED";
     public static final String BOOKING_ACCEPTED = "BOOKING_ACCEPTED";
     public static final String BOOKING_REJECTED = "BOOKING_REJECTED";
+    public static final String BOOKING_EXPIRED = "BOOKING_EXPIRED";
     public static final String BOOKING_PROCESSING = "BOOKING_PROCESSING";
     public static final String BOOKING_COMPLETED = "BOOKING_COMPLETED";
     public static final String BOOKING_CONFIRMED = "BOOKING_CONFIRMED";
@@ -32,6 +34,11 @@ public class NotificationFactory {
     public static final String SUBSCRIPTION_EXPIRING = "SUBSCRIPTION_EXPIRING";
     public static final String PROFILE_APPROVED = "PROFILE_APPROVED";
     public static final String PROFILE_REJECTED = "PROFILE_REJECTED";
+    public static final String JOB_POST_NEW = "JOB_POST_NEW";
+    public static final String JOB_APPLICATION_NEW = "JOB_APPLICATION_NEW";
+    public static final String JOB_APPLICATION_ACCEPTED = "JOB_APPLICATION_ACCEPTED";
+    public static final String JOB_APPLICATION_REJECTED = "JOB_APPLICATION_REJECTED";
+    public static final String JOB_POST_CANCELLED_NO_APPLICANTS = "JOB_POST_CANCELLED_NO_APPLICANTS";
 
     /**
      * Create booking notification
@@ -60,6 +67,10 @@ public class NotificationFactory {
                 title = "Đơn đặt lịch bị từ chối";
                 message = "Rất tiếc, người thợ không thể chấp nhận đơn đặt lịch của bạn";
                 break;
+            case BOOKING_EXPIRED:
+                title = "Đơn đặt lịch đã hết hạn";
+                message = "Đơn đặt lịch dịch vụ " + serviceName + " đã tự động kết thúc do quá giờ hẹn";
+                break;
             case BOOKING_PROCESSING:
                 title = "Thợ đã bắt đầu xử lý";
                 message = "Thợ đã bắt đầu xử lý dịch vụ " + serviceName;
@@ -80,6 +91,21 @@ public class NotificationFactory {
         return new NotificationData(type, title, message, data);
     }
 
+    public NotificationData createBookingExpiredNotification(Long bookingId, String customerName, String serviceName, String reason) {
+        Map<String, Object> data = new HashMap<>();
+        data.put("bookingId", bookingId);
+        data.put("customerName", customerName);
+        data.put("serviceName", serviceName);
+        data.put("reason", reason);
+        return new NotificationData(
+                BOOKING_EXPIRED,
+                "Đơn đặt lịch đã hết hạn",
+                reason != null && !reason.isBlank()
+                        ? reason
+                        : ("Đơn đặt lịch dịch vụ " + serviceName + " đã tự động kết thúc do quá giờ hẹn"),
+                data);
+    }
+
     /**
      * Create message notification
      */
@@ -94,6 +120,17 @@ public class NotificationFactory {
             messagePreview,
             data
         );
+    }
+
+    public NotificationData createJobPostCancelledNoApplicants(UUID jobPostId, String jobTitle) {
+        Map<String, Object> data = new HashMap<>();
+        data.put("jobPostId", jobPostId);
+        data.put("jobTitle", jobTitle);
+        return new NotificationData(
+                JOB_POST_CANCELLED_NO_APPLICANTS,
+                "Công việc đã hủy",
+                "Không có thợ nào đăng ký cho công việc \"" + (jobTitle == null ? "" : jobTitle) + "\" trước giờ hẹn.",
+                data);
     }
 
     /**
@@ -171,6 +208,54 @@ public class NotificationFactory {
         String message = comment != null && !comment.isEmpty() ? comment.substring(0, Math.min(100, comment.length())) : "Xem đánh giá chi tiết";
 
         return new NotificationData(REVIEW_CREATED, title, message, data);
+    }
+
+    public NotificationData createJobPostNotification(
+            java.util.UUID jobPostId, String jobTitle, String jobType) {
+        Map<String, Object> data = new HashMap<>();
+        data.put("jobPostId", jobPostId != null ? jobPostId.toString() : null);
+        data.put("jobTitle", jobTitle);
+        data.put("jobType", jobType);
+        return new NotificationData(
+                JOB_POST_NEW,
+                "Công việc mới phù hợp",
+                "Có công việc \"" + jobTitle + "\" (" + jobType + ") vừa được đăng",
+                data);
+    }
+
+    public NotificationData createJobApplicationNotification(
+            String type,
+            java.util.UUID jobPostId,
+            java.util.UUID applicationId,
+            String jobTitle,
+            String jobType,
+            String actorName) {
+        Map<String, Object> data = new HashMap<>();
+        data.put("jobPostId", jobPostId != null ? jobPostId.toString() : null);
+        data.put("applicationId", applicationId != null ? applicationId.toString() : null);
+        data.put("jobTitle", jobTitle);
+        data.put("jobType", jobType);
+
+        String title;
+        String message;
+        switch (type) {
+            case JOB_APPLICATION_NEW:
+                title = "Có thợ đăng ký công việc";
+                message = actorName + " vừa đăng ký công việc \"" + jobTitle + "\"";
+                break;
+            case JOB_APPLICATION_ACCEPTED:
+                title = "Bạn được chọn cho công việc";
+                message = "Khách hàng đã chấp nhận đăng ký của bạn cho \"" + jobTitle + "\"";
+                break;
+            case JOB_APPLICATION_REJECTED:
+                title = "Đăng ký không được chọn";
+                message = "Khách hàng đã chọn thợ khác cho \"" + jobTitle + "\"";
+                break;
+            default:
+                title = "Thông báo công việc";
+                message = "Có cập nhật về công việc";
+        }
+        return new NotificationData(type, title, message, data);
     }
 
     /**

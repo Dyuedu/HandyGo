@@ -2,6 +2,8 @@ package com.group.mock.service.Impl;
 
 import com.group.mock.entity.Account;
 import com.group.mock.entity.Booking;
+import com.group.mock.entity.JobPost;
+import com.group.mock.entity.WorkerProfile;
 import com.group.mock.entity.BookingStatusHistory;
 import com.group.mock.entity.DTO.request.CreateBookingRequest;
 import com.group.mock.entity.DTO.request.UpdateBookingPaymentRequest;
@@ -145,6 +147,51 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     @Transactional
+    public Booking createBookingFromJobPost(JobPost jobPost, WorkerProfile worker) {
+        if (jobPost == null || jobPost.getCustomer() == null || worker == null) {
+            throw new AuthServiceException(
+                    HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "Cannot create booking from job post");
+        }
+
+        UserProfile customer = jobPost.getCustomer();
+        LocalDateTime bookingDate = jobPost.getScheduledAt();
+        if (bookingDate == null) {
+            throw new AuthServiceException(
+                    HttpStatus.BAD_REQUEST, "JOBPOST_SCHEDULE_REQUIRED", "Job post has no scheduled time");
+        }
+
+        Booking booking = new Booking();
+        booking.setCustomer(customer);
+        booking.setWorker(worker);
+        booking.setServiceCode(jobPost.getJobType());
+        booking.setAddress(jobPost.getAddress());
+        booking.setBookingDate(bookingDate);
+        String desc = jobPost.getDescription();
+        booking.setDescription(
+                desc != null && !desc.isBlank() ? desc.trim() : jobPost.getTitle());
+        booking.setStatus(BookingStatus.PENDING);
+        booking.setTotalAmount(BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP));
+        booking.setDiscountAmount(BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP));
+        booking.setFinalAmount(BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP));
+
+        booking = bookingRepository.save(booking);
+        recordHistory(booking, null, BookingStatus.PENDING, "Booking created from job post");
+
+        try {
+            notificationEventPublisher.publishBookingCreated(
+                    worker.getId(),
+                    booking.getId().getMostSignificantBits(),
+                    customer.getFullName(),
+                    jobPost.getJobType());
+        } catch (Exception e) {
+            log.warn("Failed to send booking created notification for job post", e);
+        }
+
+        return bookingRepository.findDetailById(booking.getId()).orElse(booking);
+    }
+
+    @Override
+    @Transactional
     public Booking acceptBooking(String username, UUID bookingId) {
         Account account = loadAccount(username);
         Booking booking =
@@ -188,6 +235,56 @@ public class BookingServiceImpl implements BookingService {
             log.warn("Failed to send booking rejected notification", e);
         }
         
+        return bookingRepository.findDetailById(bookingId).orElse(booking);
+    }
+
+    @Override
+    @Transactional
+    public Booking cancelBooking(String username, UUID bookingId) {
+        Account account = loadAccount(username);
+        requireRole(account, ROLE_USER, "Only customers can cancel bookings");
+
+        Booking booking =
+                bookingRepository.findById(bookingId).orElseThrow(bookingNotFound());
+        assertCustomer(account, booking);
+
+        if (booking.getStatus() != BookingStatus.PENDING) {
+            throw new AuthServiceException(
+                    HttpStatus.CONFLICT,
+                    "BOOKING_NOT_PENDING",
+                    "Chỉ có thể hủy khi đơn đang chờ thợ phản hồi");
+        }
+
+        LocalDateTime scheduled = booking.getBookingDate();
+        if (scheduled == null) {
+            throw new AuthServiceException(
+                    HttpStatus.BAD_REQUEST,
+                    "BOOKING_DATE_REQUIRED",
+                    "Vui lòng chọn ngày và giờ hẹn");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        long minutesUntil = Duration.between(now, scheduled).toMinutes();
+        if (minutesUntil < 30) {
+            throw new AuthServiceException(
+                    HttpStatus.CONFLICT,
+                    "BOOKING_CANCEL_TOO_LATE",
+                    "Bạn chỉ có thể hủy trước giờ hẹn ít nhất 30 phút");
+        }
+
+        transition(booking, BookingStatus.CANCELLED, "Cancelled by customer");
+
+        try {
+            String customerName = booking.getCustomer() != null ? booking.getCustomer().getFullName() : "Khách hàng";
+            notificationEventPublisher.publishBookingCancelled(
+                    booking.getWorker().getId(),
+                    bookingId.getMostSignificantBits(),
+                    customerName,
+                    booking.getServiceCode());
+        } catch (Exception e) {
+            log.warn("Failed to send booking cancelled notification", e);
+        }
+
         return bookingRepository.findDetailById(bookingId).orElse(booking);
     }
 

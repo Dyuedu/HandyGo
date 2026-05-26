@@ -67,11 +67,14 @@ export function WorkerProfile() {
   const locale = getBrowserLocale(language)
 
   const returnPath = location.state?.from || '/app/home'
-  const returnLabel = returnPath.startsWith('/app/chat')
-    ? t('worker.backChat')
-    : returnPath === '/app/profile'
-      ? t('worker.backProfile')
-      : t('worker.backMap')
+  const returnLabel = location.state?.returnLabel
+    || (returnPath.startsWith('/app/chat')
+      ? t('worker.backChat')
+      : returnPath === '/app/profile'
+        ? t('worker.backProfile')
+        : returnPath.includes('/job-posts/') && returnPath.includes('/applicants')
+          ? t('jobpost.applicants.back')
+          : t('worker.backMap'))
 
   const handleBack = () => {
     navigate(returnPath)

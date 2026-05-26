@@ -1,6 +1,7 @@
 package com.group.mock.repository;
 
 import com.group.mock.entity.JobPost;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -21,14 +22,22 @@ public interface JobPostRepository extends JpaRepository<JobPost, UUID> {
     /**
      * Find all open job posts (for discovery/browsing)
      */
-    @Query("SELECT j FROM JobPost j WHERE j.status = 'OPEN' ORDER BY j.createdAt DESC")
-    List<JobPost> findAllOpenJobPosts();
+    @Query(
+            "SELECT j FROM JobPost j WHERE j.status = 'OPEN' AND j.scheduledAt > :now ORDER BY j.scheduledAt ASC")
+    List<JobPost> findAllOpenJobPosts(@Param("now") LocalDateTime now);
 
     /**
      * Find open job posts by job type
      */
-    @Query("SELECT j FROM JobPost j WHERE j.status = 'OPEN' AND j.jobType = :jobType ORDER BY j.createdAt DESC")
-    List<JobPost> findOpenJobPostsByJobType(@Param("jobType") String jobType);
+    @Query(
+            "SELECT j FROM JobPost j WHERE j.status = 'OPEN' AND j.jobType = :jobType AND j.scheduledAt > :now "
+                    + "ORDER BY j.scheduledAt ASC")
+    List<JobPost> findOpenJobPostsByJobType(@Param("jobType") String jobType, @Param("now") LocalDateTime now);
+
+    @Query(
+            "SELECT j FROM JobPost j WHERE j.status = 'OPEN' AND j.scheduledAt < :now "
+                    + "AND NOT EXISTS (SELECT 1 FROM JobApplication a WHERE a.jobPost.id = j.id)")
+    List<JobPost> findExpiredOpenWithoutApplications(@Param("now") LocalDateTime now);
 
     /**
      * Find a job post by ID and verify it belongs to the customer
@@ -40,4 +49,7 @@ public interface JobPostRepository extends JpaRepository<JobPost, UUID> {
      * Find a job post by ID (basic query)
      */
     Optional<JobPost> findById(UUID id);
+
+    @Query("SELECT j FROM JobPost j JOIN FETCH j.customer WHERE j.id = :id")
+    Optional<JobPost> findByIdWithCustomer(@Param("id") UUID id);
 }

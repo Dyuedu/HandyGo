@@ -7,9 +7,15 @@ import com.group.mock.entity.DTO.request.CreateJobPostRequest;
 import com.group.mock.entity.DTO.request.UpdateJobPostRequest;
 import com.group.mock.exception.AuthServiceException;
 import com.group.mock.repository.AccountRepository;
+import com.group.mock.entity.WorkerProfile;
+import com.group.mock.repository.JobApplicationRepository;
 import com.group.mock.repository.JobPostRepository;
 import com.group.mock.repository.UserProfileRepository;
+import com.group.mock.repository.WorkerProfileRepository;
 import com.group.mock.service.JobPostService;
+import com.group.mock.service.NotificationEventPublisher;
+import com.group.mock.util.JobPostScheduleHelper;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +33,9 @@ public class JobPostServiceImpl implements JobPostService {
     private final JobPostRepository jobPostRepository;
     private final UserProfileRepository userProfileRepository;
     private final AccountRepository accountRepository;
+    private final JobApplicationRepository jobApplicationRepository;
+    private final WorkerProfileRepository workerProfileRepository;
+    private final NotificationEventPublisher notificationEventPublisher;
 
     @Override
     @Transactional
@@ -39,6 +48,8 @@ public class JobPostServiceImpl implements JobPostService {
                 .orElseThrow(() -> new AuthServiceException(
                         HttpStatus.NOT_FOUND, "PROFILE_NOT_FOUND", "Customer profile not found"));
 
+        JobPostScheduleHelper.assertScheduledAtValid(request.getScheduledAt());
+
         JobPost jobPost = new JobPost();
         jobPost.setCustomer(customer);
         jobPost.setTitle(request.getTitle());
@@ -47,9 +58,29 @@ public class JobPostServiceImpl implements JobPostService {
         jobPost.setAddress(request.getAddress());
         jobPost.setLatitude(request.getLatitude());
         jobPost.setLongitude(request.getLongitude());
+        jobPost.setScheduledAt(request.getScheduledAt());
         jobPost.setStatus("OPEN");
 
-        return jobPostRepository.save(jobPost);
+        jobPost = jobPostRepository.save(jobPost);
+
+        notifyMatchingWorkers(jobPost);
+
+        return jobPost;
+    }
+
+    private void notifyMatchingWorkers(JobPost jobPost) {
+        if (jobPost.getJobType() == null || jobPost.getJobType().isBlank()) {
+            return;
+        }
+        java.util.List<WorkerProfile> workers =
+                workerProfileRepository.findByJobTypeAndIsVerifiedTrue(jobPost.getJobType().trim());
+        for (WorkerProfile worker : workers) {
+            if (jobPost.getCustomer() != null && worker.getId().equals(jobPost.getCustomer().getId())) {
+                continue;
+            }
+            notificationEventPublisher.publishJobPostNew(
+                    worker.getId(), jobPost.getId(), jobPost.getTitle(), jobPost.getJobType());
+        }
     }
 
     @Override
@@ -94,6 +125,10 @@ public class JobPostServiceImpl implements JobPostService {
         if (request.getLongitude() != null) {
             jobPost.setLongitude(request.getLongitude());
         }
+        if (request.getScheduledAt() != null) {
+            JobPostScheduleHelper.assertScheduledAtValid(request.getScheduledAt());
+            jobPost.setScheduledAt(request.getScheduledAt());
+        }
         if (request.getStatus() != null) {
             jobPost.setStatus(request.getStatus());
         }
@@ -109,19 +144,28 @@ public class JobPostServiceImpl implements JobPostService {
                 .findByIdAndCustomerId(jobPostId, account.getId())
                 .orElseThrow(jobPostNotFound());
 
+        if ("ASSIGNED".equalsIgnoreCase(jobPost.getStatus()) || jobPost.getBooking() != null) {
+            throw new AuthServiceException(
+                    HttpStatus.CONFLICT,
+                    "JOBPOST_CANNOT_DELETE_ASSIGNED",
+                    "Công việc đã giao thợ, không thể xóa. Bạn có thể xem trong Hoạt động.");
+        }
+
+        // Ensure FK integrity regardless of actual DB constraint options
+        jobApplicationRepository.deleteByJobPost_Id(jobPostId);
         jobPostRepository.delete(jobPost);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<JobPost> getAllOpenJobPosts() {
-        return jobPostRepository.findAllOpenJobPosts();
+        return jobPostRepository.findAllOpenJobPosts(LocalDateTime.now());
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<JobPost> getOpenJobPostsByJobType(String jobType) {
-        return jobPostRepository.findOpenJobPostsByJobType(jobType);
+        return jobPostRepository.findOpenJobPostsByJobType(jobType, LocalDateTime.now());
     }
 
     @Override

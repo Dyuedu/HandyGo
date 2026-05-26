@@ -6,6 +6,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.time.LocalDateTime;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -67,4 +68,12 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
             @Param("workerId") UUID workerId, @Param("statuses") Collection<BookingStatus> statuses);
 
     boolean existsByWorker_IdAndStatusIn(UUID workerId, Collection<BookingStatus> statuses);
+
+    @Query(
+            "SELECT DISTINCT b FROM Booking b "
+                    + "LEFT JOIN FETCH b.customer "
+                    + "LEFT JOIN FETCH b.worker "
+                    + "WHERE b.status = com.group.mock.entity.enums.BookingStatus.PENDING "
+                    + "AND b.bookingDate < :now")
+    List<Booking> findPendingExpired(@Param("now") LocalDateTime now);
 }
