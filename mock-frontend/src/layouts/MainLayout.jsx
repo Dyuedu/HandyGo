@@ -11,21 +11,21 @@ import { getBookings } from '../services/bookingService'
 import '../styles/layouts/MainLayout.css'
 
 const customerNav = [
-  { path: '/app/home', icon: 'map', label: 'Bản đồ' },
-  { path: '/app/job-posts/manage', icon: 'briefcase', label: 'Công việc của tôi' },
-  { path: '/app/activity', icon: 'activity', label: 'Hoạt động' },
-  { path: '/app/chat', icon: 'chat', label: 'Tin nhắn' },
-  { path: '/app/profile', icon: 'profile', label: 'Hồ sơ' },
+  { path: '/app/home', icon: 'map', labelKey: 'nav.map' },
+  { path: '/app/job-posts/manage', icon: 'briefcase', labelKey: 'nav.myJobs' },
+  { path: '/app/activity', icon: 'activity', labelKey: 'nav.activity' },
+  { path: '/app/chat', icon: 'chat', labelKey: 'nav.chat' },
+  { path: '/app/profile', icon: 'profile', labelKey: 'nav.profile' },
 ]
 
 const technicianNav = [
-  { path: '/app/home', icon: 'map', label: 'Bản đồ' },
-  { path: '/app/job-posts/map', icon: 'briefcase', label: 'Khám phá công việc' },
-  { path: '/app/activity', icon: 'activity', label: 'Hoạt động' },
-  { path: '/app/chat', icon: 'chat', label: 'Tin nhắn' },
-  { path: '/app/wallet', icon: 'wallet', label: 'Ví xu' },
-  { path: '/app/subscription', icon: 'crown', label: 'Gói cước' },
-  { path: '/app/profile', icon: 'profile', label: 'Hồ sơ' },
+  { path: '/app/home', icon: 'map', labelKey: 'nav.map' },
+  { path: '/app/job-posts/map', icon: 'briefcase', labelKey: 'nav.discoverJobs' },
+  { path: '/app/activity', icon: 'activity', labelKey: 'nav.activity' },
+  { path: '/app/chat', icon: 'chat', labelKey: 'nav.chat' },
+  { path: '/app/wallet', icon: 'wallet', labelKey: 'nav.wallet' },
+  { path: '/app/subscription', icon: 'crown', labelKey: 'nav.subscription' },
+  { path: '/app/profile', icon: 'profile', labelKey: 'nav.profile' },
 ]
 
 const adminNav = [
@@ -34,19 +34,19 @@ const adminNav = [
 ]
 
 const sectionNames = {
-  '/app/home': 'Trang chính',
-  '/app/job-posts/manage': 'Công việc của tôi',
-  '/app/job-posts/discover': 'Khám phá công việc',
-  '/app/job-posts/map': 'Khám phá công việc',
-  '/app/job-posts': 'Chi tiết công việc',
-  '/app/activity': 'Hoạt động',
-  '/app/chat': 'Tin nhắn',
-  '/app/wallet': 'Ví xu',
-  '/app/subscription': 'Gói cước',
-  '/app/profile': 'Hồ sơ',
+  '/app/home': 'section.home',
+  '/app/job-posts/manage': 'section.myJobs',
+  '/app/job-posts/discover': 'section.discoverJobs',
+  '/app/job-posts/map': 'section.discoverJobs',
+  '/app/job-posts': 'section.jobDetail',
+  '/app/activity': 'section.activity',
+  '/app/chat': 'section.chat',
+  '/app/wallet': 'section.wallet',
+  '/app/subscription': 'section.subscription',
+  '/app/profile': 'section.profile',
   '/app/notifications': 'notification.title',
-  '/app/admin/workers': 'Quản lý thợ',
-  '/app/admin/catalog': 'Gói & Voucher',
+  '/app/admin/workers': 'section.adminWorkers',
+  '/app/admin/catalog': 'section.adminCatalog',
 }
 
 const roleLabels = {
