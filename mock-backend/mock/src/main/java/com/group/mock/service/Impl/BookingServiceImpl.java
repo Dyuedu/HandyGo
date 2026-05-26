@@ -199,6 +199,18 @@ public class BookingServiceImpl implements BookingService {
                 bookingRepository.findById(bookingId).orElseThrow(bookingNotFound());
         assertWorker(account, booking);
         transition(booking, BookingStatus.PROCESSING, "Repair started");
+
+        try {
+            notificationEventPublisher.publishBookingProcessing(
+                booking.getCustomer().getId(),
+                bookingId.getMostSignificantBits(),
+                booking.getWorker().getAccount().getUsername(),
+                booking.getServiceCode()
+            );
+        } catch (Exception e) {
+            log.warn("Failed to send booking processing notification", e);
+        }
+
         return bookingRepository.findDetailById(bookingId).orElse(booking);
     }
 
@@ -222,6 +234,18 @@ public class BookingServiceImpl implements BookingService {
                 booking,
                 BookingStatus.WAITING_CUSTOMER_CONFIRMATION,
                 "Work complete; service fee set; awaiting customer cash payment and confirmation");
+
+        try {
+            notificationEventPublisher.publishBookingCompleted(
+                booking.getCustomer().getId(),
+                bookingId.getMostSignificantBits(),
+                booking.getWorker().getAccount().getUsername(),
+                booking.getServiceCode()
+            );
+        } catch (Exception e) {
+            log.warn("Failed to send booking completed notification", e);
+        }
+
         return bookingRepository.findDetailById(bookingId).orElse(booking);
     }
 
@@ -250,6 +274,17 @@ public class BookingServiceImpl implements BookingService {
             usage.setRedeemedAt(LocalDateTime.now());
             voucherUsageRepository.save(usage);
             reimburseVoucherDiscountToWorker(booking, usage);
+        }
+
+        try {
+            notificationEventPublisher.publishBookingConfirmed(
+                booking.getWorker().getId(),
+                bookingId.getMostSignificantBits(),
+                booking.getCustomer().getFullName(),
+                booking.getServiceCode()
+            );
+        } catch (Exception e) {
+            log.warn("Failed to send booking confirmed notification", e);
         }
 
         return bookingRepository.findDetailById(bookingId).orElse(booking);

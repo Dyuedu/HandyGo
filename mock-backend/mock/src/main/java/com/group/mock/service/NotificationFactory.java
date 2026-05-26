@@ -21,7 +21,9 @@ public class NotificationFactory {
     public static final String BOOKING_CANCELLED = "BOOKING_CANCELLED";
     public static final String BOOKING_ACCEPTED = "BOOKING_ACCEPTED";
     public static final String BOOKING_REJECTED = "BOOKING_REJECTED";
+    public static final String BOOKING_PROCESSING = "BOOKING_PROCESSING";
     public static final String BOOKING_COMPLETED = "BOOKING_COMPLETED";
+    public static final String BOOKING_CONFIRMED = "BOOKING_CONFIRMED";
     public static final String REVIEW_CREATED = "REVIEW_CREATED";
     public static final String MESSAGE_NEW = "MESSAGE_NEW";
     public static final String WALLET_TOPUP_SUCCESS = "WALLET_TOPUP_SUCCESS";
@@ -58,9 +60,17 @@ public class NotificationFactory {
                 title = "Đơn đặt lịch bị từ chối";
                 message = "Rất tiếc, người thợ không thể chấp nhận đơn đặt lịch của bạn";
                 break;
+            case BOOKING_PROCESSING:
+                title = "Thợ đã bắt đầu xử lý";
+                message = "Thợ đã bắt đầu xử lý dịch vụ " + serviceName;
+                break;
             case BOOKING_COMPLETED:
                 title = "Công việc hoàn thành";
-                message = "Người thợ đã hoàn thành dịch vụ " + serviceName;
+                message = "Người thợ đã báo hoàn thành dịch vụ " + serviceName + ". Vui lòng kiểm tra và xác nhận.";
+                break;
+            case BOOKING_CONFIRMED:
+                title = "Khách hàng đã xác nhận hoàn thành";
+                message = "Khách hàng đã xác nhận hoàn thành dịch vụ " + serviceName;
                 break;
             default:
                 title = "Thông báo đặt lịch";

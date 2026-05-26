@@ -131,14 +131,41 @@ public class NotificationEventPublisher {
     }
 
     /**
+     * Publish booking processing notification
+     */
+    public void publishBookingProcessing(UUID customerId, Long bookingId, String workerName, String serviceName) {
+        try {
+            var notifData = notificationFactory.createBookingNotification(
+                NotificationFactory.BOOKING_PROCESSING,
+                bookingId,
+                workerName,
+                serviceName
+            );
+
+            NotificationResponse response = notificationService.createNotification(
+                customerId,
+                notifData.type,
+                notifData.title,
+                notifData.message,
+                notifData.data
+            );
+            webSocketHandler.sendNotificationToUser(customerId.toString(), response);
+
+            log.info("Published BOOKING_PROCESSING notification for customer: {}", customerId);
+        } catch (Exception e) {
+            log.error("Error publishing booking processing notification", e);
+        }
+    }
+
+    /**
      * Publish booking completed notification
      */
-    public void publishBookingCompleted(UUID customerId, Long bookingId, String serviceName) {
+    public void publishBookingCompleted(UUID customerId, Long bookingId, String workerName, String serviceName) {
         try {
             var notifData = notificationFactory.createBookingNotification(
                 NotificationFactory.BOOKING_COMPLETED,
                 bookingId,
-                "Worker",
+                workerName,
                 serviceName
             );
             
@@ -154,6 +181,33 @@ public class NotificationEventPublisher {
             log.info("Published BOOKING_COMPLETED notification for customer: {}", customerId);
         } catch (Exception e) {
             log.error("Error publishing booking completed notification", e);
+        }
+    }
+
+    /**
+     * Publish customer confirmed completion notification
+     */
+    public void publishBookingConfirmed(UUID workerId, Long bookingId, String customerName, String serviceName) {
+        try {
+            var notifData = notificationFactory.createBookingNotification(
+                NotificationFactory.BOOKING_CONFIRMED,
+                bookingId,
+                customerName,
+                serviceName
+            );
+
+            NotificationResponse response = notificationService.createNotification(
+                workerId,
+                notifData.type,
+                notifData.title,
+                notifData.message,
+                notifData.data
+            );
+            webSocketHandler.sendNotificationToUser(workerId.toString(), response);
+
+            log.info("Published BOOKING_CONFIRMED notification for worker: {}", workerId);
+        } catch (Exception e) {
+            log.error("Error publishing booking confirmed notification", e);
         }
     }
 
