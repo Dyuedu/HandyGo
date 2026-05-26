@@ -12,7 +12,11 @@ import {
 import { getPublicWorkerProfile } from '../services/profileService'
 import { getUserLocations } from '../services/userService'
 import { getAvailableVouchers } from '../services/voucherService'
-import { getReviewsByWorkerId } from '../services/reviewService'
+import {
+  createWorkerReview,
+  getMyWorkerReviewStatus,
+  getReviewsByWorkerId,
+} from '../services/reviewService'
 import { AppIcon } from '../components/AppIcon'
 import { useLanguage } from '../i18n/LanguageContext'
 import { getBrowserLocale } from '../i18n/formatters'
@@ -21,7 +25,7 @@ import '../styles/pages/WorkerProfile.css'
 const translateJobType = (job, t) => {
   if (!job) return t('job.unknown')
   const j = job.trim().toUpperCase()
-  return t(`job.${j}`) || job
+  return t(`${j}`) || job
 }
 
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
@@ -37,25 +41,11 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
   return R * c
 }
 
-// Mock reviews - In production, fetch from API
-const generateMockReviews = (workerId) => {
-  const names = ['Nguyễn Văn A', 'Trần Thị B', 'Lê Hoàng C', 'Phạm Minh D', 'Huỳnh Thị E']
-  const comments = [
-    'Thợ làm việc rất chuyên nghiệp, đúng giờ và giá cả hợp lý.',
-    'Sửa chữa nhanh gọn, tay nghề cao. Rất hài lòng!',
-    'Thái độ phục vụ tốt, tư vấn nhiệt tình. Sẽ gọi lại lần sau.',
-    'Đến đúng giờ hẹn, sửa xong sạch sẽ. Giá hợp lý.',
-    'Kinh nghiệm dày dặn, xử lý vấn đề phức tạp rất tốt.',
-  ]
-  const seed = workerId ? workerId.charCodeAt(0) : 0
-  const count = 3 + (seed % 3)
-  return Array.from({ length: count }, (_, i) => ({
-    id: `review-${i}`,
-    reviewer: names[(seed + i) % names.length],
-    rating: 4 + (((seed + i) % 2) * 0.5),
-    comment: comments[(seed + i) % comments.length],
-    date: new Date(Date.now() - (i + 1) * 86400000 * (3 + (seed % 5))).toLocaleDateString('vi-VN'),
-  }))
+const emptyReviewStatus = {
+  canReview: false,
+  hasReview: false,
+  hasFinishedBooking: false,
+  review: null,
 }
 
 export function WorkerProfile() {
@@ -87,6 +77,13 @@ export function WorkerProfile() {
   const [currentUser, setCurrentUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [reviews, setReviews] = useState([])
+  const [reviewStatus, setReviewStatus] = useState(isCustomer ? null : emptyReviewStatus)
+  const [reviewForm, setReviewForm] = useState({
+    rating: 5,
+    comment: '',
+  })
+  const [reviewSubmitError, setReviewSubmitError] = useState('')
+  const [reviewSubmitting, setReviewSubmitting] = useState(false)
   const [bookingOpen, setBookingOpen] = useState(Boolean(location.state?.openBooking))
   const [bookingData, setBookingData] = useState({
     date: '',
@@ -116,7 +113,7 @@ export function WorkerProfile() {
         setWorker(found)
         setCurrentUser(me)
       } catch (err) {
-        console.error('Không thể tải dữ liệu thợ', err)
+        console.error('Khong the tai du lieu tho', err)
       } finally {
         setLoading(false)
       }
@@ -131,12 +128,34 @@ export function WorkerProfile() {
         const data = await getReviewsByWorkerId(id)
         if (!cancelled) setReviews(Array.isArray(data) ? data : [])
       } catch (err) {
-        console.error('Không thể tải đánh giá của thợ', err)
+        console.error('Khong the tai danh gia cua tho', err)
       }
     }
     load()
     return () => { cancelled = true }
   }, [id])
+
+  useEffect(() => {
+    if (!isCustomer) return
+
+    let cancelled = false
+    getMyWorkerReviewStatus(id)
+      .then((data) => {
+        if (!cancelled) {
+          setReviewStatus({
+            canReview: Boolean(data?.canReview),
+            hasReview: Boolean(data?.hasReview),
+            hasFinishedBooking: Boolean(data?.hasFinishedBooking),
+            review: data?.review || null,
+          })
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setReviewStatus(emptyReviewStatus)
+      })
+
+    return () => { cancelled = true }
+  }, [id, isCustomer])
 
   useEffect(() => {
     if (!bookingOpen || !isCustomer) return
@@ -161,7 +180,6 @@ export function WorkerProfile() {
 
   const selectedVoucher = vouchers.find((v) => String(v.id) === String(bookingData.voucherId))
 
-  // Mini map for worker location
   useEffect(() => {
     if (!worker?.latitude || !worker?.longitude || !miniMapRef.current || !window.L) return
 
@@ -207,12 +225,9 @@ export function WorkerProfile() {
   }, [worker])
 
   const reviewAvg = reviews.length > 0
-    ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+    ? reviews.reduce((sum, r) => sum + Number(r.rating || 0), 0) / reviews.length
     : 0
-  const avgRating =
-    worker?.avgRating != null && Number(worker.avgRating) > 0
-      ? Number(worker.avgRating)
-      : reviewAvg
+  const avgRating = reviewAvg
 
   const distance = (currentUser && worker)
     ? calculateDistance(currentUser.latitude, currentUser.longitude, worker.latitude, worker.longitude)
@@ -258,6 +273,40 @@ export function WorkerProfile() {
     })
   }
 
+  const handleWorkerReviewSubmit = async (e) => {
+    e.preventDefault()
+    if (!reviewStatus?.canReview || reviewSubmitting) return
+
+    setReviewSubmitError('')
+    setReviewSubmitting(true)
+
+    try {
+      const createdReview = await createWorkerReview(id, {
+        rating: reviewForm.rating,
+        comment: reviewForm.comment.trim() || undefined,
+      })
+
+      const nextReviews = [createdReview, ...reviews.filter((review) => review.id !== createdReview.id)]
+
+      setReviews(nextReviews)
+      setReviewStatus({
+        canReview: false,
+        hasReview: true,
+        hasFinishedBooking: true,
+        review: createdReview,
+      })
+      setWorker((prev) => (prev ? { ...prev, avgRating: createdReview.rating } : prev))
+      setReviewForm({
+        rating: 5,
+        comment: '',
+      })
+    } catch (err) {
+      setReviewSubmitError(err.message || t('worker.reviewSubmitError'))
+    } finally {
+      setReviewSubmitting(false)
+    }
+  }
+
   const renderStars = (rating, size = 16) => {
     const stars = []
     for (let i = 1; i <= 5; i++) {
@@ -294,15 +343,12 @@ export function WorkerProfile() {
 
   return (
     <div className="wp-container">
-      {/* Back navigation */}
       <button type="button" className="wp-back-link" onClick={handleBack}>
         ← {returnLabel}
       </button>
 
       <div className="wp-grid">
-        {/* Left Column - Profile Info */}
         <div className="wp-left">
-          {/* Hero Card */}
           <div className="wp-hero-card">
             <div className="wp-hero-bg" />
             <div className="wp-hero-content">
@@ -327,7 +373,6 @@ export function WorkerProfile() {
             </div>
           </div>
 
-          {/* Info Cards */}
           <div className="wp-info-grid">
             <div className="wp-info-card">
               <div className="wp-info-icon"><AppIcon name="phone" size={22} /></div>
@@ -367,7 +412,6 @@ export function WorkerProfile() {
             )}
           </div>
 
-          {/* Mini Map */}
           {worker.latitude && worker.longitude && (
             <div className="wp-map-section">
               <h3 className="wp-section-title"><AppIcon name="map" size={20} /> {t('worker.currentLocation')}</h3>
@@ -376,9 +420,7 @@ export function WorkerProfile() {
           )}
         </div>
 
-        {/* Right Column - Reviews & Booking */}
         <div className="wp-right">
-          {/* Book Button */}
           <div className="wp-book-section">
             {!isCustomer && (
               <p className="wp-book-hint">{t('worker.customerOnly')}</p>
@@ -437,7 +479,7 @@ export function WorkerProfile() {
                     required
                     placeholder={t('worker.addressPlaceholder')}
                     value={bookingData.address}
-                    onChange={(e) => setBookingData(prev => ({ ...prev, address: e.target.value }))}
+                    onChange={(e) => setBookingData((prev) => ({ ...prev, address: e.target.value }))}
                   />
                 </div>
                 <div className="wp-form-row">
@@ -446,7 +488,7 @@ export function WorkerProfile() {
                     rows={3}
                     placeholder={t('worker.problemPlaceholder')}
                     value={bookingData.description}
-                    onChange={(e) => setBookingData(prev => ({ ...prev, description: e.target.value }))}
+                    onChange={(e) => setBookingData((prev) => ({ ...prev, description: e.target.value }))}
                   />
                 </div>
                 <div className="wp-form-row">
@@ -500,7 +542,6 @@ export function WorkerProfile() {
             )}
           </div>
 
-          {/* Reviews */}
           <div className="wp-reviews-section">
             <h3 className="wp-section-title"><AppIcon name="badge" size={20} /> {t('worker.reviewsTitle')}</h3>
             <div className="wp-reviews-summary-bar">
@@ -511,28 +552,83 @@ export function WorkerProfile() {
               <span className="wp-total-reviews">{t('worker.reviewCount', { count: reviews.length })}</span>
             </div>
 
-            <div className="wp-reviews-list">
-                {reviews.map((review) => {
-                  const reviewer = review.reviewerName || t('common.customer')
-                  const date = review.createdAt ? new Date(review.createdAt).toLocaleDateString(locale) : ''
-                  return (
-                    <div key={review.id || review.bookingId} className="wp-review-card">
-                      <div className="wp-review-header">
-                        <div className="wp-reviewer-avatar">
-                          {reviewer.substring(0, 1)}
-                        </div>
-                        <div className="wp-reviewer-info">
-                          <strong>{reviewer}</strong>
-                          <span className="wp-review-date">{date}</span>
-                        </div>
-                        <div className="wp-review-rating">
-                          {renderStars(review.rating, 14)}
-                        </div>
+            {isCustomer && (
+              <div className="wp-review-composer">
+                <h4 className="wp-review-composer-title">{t('worker.reviewFormTitle')}</h4>
+                {reviewStatus == null && (
+                  <p className="wp-review-composer-note">{t('worker.reviewStatusLoading')}</p>
+                )}
+                {reviewStatus?.hasReview && (
+                  <p className="wp-review-composer-note success">{t('worker.reviewAlreadySubmitted')}</p>
+                )}
+                {reviewStatus && !reviewStatus.hasReview && !reviewStatus.canReview && (
+                  <p className="wp-review-composer-note">{t('worker.reviewEligibilityHint')}</p>
+                )}
+                {reviewStatus?.canReview && (
+                  <form className="wp-review-form" onSubmit={handleWorkerReviewSubmit}>
+                    <div className="wp-review-rating-input">
+                      <span className="wp-review-label">{t('worker.reviewRatingLabel')}</span>
+                      <div className="wp-review-star-picker" role="radiogroup" aria-label={t('worker.reviewRatingLabel')}>
+                        {[1, 2, 3, 4, 5].map((value) => (
+                          <button
+                            key={value}
+                            type="button"
+                            className={`wp-review-star-btn ${value <= reviewForm.rating ? 'active' : ''}`}
+                            onClick={() => setReviewForm((prev) => ({ ...prev, rating: value }))}
+                            aria-pressed={value === reviewForm.rating}
+                          >
+                            ★
+                          </button>
+                        ))}
                       </div>
-                      <p className="wp-review-comment">{review.comment}</p>
                     </div>
-                  )
-                })}
+                    <label className="wp-review-label" htmlFor="worker-review-comment">
+                      {t('worker.reviewCommentLabel')}
+                    </label>
+                    <textarea
+                      id="worker-review-comment"
+                      rows={4}
+                      className="wp-review-textarea"
+                      placeholder={t('worker.reviewCommentPlaceholder')}
+                      value={reviewForm.comment}
+                      onChange={(e) => setReviewForm((prev) => ({ ...prev, comment: e.target.value }))}
+                    />
+                    {reviewSubmitError && (
+                      <div className="wp-form-error" role="alert">{reviewSubmitError}</div>
+                    )}
+                    <button type="submit" className="wp-review-submit" disabled={reviewSubmitting}>
+                      {reviewSubmitting ? t('worker.reviewSubmitting') : t('worker.reviewSubmit')}
+                    </button>
+                  </form>
+                )}
+              </div>
+            )}
+
+            <div className="wp-reviews-list">
+              {reviews.length === 0 && (
+                <div className="wp-review-empty">{t('worker.reviewEmpty')}</div>
+              )}
+              {reviews.map((review) => {
+                const reviewer = review.reviewerName || t('common.customer')
+                const date = review.createdAt ? new Date(review.createdAt).toLocaleDateString(locale) : ''
+                return (
+                  <div key={review.id || review.bookingId} className="wp-review-card">
+                    <div className="wp-review-header">
+                      <div className="wp-reviewer-avatar">
+                        {reviewer.substring(0, 1)}
+                      </div>
+                      <div className="wp-reviewer-info">
+                        <strong>{reviewer}</strong>
+                        <span className="wp-review-date">{date}</span>
+                      </div>
+                      <div className="wp-review-rating">
+                        {renderStars(review.rating, 14)}
+                      </div>
+                    </div>
+                    <p className="wp-review-comment">{review.comment}</p>
+                  </div>
+                )
+              })}
             </div>
           </div>
         </div>
