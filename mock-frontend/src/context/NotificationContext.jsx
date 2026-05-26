@@ -6,6 +6,7 @@ export const NotificationContext = createContext();
 // Action types
 export const NOTIFICATION_ACTIONS = {
   SET_NOTIFICATIONS: 'SET_NOTIFICATIONS',
+  APPEND_NOTIFICATIONS: 'APPEND_NOTIFICATIONS',
   ADD_NOTIFICATION: 'ADD_NOTIFICATION',
   REMOVE_NOTIFICATION: 'REMOVE_NOTIFICATION',
   UPDATE_UNREAD_COUNT: 'UPDATE_UNREAD_COUNT',
@@ -46,6 +47,24 @@ const notificationReducer = (state, action) => {
           pageSize: payload.pageSize || 10,
           totalElements: payload.totalElements || 0,
           totalPages: payload.totalPages || 0,
+          hasNext: payload.hasNext || false,
+          hasPrevious: payload.hasPrevious || false
+        },
+        isLoading: false
+      };
+    }
+
+    case NOTIFICATION_ACTIONS.APPEND_NOTIFICATIONS: {
+      const payload = action.payload || {};
+      return {
+        ...state,
+        notifications: [...state.notifications, ...(payload.content || [])],
+        unreadCount: payload.unreadCount || state.unreadCount,
+        pagination: {
+          pageNumber: payload.pageNumber || 0,
+          pageSize: payload.pageSize || state.pagination.pageSize,
+          totalElements: payload.totalElements || state.pagination.totalElements,
+          totalPages: payload.totalPages || state.pagination.totalPages,
           hasNext: payload.hasNext || false,
           hasPrevious: payload.hasPrevious || false
         },
@@ -131,7 +150,7 @@ export const NotificationProvider = ({ children }) => {
     try {
       const response = await notificationService.getNotifications(page, limit, type);
       dispatch({
-        type: NOTIFICATION_ACTIONS.SET_NOTIFICATIONS,
+        type: page > 0 ? NOTIFICATION_ACTIONS.APPEND_NOTIFICATIONS : NOTIFICATION_ACTIONS.SET_NOTIFICATIONS,
         payload: response
       });
     } catch (error) {

@@ -44,6 +44,7 @@ const sectionNames = {
   '/app/wallet': 'Ví xu',
   '/app/subscription': 'Gói cước',
   '/app/profile': 'Hồ sơ',
+  '/app/notifications': 'notification.title',
   '/app/admin/workers': 'Quản lý thợ',
   '/app/admin/catalog': 'Gói & Voucher',
 }
