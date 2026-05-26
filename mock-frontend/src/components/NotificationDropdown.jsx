@@ -1,11 +1,14 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useNotification } from '../context/NotificationContext';
 import { useLanguage } from '../i18n/LanguageContext';
+import { getNotificationTarget } from '../utils/notificationNavigation';
 import NotificationItem from './NotificationItem';
 import './NotificationDropdown.css';
 
-const NotificationDropdown = () => {
+const NotificationDropdown = ({ onClose }) => {
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const {
     notifications,
     unreadCount,
@@ -26,14 +29,17 @@ const NotificationDropdown = () => {
     fetchNotifications(nextPage, pagination.pageSize);
   };
 
-  const handleNotificationClick = (notificationId) => {
-    // Mark as read when clicked
-    markAsRead(notificationId);
+  const handleNotificationClick = async (notification) => {
+    if (notification.id && !notification.isRead) {
+      await markAsRead(notification.id);
+    }
+    onClose?.();
+    navigate(getNotificationTarget(notification));
   };
 
   const handleViewAll = () => {
-    // Navigate to full notifications page
-    window.location.href = '/app/notifications';
+    onClose?.();
+    navigate('/app/notifications');
   };
 
   return (
@@ -78,7 +84,7 @@ const NotificationDropdown = () => {
               <NotificationItem
                 key={notification.id}
                 notification={notification}
-                onClick={() => handleNotificationClick(notification.id)}
+                onClick={() => handleNotificationClick(notification)}
                 onDelete={() => deleteNotification(notification.id)}
               />
             ))}
