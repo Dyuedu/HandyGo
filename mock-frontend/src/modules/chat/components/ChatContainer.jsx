@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, Fragment } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../../hooks/useAuth'
 import { getConversations, getChatHistory, uploadChatFiles } from '../../../services/chatService'
 import { AppIcon } from '../../../components/AppIcon'
@@ -7,8 +7,9 @@ import { useLanguage } from '../../../i18n/LanguageContext'
 import '../../../styles/modules/chat/components/ChatContainer.css'
 
 export default function ChatContainer() {
-  const { session } = useAuth()
+  const { session, mode } = useAuth()
   const { t } = useLanguage()
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   
   // States
@@ -420,6 +421,20 @@ export default function ChatContainer() {
     }
   }
 
+  const handleBookWorker = () => {
+    if (!activeChat?.contactId) return
+
+    const chatReturnPath = `/app/chat?contactId=${activeChat.contactId}&name=${encodeURIComponent(activeChat.contactName || '')}&role=${activeChat.contactRole || 'WORKER'}`
+    navigate(`/app/worker/${activeChat.contactId}`, {
+      state: {
+        from: chatReturnPath,
+        openBooking: true,
+      },
+    })
+  }
+
+  const canBookActiveWorker = mode === 'CUSTOMER' && activeChat?.contactRole === 'WORKER'
+
   // Filter conversations based on search text
   const filteredConversations = conversations.filter((c) =>
     c.contactName.toLowerCase().includes(searchQuery.toLowerCase())
@@ -502,6 +517,17 @@ export default function ChatContainer() {
                   <p>{t('chat.online')}</p>
                 </div>
               </div>
+              {canBookActiveWorker && (
+                <button
+                  type="button"
+                  className="chat-book-worker-btn"
+                  onClick={handleBookWorker}
+                  title={t('chat.bookWorker')}
+                >
+                  <AppIcon name="calendar" size={17} />
+                  <span>{t('chat.bookWorker')}</span>
+                </button>
+              )}
             </div>
 
             {/* Connection Status indicator */}

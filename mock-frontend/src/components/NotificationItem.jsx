@@ -1,26 +1,11 @@
-import React from 'react';
 import notificationService from '../services/notificationService';
+import { useLanguage } from '../i18n/LanguageContext';
+import { formatNotificationTime, localizeNotification } from '../utils/notificationLocale';
 import './NotificationItem.css';
 
 const NotificationItem = ({ notification, onClick, onDelete }) => {
-  const getRelativeTime = (createdAt) => {
-    if (!createdAt) return 'now';
-    
-    const date = new Date(createdAt);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMins / 60);
-    const diffDays = Math.floor(diffHours / 24);
-
-    if (diffMins < 1) return 'just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    
-    return date.toLocaleDateString();
-  };
-
+  const { language, t } = useLanguage();
+  const localized = localizeNotification(notification, t, language);
   const icon = notificationService.getNotificationIcon(notification.type);
 
   return (
@@ -30,10 +15,10 @@ const NotificationItem = ({ notification, onClick, onDelete }) => {
       </div>
 
       <div className="notification-item-content">
-        <h4 className="notification-item-title">{notification.title}</h4>
-        <p className="notification-item-message">{notification.message}</p>
+        <h4 className="notification-item-title">{localized.title}</h4>
+        <p className="notification-item-message">{localized.message}</p>
         <span className="notification-item-time">
-          {getRelativeTime(notification.createdAt)}
+          {formatNotificationTime(notification.createdAt, language, t)}
         </span>
       </div>
 
@@ -43,7 +28,7 @@ const NotificationItem = ({ notification, onClick, onDelete }) => {
           e.stopPropagation();
           onDelete();
         }}
-        title="Delete notification"
+        title={t('notification.delete')}
       >
         ✕
       </button>

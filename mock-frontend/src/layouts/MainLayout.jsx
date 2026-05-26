@@ -1,10 +1,13 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { useEffect } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../hooks/useAuth'
 import { useNotification } from '../context/NotificationContext'
 import { AppIcon } from '../components/AppIcon'
 import NotificationBell from '../components/NotificationBell'
 import { LanguageSwitcher } from '../components/LanguageSwitcher'
 import { useLanguage } from '../i18n/LanguageContext'
+import { getBookings } from '../services/bookingService'
 import '../styles/layouts/MainLayout.css'
 
 const customerNav = [
@@ -47,14 +50,42 @@ const roleLabels = {
   USER: 'common.customer',
 }
 
+function getActivityBadgeStatuses(mode) {
+  if (mode === 'TECHNICIAN') return ['PENDING']
+  if (mode === 'CUSTOMER') return ['PENDING', 'WAITING_CUSTOMER_CONFIRMATION']
+  return []
+}
+
 export function MainLayout() {
   const { mode, session, signOut } = useAuth()
   const { notifications } = useNotification()
   const { t } = useLanguage()
   const location = useLocation()
+  const queryClient = useQueryClient()
   const navigation = mode === 'ADMIN' ? adminNav : mode === 'TECHNICIAN' ? technicianNav : customerNav
   const activeSection = t(sectionNames[location.pathname] || 'section.dashboard')
+  const activityStatuses = getActivityBadgeStatuses(mode)
+  const activityStatusKey = activityStatuses.join(',')
+  const activityBadgeQuery = useQuery({
+    queryKey: ['bookings', 'activityBadge', mode, activityStatusKey],
+    queryFn: () => getBookings({ status: activityStatuses }),
+    enabled: activityStatuses.length > 0,
+    refetchInterval: 30000,
+  })
 
+  const activityBadgeCount = Array.isArray(activityBadgeQuery.data)
+    ? activityBadgeQuery.data.length
+    : 0
+
+  useEffect(() => {
+    if (activityStatuses.length === 0) return
+    const hasBookingNotification = notifications.some((notification) =>
+      !notification.isRead && String(notification.type || '').startsWith('BOOKING_')
+    )
+    if (hasBookingNotification) {
+      queryClient.invalidateQueries({ queryKey: ['bookings'] })
+    }
+  }, [activityStatuses.length, activityStatusKey, notifications, queryClient])
 
   return (
     <div className="main-layout">
@@ -63,30 +94,21 @@ export function MainLayout() {
         <nav className="sidebar-nav">
           {navigation.map((item) => {
             const isChat = item.path === '/app/chat';
+            const isActivity = item.path === '/app/activity';
             const unreadChatCount = isChat 
               ? notifications.filter(n => !n.isRead && n.type === 'MESSAGE_NEW').length 
               : 0;
+            const badgeCount = isChat ? unreadChatCount : isActivity ? activityBadgeCount : 0;
 
             return (
-              <NavLink key={item.path} to={item.path} className="sidebar-link" style={{ position: 'relative' }}>
+              <NavLink key={item.path} to={item.path} className="sidebar-link">
                 <span className="sidebar-icon" aria-hidden="true">
                   <AppIcon name={item.icon} size={23} />
                 </span>
                 <span>{t(item.labelKey)}</span>
-                {isChat && unreadChatCount > 0 && (
-                  <span style={{
-                    position: 'absolute',
-                    right: '15px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    background: '#ef4444',
-                    color: 'white',
-                    fontSize: '11px',
-                    fontWeight: 'bold',
-                    padding: '2px 6px',
-                    borderRadius: '10px'
-                  }}>
-                    {unreadChatCount > 99 ? '99+' : unreadChatCount}
+                {badgeCount > 0 && (
+                  <span className="sidebar-badge">
+                    {badgeCount > 99 ? '99+' : badgeCount}
                   </span>
                 )}
               </NavLink>

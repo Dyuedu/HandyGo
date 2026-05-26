@@ -67,7 +67,11 @@ export function WorkerProfile() {
   const locale = getBrowserLocale(language)
 
   const returnPath = location.state?.from || '/app/home'
-  const returnLabel = returnPath === '/app/profile' ? t('worker.backProfile') : t('worker.backMap')
+  const returnLabel = returnPath.startsWith('/app/chat')
+    ? t('worker.backChat')
+    : returnPath === '/app/profile'
+      ? t('worker.backProfile')
+      : t('worker.backMap')
 
   const handleBack = () => {
     navigate(returnPath)
@@ -80,7 +84,7 @@ export function WorkerProfile() {
   const [currentUser, setCurrentUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [reviews, setReviews] = useState([])
-  const [bookingOpen, setBookingOpen] = useState(false)
+  const [bookingOpen, setBookingOpen] = useState(Boolean(location.state?.openBooking))
   const [bookingData, setBookingData] = useState({
     date: '',
     time: '',
