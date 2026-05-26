@@ -76,7 +76,7 @@ public class AuthController {
             throw ex;
         }
 
-        Account account = accountService.getAccountByUsername(authentication.getName());
+        Account account = accountService.getFreshAccountByUsername(authentication.getName());
         String accessToken = jwtProvider.generateAccessToken(authentication);
         String refreshToken = refreshTokenService.issueAndStoreRefreshToken(authentication.getName());
 
@@ -141,7 +141,7 @@ public class AuthController {
                 refreshTokenService.validateAndRotate(request.getRefreshToken());
 
         String accessToken = jwtProvider.generateAccessToken(rotationResult.subject());
-        Account account = accountService.getAccountByUsername(rotationResult.subject());
+        Account account = accountService.getFreshAccountByUsername(rotationResult.subject());
         AuthTokenResponse response = new AuthTokenResponse(
                 accessToken,
                 rotationResult.refreshToken(),

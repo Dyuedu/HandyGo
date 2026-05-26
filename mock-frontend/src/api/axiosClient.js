@@ -20,9 +20,16 @@ const refreshClient = axios.create({
 
 let refreshPromise = null
 
+function isPublicAuthUrl(url = '') {
+  return url.startsWith('/api/auth/login')
+    || url.startsWith('/api/auth/register')
+    || url.startsWith('/api/auth/google-login')
+    || url.startsWith('/api/auth/refresh')
+}
+
 axiosClient.interceptors.request.use((config) => {
   const session = loadSession()
-  if (session?.accessToken) {
+  if (session?.accessToken && !isPublicAuthUrl(config.url || '')) {
     config.headers.Authorization = `Bearer ${session.accessToken}`
   }
   config.headers['Accept-Language'] = getStoredLanguage()
@@ -72,11 +79,7 @@ function shouldRefresh(error, originalRequest, session) {
     return false
   }
 
-  const url = originalRequest.url || ''
-  return !url.startsWith('/api/auth/login')
-    && !url.startsWith('/api/auth/register')
-    && !url.startsWith('/api/auth/google-login')
-    && !url.startsWith('/api/auth/refresh')
+  return !isPublicAuthUrl(originalRequest.url || '')
 }
 
 axiosClient.interceptors.response.use(
