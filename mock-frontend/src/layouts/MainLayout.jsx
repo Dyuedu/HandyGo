@@ -1,6 +1,8 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { useNotification } from '../context/NotificationContext'
 import { AppIcon } from '../components/AppIcon'
+import NotificationBell from '../components/NotificationBell'
 import { LanguageSwitcher } from '../components/LanguageSwitcher'
 import { useLanguage } from '../i18n/LanguageContext'
 import '../styles/layouts/MainLayout.css'
@@ -47,6 +49,7 @@ const roleLabels = {
 
 export function MainLayout() {
   const { mode, session, signOut } = useAuth()
+  const { notifications } = useNotification()
   const { t } = useLanguage()
   const location = useLocation()
   const navigation = mode === 'ADMIN' ? adminNav : mode === 'TECHNICIAN' ? technicianNav : customerNav
@@ -58,14 +61,37 @@ export function MainLayout() {
       <aside className="main-sidebar" aria-label={t('common.homegoDashboard')}>
         <NavLink to="/app/home" className="main-logo" aria-label={t('common.homegoDashboard')}>HG</NavLink>
         <nav className="sidebar-nav">
-          {navigation.map((item) => (
-            <NavLink key={item.path} to={item.path} className="sidebar-link">
-              <span className="sidebar-icon" aria-hidden="true">
-                <AppIcon name={item.icon} size={23} />
-              </span>
-              <span>{t(item.labelKey)}</span>
-            </NavLink>
-          ))}
+          {navigation.map((item) => {
+            const isChat = item.path === '/app/chat';
+            const unreadChatCount = isChat 
+              ? notifications.filter(n => !n.isRead && n.type === 'MESSAGE_NEW').length 
+              : 0;
+
+            return (
+              <NavLink key={item.path} to={item.path} className="sidebar-link" style={{ position: 'relative' }}>
+                <span className="sidebar-icon" aria-hidden="true">
+                  <AppIcon name={item.icon} size={23} />
+                </span>
+                <span>{t(item.labelKey)}</span>
+                {isChat && unreadChatCount > 0 && (
+                  <span style={{
+                    position: 'absolute',
+                    right: '15px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: '#ef4444',
+                    color: 'white',
+                    fontSize: '11px',
+                    fontWeight: 'bold',
+                    padding: '2px 6px',
+                    borderRadius: '10px'
+                  }}>
+                    {unreadChatCount > 99 ? '99+' : unreadChatCount}
+                  </span>
+                )}
+              </NavLink>
+            );
+          })}
         </nav>
       </aside>
 
@@ -76,6 +102,7 @@ export function MainLayout() {
             <span>{activeSection} · {roleLabels[mode] ? t(roleLabels[mode]) : mode}</span>
           </div>
           <div className="header-tools">
+            <NotificationBell />
             <LanguageSwitcher />
             <div className="role-switch" aria-label={t('common.role')}>
               <span>{t('common.role')}</span>

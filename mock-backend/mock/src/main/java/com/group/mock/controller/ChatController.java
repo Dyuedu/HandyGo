@@ -14,6 +14,7 @@ import com.group.mock.configuration.ChatWebSocketHandler;
 import com.group.mock.exception.AuthServiceException;
 
 import lombok.RequiredArgsConstructor;
+import com.group.mock.service.NotificationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -35,6 +36,7 @@ public class ChatController {
     private final MessageRepository messageRepository;
     private final UserProfileRepository userProfileRepository;
     private final CloudinaryUploadService cloudinaryUploadService;
+    private final NotificationEventPublisher notificationEventPublisher;
 
     @GetMapping("/conversations")
     public ResponseEntity<ApiResponse<List<ConversationResponse>>> getConversations(Authentication authentication) {
@@ -171,6 +173,17 @@ public class ChatController {
 
         // 3. Broadcast message via WebSocket
         ChatWebSocketHandler.broadcastMessageToUsers(savedMessage);
+
+        // 4. Send Notification
+        try {
+            String senderName = userProfileRepository.findById(myId)
+                    .map(UserProfile::getFullName)
+                    .orElse(account.getUsername());
+            String messagePreview = content != null && !content.isEmpty() ? content : "Đã gửi một tập tin đính kèm";
+            notificationEventPublisher.publishMessageNew(receiverId, myId.toString(), senderName, messagePreview);
+        } catch (Exception e) {
+            // log error
+        }
 
         return ResponseEntity.ok(ApiResponse.success(savedMessage, null));
     }

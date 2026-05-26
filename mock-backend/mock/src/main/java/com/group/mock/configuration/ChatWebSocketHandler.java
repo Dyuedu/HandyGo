@@ -28,6 +28,8 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     private final MessageRepository messageRepository;
     private final JwtDecoder jwtDecoder;
     private final ObjectMapper objectMapper;
+    private final com.group.mock.service.NotificationEventPublisher notificationEventPublisher;
+    private final com.group.mock.repository.UserProfileRepository userProfileRepository;
 
     // Stores sessions mapped by userId
     private static final Map<UUID, WebSocketSession> userSessions = new ConcurrentHashMap<>();
@@ -35,10 +37,14 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     public ChatWebSocketHandler(
             AccountRepository accountRepository,
             MessageRepository messageRepository,
-            JwtDecoder jwtDecoder) {
+            JwtDecoder jwtDecoder,
+            com.group.mock.service.NotificationEventPublisher notificationEventPublisher,
+            com.group.mock.repository.UserProfileRepository userProfileRepository) {
         this.accountRepository = accountRepository;
         this.messageRepository = messageRepository;
         this.jwtDecoder = jwtDecoder;
+        this.notificationEventPublisher = notificationEventPublisher;
+        this.userProfileRepository = userProfileRepository;
         this.objectMapper = new ObjectMapper();
         this.objectMapper.registerModule(new JavaTimeModule()); // Support LocalDateTime serialization
     }
@@ -93,6 +99,21 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             WebSocketSession receiverSession = userSessions.get(payload.getReceiverId());
             if (receiverSession != null && receiverSession.isOpen()) {
                 receiverSession.sendMessage(new TextMessage(jsonResponse));
+            }
+
+            // 3. Send Notification
+            try {
+                String senderName = accountRepository.findById(senderId)
+                    .map(acc -> userProfileRepository.findById(senderId)
+                        .map(com.group.mock.entity.UserProfile::getFullName)
+                        .orElse(acc.getUsername()))
+                    .orElse("Unknown");
+                String messagePreview = payload.getContent() != null && !payload.getContent().isEmpty() 
+                    ? payload.getContent() 
+                    : "Đã gửi một tập tin đính kèm";
+                notificationEventPublisher.publishMessageNew(payload.getReceiverId(), senderId.toString(), senderName, messagePreview);
+            } catch (Exception e) {
+                log.error("Failed to publish message notification", e);
             }
 
         } catch (Exception e) {
