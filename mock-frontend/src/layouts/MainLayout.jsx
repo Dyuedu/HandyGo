@@ -20,7 +20,7 @@ const customerNav = [
 
 const technicianNav = [
   { path: '/app/home', icon: 'map', label: 'Bản đồ' },
-  { path: '/app/job-posts/discover', icon: 'briefcase', label: 'Khám phá công việc' },
+  { path: '/app/job-posts/map', icon: 'briefcase', label: 'Khám phá công việc' },
   { path: '/app/activity', icon: 'activity', label: 'Hoạt động' },
   { path: '/app/chat', icon: 'chat', label: 'Tin nhắn' },
   { path: '/app/wallet', icon: 'wallet', label: 'Ví xu' },
@@ -37,6 +37,7 @@ const sectionNames = {
   '/app/home': 'Trang chính',
   '/app/job-posts/manage': 'Công việc của tôi',
   '/app/job-posts/discover': 'Khám phá công việc',
+  '/app/job-posts/map': 'Khám phá công việc',
   '/app/job-posts': 'Chi tiết công việc',
   '/app/activity': 'Hoạt động',
   '/app/chat': 'Tin nhắn',

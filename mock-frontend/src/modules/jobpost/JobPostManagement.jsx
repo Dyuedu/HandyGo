@@ -7,12 +7,14 @@ import {
   deleteJobPost,
   getMyJobPostById,
 } from '../../services/jobPostService'
+import LocationPicker from './LocationPicker'
 import '../../styles/modules/jobpost.css'
 
 function JobPostManagement() {
   const queryClient = useQueryClient()
   const [isCreateMode, setIsCreateMode] = useState(false)
   const [editingId, setEditingId] = useState(null)
+  const [showLocationPicker, setShowLocationPicker] = useState(false)
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -65,6 +67,15 @@ function JobPostManagement() {
       latitude: 0,
       longitude: 0,
     })
+    setShowLocationPicker(false)
+  }
+
+  const handleLocationSelect = (lat, lng) => {
+    setFormData((prev) => ({
+      ...prev,
+      latitude: lat || 0,
+      longitude: lng || 0,
+    }))
   }
 
   const handleInputChange = (e) => {
@@ -182,33 +193,35 @@ function JobPostManagement() {
               />
             </div>
 
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="latitude">Vĩ độ</label>
-                <input
-                  id="latitude"
-                  type="number"
-                  name="latitude"
-                  value={formData.latitude}
-                  onChange={handleInputChange}
-                  step="0.000001"
-                  required
-                />
-              </div>
+            {showLocationPicker && (
+              <LocationPicker
+                onLocationSelect={handleLocationSelect}
+                initialLat={formData.latitude}
+                initialLng={formData.longitude}
+              />
+            )}
 
-              <div className="form-group">
-                <label htmlFor="longitude">Kinh độ</label>
-                <input
-                  id="longitude"
-                  type="number"
-                  name="longitude"
-                  onChange={handleInputChange}
-                  value={formData.longitude}
-                  step="0.000001"
-                  required
-                />
-              </div>
-            </div>
+            {!showLocationPicker && (
+              <button
+                type="button"
+                className="btn-location-picker"
+                onClick={() => setShowLocationPicker(true)}
+              >
+                {formData.latitude && formData.longitude
+                  ? `📍 Vị trí: ${formData.latitude.toFixed(4)}, ${formData.longitude.toFixed(4)}`
+                  : '+ Chọn vị trí trên bản đồ'}
+              </button>
+            )}
+
+            {showLocationPicker && (
+              <button
+                type="button"
+                className="btn-hide-map"
+                onClick={() => setShowLocationPicker(false)}
+              >
+                Ẩn bản đồ
+              </button>
+            )}
 
             <div className="form-actions">
               <button type="submit" className="btn-primary" disabled={createMutation.isPending || updateMutation.isPending}>
