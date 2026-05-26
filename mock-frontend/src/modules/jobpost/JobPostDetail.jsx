@@ -1,15 +1,30 @@
 import { useQuery } from '@tanstack/react-query'
-import { useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { getJobPostById } from '../../services/jobPostService'
 import '../../styles/modules/jobpost.css'
 
 function JobPostDetail() {
   const { jobPostId } = useParams()
+  const navigate = useNavigate()
   const { data: jobPost, isLoading, error } = useQuery({
     queryKey: ['jobPost', jobPostId],
     queryFn: () => getJobPostById(jobPostId),
     enabled: !!jobPostId,
   })
+
+  const handleContactCustomer = () => {
+    const customerId = jobPost?.customer?.id
+    const customerName = jobPost?.customer?.fullName || jobPost?.customer?.username || 'Khach hang'
+
+    if (!customerId) {
+      navigate('/app/chat')
+      return
+    }
+
+    navigate(
+      `/app/chat?contactId=${customerId}&name=${encodeURIComponent(customerName)}&role=CUSTOMER`
+    )
+  }
 
   if (isLoading) return <div className="jobpost-loading">Đang tải công việc...</div>
   if (error) return <div className="jobpost-error">Lỗi tải công việc: {error.message}</div>
@@ -56,7 +71,7 @@ function JobPostDetail() {
 
         <div className="detail-actions">
           <button className="btn-primary">Đăng ký công việc này</button>
-          <button className="btn-secondary">Liên hệ khách hàng</button>
+          <button className="btn-secondary" onClick={handleContactCustomer}>Liên hệ khách hàng</button>
         </div>
       </div>
     </div>
@@ -64,3 +79,4 @@ function JobPostDetail() {
 }
 
 export default JobPostDetail
+
