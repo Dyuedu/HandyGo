@@ -113,6 +113,12 @@ public class AccountServiceImpl implements AccountService {
             throw new AuthServiceException(HttpStatus.BAD_REQUEST, "INVALID_ROLE", "Vai trò không hợp lệ");
         }
 
+        // Generate OTP (TTL: 15 minutes as per specification)
+        String otp = String.format("%06d", new java.util.Random().nextInt(1000000));
+        stringRedisTemplate.opsForValue().set("OTP:" + registerRequest.getEmail(), otp, Duration.ofMinutes(15));
+        
+        emailService.sendVerificationEmail(registerRequest.getEmail(), otp);
+
     }
 
     @Override
@@ -139,6 +145,15 @@ public class AccountServiceImpl implements AccountService {
         account.setStatus(Status.ACTIVE);
         accountRepository.save(account);
         stringRedisTemplate.delete(cacheKey);
+        
+        // Send welcome email
+        String userRole = account.getRole() != null ? account.getRole().getName() : "USER";
+        userRole = userRole.replaceFirst("^ROLE_", "");
+        UserProfile userProfile = userProfileRepository.findByAccountUsername(account.getUsername()).orElse(null);
+        String fullName = userProfile != null && userProfile.getFullName() != null ? 
+                         userProfile.getFullName() : account.getUsername();
+        emailService.sendWelcomeEmail(email, fullName, userRole);
+        
     }
 
     @Override
@@ -154,6 +169,7 @@ public class AccountServiceImpl implements AccountService {
             throw new AuthServiceException(HttpStatus.BAD_REQUEST, "NO_EMAIL", "Tài khoản không có email để xác thực");
         }
 
+        // Generate OTP (TTL: 15 minutes as per specification)
         // Generate OTP (TTL: 15 minutes as per specification)
         String otp = String.format("%06d", new java.util.Random().nextInt(1000000));
         stringRedisTemplate.opsForValue().set("OTP:" + account.getEmail(), otp, Duration.ofMinutes(15));
@@ -204,6 +220,7 @@ public class AccountServiceImpl implements AccountService {
         if (accountOptional.isEmpty()) {
             throw new UsernameNotFoundException("User not found with username: " + username);
         }
+        return accountOptional.get();
         return accountOptional.get();
     }
 
@@ -283,6 +300,7 @@ public class AccountServiceImpl implements AccountService {
             
             Optional<Account> accountOpt = accountRepository.findByUsername(email);
             if (accountOpt.isPresent()) {
+                return accountOpt.get();
                 return accountOpt.get();
             }
             

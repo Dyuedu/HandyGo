@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chào mừng đến HandyGo</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fa;
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .header p {
+            margin: 10px 0 0;
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .greeting {
+            font-size: 18px;
+            font-weight: 500;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+        .next-steps {
+            background-color: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 4px;
+        }
+        .next-steps h3 {
+            margin: 0 0 15px;
+            font-size: 16px;
+            color: #2c3e50;
+        }
+        .next-steps ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .next-steps li {
+            margin: 8px 0;
+            color: #555;
+        }
+        .cta-button {
+            display: inline-block;
+            background-color: #667eea;
+            color: white;
+            padding: 14px 32px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            margin: 25px 0;
+            transition: background-color 0.3s ease;
+        }
+        .cta-button:hover {
+            background-color: #5568d3;
+        }
+        .benefits {
+            margin: 30px 0;
+        }
+        .benefit-item {
+            display: flex;
+            margin: 15px 0;
+            align-items: flex-start;
+        }
+        .benefit-icon {
+            font-size: 24px;
+            margin-right: 15px;
+            min-width: 30px;
+        }
+        .benefit-text {
+            flex: 1;
+        }
+        .benefit-text strong {
+            display: block;
+            color: #2c3e50;
+            margin-bottom: 3px;
+        }
+        .footer {
+            background-color: #f8f9fa;
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #e0e0e0;
+            font-size: 13px;
+            color: #777;
+        }
+        .footer p {
+            margin: 5px 0;
+        }
+        .social-links {
+            margin-top: 15px;
+        }
+        .social-links a {
+            display: inline-block;
+            width: 35px;
+            height: 35px;
+            background-color: #667eea;
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 35px;
+            text-decoration: none;
+            margin: 0 5px;
+            font-size: 14px;
+        }
+        .divider {
+            height: 1px;
+            background-color: #e0e0e0;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎉 Chào mừng đến HandyGo!</h1>
+            <p>Tài khoản của bạn đã được kích hoạt thành công</p>
+        </div>
+
+        <div class="content">
+            <div class="greeting">
+                Xin chào <strong th:text="${fullName}">User</strong>,
+            </div>
+
+            <p>
+                Cảm ơn bạn đã xác thực email của mình! Tài khoản HandyGo đã sẵn sàng để sử dụng. 
+                Bây giờ bạn có thể truy cập đầy đủ tất cả các tính năng của nền tảng.
+            </p>
+
+            <a th:href="${appUrl}" class="cta-button">Bắt đầu sử dụng ngay</a>
+
+            <div th:if="${userRole == 'WORKER'}" class="next-steps">
+                <h3>👷 Bước tiếp theo dành cho công nhân:</h3>
+                <ul>
+                    <li><strong>Hoàn thành hồ sơ công nhân</strong> - Thêm ảnh đại diện và thông tin cá nhân</li>
+                    <li><strong>Upload chứng chỉ/giấy phép</strong> - Tải lên các chứng chỉ/bằng cấp liên quan</li>
+                    <li><strong>Chọn loại công việc chuyên về</strong> - Lựa chọn các lĩnh vực bạn thành thạo</li>
+                    <li><strong>Bắt đầu tìm kiếm công việc</strong> - Duyệt và gửi đơn cho các công việc</li>
+                </ul>
+            </div>
+
+            <div th:if="${userRole == 'USER'}" class="next-steps">
+                <h3>👤 Bước tiếp theo dành cho khách hàng:</h3>
+                <ul>
+                    <li><strong>Tìm kiếm công nhân phù hợp</strong> - Duyệt danh sách công nhân uy tín</li>
+                    <li><strong>Tạo bài đăng công việc</strong> - Đăng yêu cầu dịch vụ cần thiết</li>
+                    <li><strong>Đặt lịch dịch vụ</strong> - Kết nối với công nhân và xác nhận booking</li>
+                    <li><strong>Thanh toán an toàn</strong> - Sử dụng VNPay để thanh toán dễ dàng</li>
+                </ul>
+            </div>
+
+            <div class="benefits">
+                <p><strong>Lợi ích của HandyGo:</strong></p>
+                <div class="benefit-item">
+                    <div class="benefit-icon">✓</div>
+                    <div class="benefit-text">
+                        <strong>Nền tảng đáng tin cậy</strong>
+                        Xác thực tất cả người dùng để đảm bảo an toàn
+                    </div>
+                </div>
+                <div class="benefit-item">
+                    <div class="benefit-icon">✓</div>
+                    <div class="benefit-text">
+                        <strong>Thanh toán an toàn</strong>
+                        Tích hợp VNPay cho thanh toán bảo mật
+                    </div>
+                </div>
+                <div class="benefit-item">
+                    <div class="benefit-icon">✓</div>
+                    <div class="benefit-text">
+                        <strong>Hỗ trợ 24/7</strong>
+                        Đội ngũ hỗ trợ luôn sẵn sàng giúp bạn
+                    </div>
+                </div>
+                <div class="benefit-item">
+                    <div class="benefit-icon">✓</div>
+                    <div class="benefit-text">
+                        <strong>Đánh giá minh bạch</strong>
+                        Xem đánh giá từ các khách hàng/công nhân khác
+                    </div>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <p style="font-size: 14px; color: #777;">
+                Nếu bạn có bất kỳ câu hỏi nào hoặc cần hỗ trợ, vui lòng liên hệ với chúng tôi 
+                tại <strong>support@handygo.com</strong>
+            </p>
+        </div>
+
+        <div class="footer">
+            <p><strong>© 2026 HandyGo. All rights reserved.</strong></p>
+            <p>Nền tảng kết nối khách hàng với các nhân viên dịch vụ</p>
+            <p>Email: support@handygo.com | Website: handygo.com</p>
+            <div class="social-links">
+                <a href="#">f</a>
+                <a href="#">T</a>
+                <a href="#">in</a>
+            </div>
+            <p style="margin-top: 15px; font-size: 12px;">
+                Bạn nhận được email này vì đã đăng ký tài khoản HandyGo.
+                <a href="#" style="color: #667eea;">Hủy đăng ký</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

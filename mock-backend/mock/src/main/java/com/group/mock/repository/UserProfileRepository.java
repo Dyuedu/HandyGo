@@ -11,4 +11,5 @@ public interface UserProfileRepository extends JpaRepository<UserProfile, UUID> 
     boolean existsByPhoneAndIdNot(String phone, UUID id);
 
     java.util.List<UserProfile> findByLatitudeIsNotNullAndLongitudeIsNotNull();
+    java.util.Optional<UserProfile> findByAccountUsername(String username);
 }
