@@ -1,7 +1,5 @@
 package com.group.mock.service.Impl;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -10,7 +8,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.group.mock.entity.Account;
 import com.group.mock.entity.Role;
-import com.group.mock.entity.DTO.cache.AccountCache;
 import com.group.mock.entity.DTO.request.LoginRequest;
 import com.group.mock.entity.DTO.request.RegisterRequest;
 import com.group.mock.entity.UserProfile;
@@ -30,14 +27,11 @@ import com.group.mock.service.CloudinaryUploadService;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.time.Duration;
 import java.util.Locale;
 import java.util.Optional;
 
 @Service
 public class AccountServiceImpl implements AccountService {
-    private static final String ACCOUNT_BY_USERNAME_CACHE_KEY_PREFIX = "cache:account:username:";
-
     private final AccountRepository accountRepository;
     private final RoleRepository roleRepository;
     private final UserProfileRepository userProfileRepository;
@@ -46,10 +40,6 @@ public class AccountServiceImpl implements AccountService {
     private final WalletRepository walletRepository;
     private final CloudinaryUploadService cloudinaryUploadService;
     private final PasswordEncoder passwordEncoder;
-    private final RedisTemplate<String, AccountCache> accountCacheTemplate;
-
-    @Value("${app.cache.account-ttl-seconds:300}")
-    private long accountCacheTtlSeconds;
 
     public AccountServiceImpl(
             AccountRepository accountRepository,
@@ -59,8 +49,7 @@ public class AccountServiceImpl implements AccountService {
             WorkerLocationRepository workerLocationRepository,
             WalletRepository walletRepository,
             CloudinaryUploadService cloudinaryUploadService,
-            PasswordEncoder passwordEncoder,
-            RedisTemplate<String, AccountCache> accountCacheTemplate) {
+            PasswordEncoder passwordEncoder) {
         this.accountRepository = accountRepository;
         this.roleRepository = roleRepository;
         this.userProfileRepository = userProfileRepository;
@@ -69,7 +58,6 @@ public class AccountServiceImpl implements AccountService {
         this.walletRepository = walletRepository;
         this.cloudinaryUploadService = cloudinaryUploadService;
         this.passwordEncoder = passwordEncoder;
-        this.accountCacheTemplate = accountCacheTemplate;
     }
 
     @Override
@@ -79,8 +67,7 @@ public class AccountServiceImpl implements AccountService {
         account.setUsername(loginRequest.getUsername());
         account.setPassword(passwordEncoder.encode(loginRequest.getPassword()));
         account.setStatus(Status.ACTIVE);
-        Account savedAccount = accountRepository.save(account);
-        cacheAccount(savedAccount);
+        accountRepository.save(account);
     }
 
     @Override
@@ -114,7 +101,6 @@ public class AccountServiceImpl implements AccountService {
             throw new AuthServiceException(HttpStatus.BAD_REQUEST, "INVALID_ROLE", "Vai trò không hợp lệ");
         }
 
-        cacheAccount(savedAccount);
     }
 
     @Override
@@ -151,11 +137,6 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     public Account getAccountByUsername(String username) {
-        AccountCache cachedAccount = accountCacheTemplate.opsForValue().get(accountByUsernameCacheKey(username));
-        if (cachedAccount != null) {
-            return cachedAccount.toAccount();
-        }
-
         return getFreshAccountByUsername(username);
     }
 
@@ -165,25 +146,7 @@ public class AccountServiceImpl implements AccountService {
         if (accountOptional.isEmpty()) {
             throw new UsernameNotFoundException("User not found with username: " + username);
         }
-        Account account = accountOptional.get();
-        cacheAccount(account);
-        return account;
-    }
-
-    private void cacheAccount(Account account) {
-        if (account == null || account.getUsername() == null) {
-            return;
-        }
-
-        AccountCache cacheValue = AccountCache.fromAccount(account);
-        accountCacheTemplate.opsForValue().set(
-                accountByUsernameCacheKey(account.getUsername()),
-                cacheValue,
-                Duration.ofSeconds(accountCacheTtlSeconds));
-    }
-
-    private String accountByUsernameCacheKey(String username) {
-        return ACCOUNT_BY_USERNAME_CACHE_KEY_PREFIX + username;
+        return accountOptional.get();
     }
 
     private Role resolveRole(String role) {
@@ -262,9 +225,7 @@ public class AccountServiceImpl implements AccountService {
             
             Optional<Account> accountOpt = accountRepository.findByUsername(email);
             if (accountOpt.isPresent()) {
-                Account account = accountOpt.get();
-                cacheAccount(account);
-                return account;
+                return accountOpt.get();
             }
             
             // Create a new account
@@ -290,7 +251,6 @@ public class AccountServiceImpl implements AccountService {
             userProfile.setCreatedAt(LocalDateTime.now());
             userProfileRepository.save(userProfile);
             
-            cacheAccount(savedAccount);
             return savedAccount;
         } catch (AuthServiceException e) {
             throw e;
