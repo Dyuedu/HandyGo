@@ -30,6 +30,7 @@ import com.group.mock.entity.DTO.request.ResetPasswordRequest;
 import com.group.mock.entity.DTO.request.VerifyEmailRequest;
 import com.group.mock.entity.DTO.response.ApiResponse;
 import com.group.mock.entity.DTO.response.AuthTokenResponse;
+import com.group.mock.entity.DTO.response.ResendVerificationResponse;
 import com.group.mock.entity.Account;
 import com.group.mock.service.AccountService;
 import com.group.mock.service.LoginAttemptService;
@@ -203,12 +204,13 @@ public class AuthController {
     }
 
     @PostMapping("/resend-verification")
-    public ResponseEntity<ApiResponse<Map<String, String>>> resendVerification(
+    public ResponseEntity<ApiResponse<ResendVerificationResponse>> resendVerification(
             @Valid @RequestBody ResendVerificationRequest request,
             HttpServletRequest httpRequest
     ) {
-        accountService.resendVerification(request.getUsername());
-        return ResponseEntity.ok(ApiResponse.success(Map.of("message", "Đã gửi lại mã xác thực qua email"), requestId(httpRequest)));
+        String email = accountService.resendVerification(request.getUsername());
+        ResendVerificationResponse response = new ResendVerificationResponse(email, "Đã gửi lại mã xác thực qua email");
+        return ResponseEntity.ok(ApiResponse.success(response, requestId(httpRequest)));
     }
 
     @PostMapping("/forgot-password")

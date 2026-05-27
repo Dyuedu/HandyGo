@@ -27,12 +27,13 @@ export function UnverifiedPage() {
     setError(null)
     try {
       const { resendVerification } = await import('../services/authService')
-      await resendVerification({ username })
+      const response = await resendVerification({ username })
+      const email = response.data?.data?.email || response.data?.email
       // Navigate to auth page with verify mode
       navigate('/auth', { 
         state: { 
           mode: 'verify', 
-          email: username, 
+          email: email, 
           message: 'auth.success.resend' 
         } 
       })

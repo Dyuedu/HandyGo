@@ -10,7 +10,7 @@ public interface AccountService extends UserDetailsService {
     void saveAccount(LoginRequest loginRequest);
     void register(RegisterRequest registerRequest);
     void verifyEmail(String email, String otp);
-    void resendVerification(String username);
+    String resendVerification(String username);
     void forgotPassword(String email);
     void resetPassword(String token, String newPassword);
     String getAccountRole(String username);

@@ -159,7 +159,7 @@ public class AccountServiceImpl implements AccountService {
     }
 
     @Override
-    public void resendVerification(String username) {
+    public String resendVerification(String username) {
         Account account = accountRepository.findByUsername(username)
                 .orElseThrow(() -> new AuthServiceException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "Không tìm thấy tài khoản"));
 
@@ -177,6 +177,8 @@ public class AccountServiceImpl implements AccountService {
         stringRedisTemplate.opsForValue().set("OTP:" + account.getEmail(), otp, Duration.ofMinutes(15));
         
         emailService.sendVerificationEmail(account.getEmail(), otp);
+        
+        return account.getEmail();
     }
 
     @Override
