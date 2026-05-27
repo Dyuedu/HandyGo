@@ -22,6 +22,7 @@ export function AppRoutes() {
       <Route path="/" element={<Navigate to="/welcome" replace />} />
       <Route path="/welcome" element={<Landing />} />
       <Route path="/auth" element={<Auth />} />
+      <Route path="/auth/reset-password" element={<Auth />} />
       <Route path="/unverified" element={<UnverifiedPage />} />
       <Route path="/access-denied" element={<AccessDenied />} />
 

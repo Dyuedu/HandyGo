@@ -49,6 +49,14 @@ export function resendVerification(payload) {
   return axiosClient.post('/api/auth/resend-verification', payload)
 }
 
+export function forgotPassword(payload) {
+  return axiosClient.post('/api/auth/forgot-password', payload)
+}
+
+export function resetPassword(payload) {
+  return axiosClient.post('/api/auth/reset-password', payload)
+}
+
 export function logout(refreshToken) {
   return axiosClient.post('/api/auth/logout', { refreshToken })
 }

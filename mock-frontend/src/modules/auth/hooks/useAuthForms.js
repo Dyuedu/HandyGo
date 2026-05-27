@@ -1,12 +1,14 @@
 import { useMemo, useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../../hooks/useAuth'
-import { registerUser, registerWorker } from '../../../services/authService'
+import { forgotPassword, registerUser, registerWorker, resetPassword } from '../../../services/authService'
 import { validatePassword, validatePhone, validateUsername } from '../../../utils/validation'
 import { useLanguage } from '../../../i18n/LanguageContext'
 
 const initialLogin = { username: '', password: '' }
 const initialUser = { username: '', email: '', password: '', fullName: '', phone: '' }
+const initialForgot = { email: '' }
+const initialReset = { token: '', newPassword: '' }
 const initialWorker = {
   username: '',
   email: '',
@@ -60,10 +62,14 @@ export function useAuthForms() {
   const navigate = useNavigate()
   const location = useLocation()
   
-  const [mode, setMode] = useState(location.state?.mode || 'login')
+  const tokenFromUrl = new URLSearchParams(location.search).get('token') || ''
+  const initialMode = location.pathname === '/auth/reset-password' ? 'reset' : (location.state?.mode || 'login')
+  const [mode, setMode] = useState(initialMode)
   const [loginForm, setLoginForm] = useState(initialLogin)
   const [userForm, setUserForm] = useState(initialUser)
   const [workerForm, setWorkerForm] = useState(initialWorker)
+  const [forgotForm, setForgotForm] = useState(initialForgot)
+  const [resetForm, setResetForm] = useState({ ...initialReset, token: tokenFromUrl })
   const [verifyForm, setVerifyForm] = useState({ 
     email: location.state?.email || '', 
     otp: '', 
@@ -128,6 +134,22 @@ export function useAuthForms() {
     })
   }
 
+  function goForgotPassword() {
+    setError(null)
+    setMessage(null)
+    setForgotForm(initialForgot)
+    setMode('forgot')
+  }
+
+  function backToLogin() {
+    setError(null)
+    setMessage(null)
+    setForgotForm(initialForgot)
+    setResetForm(initialReset)
+    setMode('login')
+    navigate('/auth', { replace: true })
+  }
+
   async function handleRegisterUser(event) {
     event.preventDefault()
     const validation =
@@ -182,6 +204,33 @@ export function useAuthForms() {
     })
   }
 
+  async function handleForgotPassword(event) {
+    event.preventDefault()
+    if (!forgotForm.email.trim()) return setError({ key: 'validation.email.required' })
+
+    await submit(async () => {
+      await forgotPassword(forgotForm)
+      setMessage({ key: 'auth.success.forgot' })
+      setForgotForm(initialForgot)
+      setMode('login')
+    })
+  }
+
+  async function handleResetPassword(event) {
+    event.preventDefault()
+    if (!resetForm.token.trim()) return setError({ key: 'validation.resetToken.required' })
+    const passwordValidation = validatePassword(resetForm.newPassword, validationT)
+    if (passwordValidation) return setError({ key: passwordValidation })
+
+    await submit(async () => {
+      await resetPassword(resetForm)
+      setMessage({ key: 'auth.success.reset' })
+      setResetForm(initialReset)
+      setMode('login')
+      navigate('/auth', { replace: true })
+    })
+  }
+
   async function handleLogout() {
     if (!session?.accessToken) {
       clearAuthSession()
@@ -216,6 +265,10 @@ export function useAuthForms() {
     setUserForm,
     workerForm,
     setWorkerForm,
+    forgotForm,
+    setForgotForm,
+    resetForm,
+    setResetForm,
     verifyForm,
     setVerifyForm,
     session,
@@ -227,7 +280,11 @@ export function useAuthForms() {
     handleRegisterUser,
     handleRegisterWorker,
     handleVerifyEmail,
+    handleForgotPassword,
+    handleResetPassword,
     handleResendVerification,
+    goForgotPassword,
+    backToLogin,
     handleLogout,
   }
 }

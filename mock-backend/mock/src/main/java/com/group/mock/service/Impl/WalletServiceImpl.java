@@ -190,15 +190,15 @@ public class WalletServiceImpl implements WalletService {
 
         if (success) {
             if (SUBSCRIPTION_ORDER_TYPE.equalsIgnoreCase(history.getVnpOrderType())) {
-                activateSubscriptionPayment(history);
+                Subscription plan = activateSubscriptionPayment(history);
                 try {
-                    notificationEventPublisher.publishWalletTopupSuccess(
+                    notificationEventPublisher.publishSubscriptionUpgrade(
                         history.getWallet().getUserId(),
-                        history.getId(),
-                        toScaledAmount(history.getAmount())
+                        plan.getPlanName(),
+                        plan.getDurationDays()
                     );
                 } catch (Exception e) {
-                    log.warn("Failed to send wallet topup success notification", e);
+                    log.warn("Failed to send subscription upgrade notification", e);
                 }
                 sendPaymentSuccessEmail(history);
                 return new PaymentCallbackResponse(true, "Subscription payment success", vnpTxnRef);
@@ -221,7 +221,7 @@ public class WalletServiceImpl implements WalletService {
                 notificationEventPublisher.publishWalletTopupSuccess(
                     wallet.getUserId(),
                     history.getId(),
-                    toScaledAmount(history.getAmount())
+                    toNotificationAmount(history.getAmount())
                 );
             } catch (Exception e) {
                 log.warn("Failed to send wallet topup success notification", e);
@@ -233,20 +233,22 @@ public class WalletServiceImpl implements WalletService {
         history.setStatus("FAILED");
         transactionHistoryRepository.save(history);
         invalidateHistoryCache(history.getWallet().getId());
-        try {
-            notificationEventPublisher.publishWalletTopupFailed(
-                history.getWallet().getUserId(),
-                history.getId(),
-                toScaledAmount(history.getAmount())
-            );
-        } catch (Exception e) {
-            log.warn("Failed to send wallet topup failed notification", e);
+        if (!SUBSCRIPTION_ORDER_TYPE.equalsIgnoreCase(history.getVnpOrderType())) {
+            try {
+                notificationEventPublisher.publishWalletTopupFailed(
+                    history.getWallet().getUserId(),
+                    history.getId(),
+                    toNotificationAmount(history.getAmount())
+                );
+            } catch (Exception e) {
+                log.warn("Failed to send wallet topup failed notification", e);
+            }
         }
         sendPaymentFailureEmail(history, "VNPay response code: " + responseCode);
         return new PaymentCallbackResponse(false, "Payment failed", vnpTxnRef);
     }
 
-    private void activateSubscriptionPayment(TransactionHistory history) {
+    private Subscription activateSubscriptionPayment(TransactionHistory history) {
         Long planId = parseSubscriptionPlanId(history.getVnpOrderInfo());
         Subscription plan = subscriptionRepository.findByIdAndStatus(planId, "ACTIVE")
                 .orElseThrow(() -> new AuthServiceException(
@@ -270,6 +272,7 @@ public class WalletServiceImpl implements WalletService {
         history.setBalanceAfter(wallet.getBalance());
         transactionHistoryRepository.save(history);
         invalidateHistoryCache(wallet.getId());
+        return plan;
     }
 
     private Long parseSubscriptionPlanId(String orderInfo) {
@@ -487,6 +490,13 @@ public class WalletServiceImpl implements WalletService {
 
     private BigDecimal fromScaledAmount(long scaled) {
         return BigDecimal.valueOf(scaled).movePointLeft(4);
+    }
+
+    private Long toNotificationAmount(BigDecimal amount) {
+        if (amount == null) {
+            return 0L;
+        }
+        return amount.setScale(0, RoundingMode.HALF_UP).longValue();
     }
 
     private void ensureBalanceCache(Wallet wallet, String balanceKey) {

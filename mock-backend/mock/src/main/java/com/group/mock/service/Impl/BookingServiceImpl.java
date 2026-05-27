@@ -321,6 +321,12 @@ public class BookingServiceImpl implements BookingService {
         Booking booking =
                 bookingRepository.findDetailById(bookingId).orElseThrow(bookingNotFound());
         assertWorker(account, booking);
+        if (request == null) {
+            throw new AuthServiceException(
+                    HttpStatus.BAD_REQUEST,
+                    "INVALID_REQUEST",
+                    "Payment request is required");
+        }
 
         if (booking.getStatus() != BookingStatus.PROCESSING) {
             throw new AuthServiceException(
@@ -397,6 +403,12 @@ public class BookingServiceImpl implements BookingService {
         Booking booking =
                 bookingRepository.findDetailById(bookingId).orElseThrow(bookingNotFound());
         assertWorker(account, booking);
+        if (request == null) {
+            throw new AuthServiceException(
+                    HttpStatus.BAD_REQUEST,
+                    "INVALID_REQUEST",
+                    "Payment request is required");
+        }
 
         if (booking.getStatus() != BookingStatus.PROCESSING) {
             throw new AuthServiceException(

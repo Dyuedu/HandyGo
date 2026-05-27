@@ -1,12 +1,13 @@
 import { useEffect } from 'react'
 import { AlertMessage } from '../components/AlertMessage'
 import { AuthBrandPanel } from '../components/AuthBrandPanel'
-import { AuthSessionBar } from '../components/AuthSessionBar'
 import { AuthTabs } from '../components/AuthTabs'
 import '../../../styles/modules/auth/components/AuthForms.css'
 import { LoginForm } from '../components/LoginForm'
 import { VerifyEmailForm } from '../components/VerifyEmailForm'
 import { UnverifiedPrompt } from '../components/UnverifiedPrompt'
+import { ForgotPasswordForm } from '../components/ForgotPasswordForm'
+import { ResetPasswordForm } from '../components/ResetPasswordForm'
 import { RegisterUserForm } from '../../customer/components/RegisterUserForm'
 import { RegisterWorkerForm } from '../../worker/components/RegisterWorkerForm'
 import { useAuthForms } from '../hooks/useAuthForms'
@@ -45,7 +46,7 @@ export function AuthPage() {
         <AuthBrandPanel />
 
         <div className="form-panel">
-          {(auth.mode !== 'verify' && auth.mode !== 'unverified') && <AuthTabs mode={auth.mode} onChange={auth.setMode} />}
+          {(auth.mode !== 'verify' && auth.mode !== 'unverified' && auth.mode !== 'forgot' && auth.mode !== 'reset') && <AuthTabs mode={auth.mode} onChange={auth.setMode} />}
 
           <div className="form-heading">
             <p className="eyebrow">{currentMode.eyebrow}</p>
@@ -53,7 +54,6 @@ export function AuthPage() {
             <p>{currentMode.description}</p>
           </div>
 
-          <AuthSessionBar session={auth.session} submitting={auth.submitting} onLogout={auth.handleLogout} />
           <AlertMessage type="success">{auth.message}</AlertMessage>
           <AlertMessage type="error">{auth.error}</AlertMessage>
 
@@ -62,6 +62,7 @@ export function AuthPage() {
               form={auth.loginForm}
               onChange={auth.setLoginForm}
               onSubmit={auth.handleLogin}
+              onForgotPassword={auth.goForgotPassword}
               submitting={auth.submitting}
               submitLabel={currentMode.submit}
             />
@@ -101,6 +102,28 @@ export function AuthPage() {
             <UnverifiedPrompt
               onResend={auth.handleResendVerification}
               submitting={auth.submitting}
+            />
+          )}
+
+          {auth.mode === 'forgot' && (
+            <ForgotPasswordForm
+              form={auth.forgotForm}
+              onChange={auth.setForgotForm}
+              onSubmit={auth.handleForgotPassword}
+              submitting={auth.submitting}
+              submitLabel={currentMode.submit}
+              onBackToLogin={auth.backToLogin}
+            />
+          )}
+
+          {auth.mode === 'reset' && (
+            <ResetPasswordForm
+              form={auth.resetForm}
+              onChange={auth.setResetForm}
+              onSubmit={auth.handleResetPassword}
+              submitting={auth.submitting}
+              submitLabel={currentMode.submit}
+              onBackToLogin={auth.backToLogin}
             />
           )}
         </div>

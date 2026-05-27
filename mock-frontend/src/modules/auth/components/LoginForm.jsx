@@ -1,7 +1,7 @@
 import { Field } from './Field'
 import { useLanguage } from '../../../i18n/LanguageContext'
 
-export function LoginForm({ form, onChange, onSubmit, submitting, submitLabel }) {
+export function LoginForm({ form, onChange, onSubmit, submitting, submitLabel, onForgotPassword }) {
   const { t } = useLanguage()
   const handleGoogleRedirect = (e) => {
     e.preventDefault()
@@ -14,6 +14,9 @@ export function LoginForm({ form, onChange, onSubmit, submitting, submitLabel })
       <Field label={t('form.password')} type="password" value={form.password} onChange={(value) => onChange({ ...form, password: value })} />
       <button className="primary-action" type="submit" disabled={submitting}>
         {submitting ? t('common.processing') : submitLabel}
+      </button>
+      <button className="secondary" type="button" onClick={onForgotPassword} disabled={submitting}>
+        {t('auth.forgotPassword')}
       </button>
 
       <div className="auth-divider">{t('auth.or')}</div>

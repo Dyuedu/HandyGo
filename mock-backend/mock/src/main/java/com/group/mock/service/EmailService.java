@@ -23,6 +23,9 @@ public class EmailService {
 
     @Value("${spring.mail.from:noreply@handygo.com}")
     private String mailFrom;
+    
+    @Value("${app.frontend-url:http://localhost:5173}")
+    private String frontendUrl;
 
     /**
      * Gửi email xác thực (OTP) sau khi đăng ký
@@ -60,7 +63,7 @@ public class EmailService {
             Context context = new Context();
             context.setVariable("fullName", fullName);
             context.setVariable("userRole", userRole);
-            context.setVariable("appUrl", "http://localhost:3000");
+            context.setVariable("appUrl", frontendUrl);
             String htmlContent = templateEngine.process("email-welcome", context);
 
             MimeMessage message = mailSender.createMimeMessage();
@@ -87,7 +90,7 @@ public class EmailService {
         try {
             Context context = new Context();
             context.setVariable("fullName", fullName);
-            context.setVariable("resetLink", "http://localhost:3000/auth/reset-password?token=" + resetToken);
+            context.setVariable("resetLink", frontendUrl + "/auth/reset-password?token=" + resetToken);
             context.setVariable("expiryMinutes", 60);
             String htmlContent = templateEngine.process("email-forgot-password", context);
 
@@ -117,7 +120,7 @@ public class EmailService {
             context.setVariable("workerName", workerName);
             context.setVariable("jobTitle", jobTitle);
             context.setVariable("customerName", customerName);
-            context.setVariable("appUrl", "http://localhost:3000");
+            context.setVariable("appUrl", frontendUrl);
             String htmlContent = templateEngine.process("email-booking-notification", context);
 
             MimeMessage message = mailSender.createMimeMessage();
@@ -174,7 +177,7 @@ public class EmailService {
             Context context = new Context();
             context.setVariable("fullName", fullName);
             context.setVariable("reason", reason);
-            context.setVariable("appUrl", "http://localhost:3000");
+            context.setVariable("appUrl", frontendUrl);
             String htmlContent = templateEngine.process("email-payment-failure", context);
 
             MimeMessage message = mailSender.createMimeMessage();
