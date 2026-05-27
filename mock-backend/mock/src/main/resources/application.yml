@@ -49,7 +49,6 @@ vnpay:
 # JWT configuration
 app:
   cache:
-    account-ttl-seconds: 300
     wallet-balance-ttl-seconds: 300
     wallet-history-ttl-seconds: 120
   jwt:

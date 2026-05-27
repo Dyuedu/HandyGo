@@ -17,7 +17,3 @@ target/
 /.nb-gradle/
 build/
 .env
-
-src/main/resources/application.yaml
-application.yml
-application.properties
