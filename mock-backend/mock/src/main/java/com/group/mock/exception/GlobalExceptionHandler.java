@@ -8,6 +8,7 @@ import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -42,6 +43,15 @@ public class GlobalExceptionHandler {
     ) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(ApiResponse.error("INVALID_CREDENTIALS", errorMessage("INVALID_CREDENTIALS", "Tên đăng nhập hoặc mật khẩu không đúng"), null, requestId(request)));
+    }
+
+    @ExceptionHandler(DisabledException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDisabled(
+            DisabledException ex,
+            HttpServletRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.error("ACCOUNT_DISABLED", errorMessage("ACCOUNT_DISABLED", "Tài khoản chưa được kích hoạt"), null, requestId(request)));
     }
 
     @ExceptionHandler(LockedException.class)

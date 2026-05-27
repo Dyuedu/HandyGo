@@ -26,6 +26,7 @@ import com.group.mock.service.AccountService;
 import com.group.mock.service.CloudinaryUploadService;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Locale;
 import java.util.Optional;
@@ -40,6 +41,8 @@ public class AccountServiceImpl implements AccountService {
     private final WalletRepository walletRepository;
     private final CloudinaryUploadService cloudinaryUploadService;
     private final PasswordEncoder passwordEncoder;
+    private final org.springframework.data.redis.core.StringRedisTemplate stringRedisTemplate;
+    private final com.group.mock.service.EmailService emailService;
 
     public AccountServiceImpl(
             AccountRepository accountRepository,
@@ -49,7 +52,9 @@ public class AccountServiceImpl implements AccountService {
             WorkerLocationRepository workerLocationRepository,
             WalletRepository walletRepository,
             CloudinaryUploadService cloudinaryUploadService,
-            PasswordEncoder passwordEncoder) {
+            PasswordEncoder passwordEncoder,
+            org.springframework.data.redis.core.StringRedisTemplate stringRedisTemplate,
+            com.group.mock.service.EmailService emailService) {
         this.accountRepository = accountRepository;
         this.roleRepository = roleRepository;
         this.userProfileRepository = userProfileRepository;
@@ -58,6 +63,8 @@ public class AccountServiceImpl implements AccountService {
         this.walletRepository = walletRepository;
         this.cloudinaryUploadService = cloudinaryUploadService;
         this.passwordEncoder = passwordEncoder;
+        this.stringRedisTemplate = stringRedisTemplate;
+        this.emailService = emailService;
     }
 
     @Override
@@ -84,11 +91,16 @@ public class AccountServiceImpl implements AccountService {
             throw new AuthServiceException(HttpStatus.CONFLICT, "PHONE_EXISTS", "Số điện thoại đã được sử dụng");
         }
 
+        if (registerRequest.getEmail() != null && accountRepository.existsByEmail(registerRequest.getEmail())) {
+            throw new AuthServiceException(HttpStatus.CONFLICT, "EMAIL_EXISTS", "Email đã tồn tại");
+        }
+
         Account account = new Account();
         account.setUsername(username);
+        account.setEmail(registerRequest.getEmail());
         account.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
         account.setRole(resolveRole(role));
-        account.setStatus(Status.ACTIVE);
+        account.setStatus(Status.INACTIVE);
         Account savedAccount = accountRepository.save(account);
 
         if ("USER".equals(role)) {
@@ -101,6 +113,52 @@ public class AccountServiceImpl implements AccountService {
             throw new AuthServiceException(HttpStatus.BAD_REQUEST, "INVALID_ROLE", "Vai trò không hợp lệ");
         }
 
+    }
+
+    @Override
+    @Transactional
+    public void verifyEmail(String email, String otp) {
+        String cacheKey = "OTP:" + email;
+        String cachedOtp = stringRedisTemplate.opsForValue().get(cacheKey);
+
+        if (cachedOtp == null) {
+            throw new AuthServiceException(HttpStatus.BAD_REQUEST, "OTP_EXPIRED", "Mã xác thực đã hết hạn hoặc không tồn tại");
+        }
+
+        if (!cachedOtp.equals(otp)) {
+            throw new AuthServiceException(HttpStatus.BAD_REQUEST, "OTP_INVALID", "Mã xác thực không chính xác");
+        }
+
+        Account account = accountRepository.findByEmail(email)
+                .orElseThrow(() -> new AuthServiceException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "Không tìm thấy tài khoản với email này"));
+
+        if (account.getStatus() == Status.ACTIVE) {
+            throw new AuthServiceException(HttpStatus.BAD_REQUEST, "ALREADY_VERIFIED", "Tài khoản đã được xác thực");
+        }
+
+        account.setStatus(Status.ACTIVE);
+        accountRepository.save(account);
+        stringRedisTemplate.delete(cacheKey);
+    }
+
+    @Override
+    public void resendVerification(String username) {
+        Account account = accountRepository.findByUsername(username)
+                .orElseThrow(() -> new AuthServiceException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "Không tìm thấy tài khoản"));
+
+        if (account.getStatus() == Status.ACTIVE) {
+            throw new AuthServiceException(HttpStatus.BAD_REQUEST, "ALREADY_VERIFIED", "Tài khoản đã được xác thực");
+        }
+
+        if (account.getEmail() == null || account.getEmail().isBlank()) {
+            throw new AuthServiceException(HttpStatus.BAD_REQUEST, "NO_EMAIL", "Tài khoản không có email để xác thực");
+        }
+
+        // Generate OTP (TTL: 15 minutes as per specification)
+        String otp = String.format("%06d", new java.util.Random().nextInt(1000000));
+        stringRedisTemplate.opsForValue().set("OTP:" + account.getEmail(), otp, Duration.ofMinutes(15));
+        
+        emailService.sendVerificationEmail(account.getEmail(), otp);
     }
 
     @Override
