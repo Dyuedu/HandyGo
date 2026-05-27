@@ -172,7 +172,6 @@ public class AccountServiceImpl implements AccountService {
         }
 
         // Generate OTP (TTL: 15 minutes as per specification)
-        // Generate OTP (TTL: 15 minutes as per specification)
         String otp = String.format("%06d", new java.util.Random().nextInt(1000000));
         stringRedisTemplate.opsForValue().set("OTP:" + account.getEmail(), otp, Duration.ofMinutes(15));
         
