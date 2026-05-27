@@ -18,6 +18,7 @@ import com.group.mock.entity.DTO.response.WalletBalanceResponse;
 import com.group.mock.entity.DTO.response.WalletDeductResponse;
 import com.group.mock.entity.DTO.response.WithdrawalResponse;
 import com.group.mock.exception.AuthServiceException;
+import com.group.mock.repository.AccountRepository;
 import com.group.mock.repository.SubscriptionRepository;
 import com.group.mock.repository.TransactionHistoryRepository;
 import com.group.mock.repository.UserProfileRepository;
@@ -25,6 +26,7 @@ import com.group.mock.repository.WalletRepository;
 import com.group.mock.repository.WithdrawalRequestRepository;
 import com.group.mock.repository.WorkerProfileRepository;
 import com.group.mock.service.AccountService;
+import com.group.mock.service.EmailService;
 import com.group.mock.service.VietQrService;
 import com.group.mock.service.WalletService;
 import lombok.extern.slf4j.Slf4j;
@@ -68,12 +70,14 @@ public class WalletServiceImpl implements WalletService {
     private final WorkerProfileRepository workerProfileRepository;
     private final UserProfileRepository userProfileRepository;
     private final WithdrawalRequestRepository withdrawalRequestRepository;
+    private final AccountRepository accountRepository;
     private final AccountService accountService;
     private final VietQrService vietQrService;
     private final StringRedisTemplate stringRedisTemplate;
     private final DefaultRedisScript<Long> walletDeductScript;
     private final ObjectMapper objectMapper;
     private final NotificationEventPublisher notificationEventPublisher;
+    private final EmailService emailService;
 
 
     @Value("${app.cache.wallet-balance-ttl-seconds:300}")
@@ -92,24 +96,28 @@ public class WalletServiceImpl implements WalletService {
             WorkerProfileRepository workerProfileRepository,
             UserProfileRepository userProfileRepository,
             WithdrawalRequestRepository withdrawalRequestRepository,
+            AccountRepository accountRepository,
             AccountService accountService,
             VietQrService vietQrService,
             StringRedisTemplate stringRedisTemplate,
             DefaultRedisScript<Long> walletDeductScript,
             ObjectMapper objectMapper,
-        NotificationEventPublisher notificationEventPublisher) {
+            NotificationEventPublisher notificationEventPublisher,
+            EmailService emailService) {
         this.walletRepository = walletRepository;
         this.transactionHistoryRepository = transactionHistoryRepository;
         this.subscriptionRepository = subscriptionRepository;
         this.workerProfileRepository = workerProfileRepository;
         this.userProfileRepository = userProfileRepository;
         this.withdrawalRequestRepository = withdrawalRequestRepository;
+        this.accountRepository = accountRepository;
         this.accountService = accountService;
         this.vietQrService = vietQrService;
         this.stringRedisTemplate = stringRedisTemplate;
         this.walletDeductScript = walletDeductScript;
         this.objectMapper = objectMapper;
         this.notificationEventPublisher = notificationEventPublisher;
+        this.emailService = emailService;
 
     }
 
@@ -192,6 +200,7 @@ public class WalletServiceImpl implements WalletService {
                 } catch (Exception e) {
                     log.warn("Failed to send wallet topup success notification", e);
                 }
+                sendPaymentSuccessEmail(history);
                 return new PaymentCallbackResponse(true, "Subscription payment success", vnpTxnRef);
             }
 
@@ -217,6 +226,7 @@ public class WalletServiceImpl implements WalletService {
             } catch (Exception e) {
                 log.warn("Failed to send wallet topup success notification", e);
             }
+            sendPaymentSuccessEmail(history);
             return new PaymentCallbackResponse(true, "Success", vnpTxnRef);
         }
 
@@ -232,6 +242,7 @@ public class WalletServiceImpl implements WalletService {
         } catch (Exception e) {
             log.warn("Failed to send wallet topup failed notification", e);
         }
+        sendPaymentFailureEmail(history, "VNPay response code: " + responseCode);
         return new PaymentCallbackResponse(false, "Payment failed", vnpTxnRef);
     }
 
@@ -555,5 +566,41 @@ public class WalletServiceImpl implements WalletService {
         } catch (Exception ex) {
             log.warn("Failed to write wallet history cache", ex);
         }
+    }
+
+    private void sendPaymentSuccessEmail(TransactionHistory history) {
+        Account account = accountRepository.findById(history.getWallet().getUserId()).orElse(null);
+        if (account == null || account.getEmail() == null || account.getEmail().isBlank()) {
+            return;
+        }
+
+        try {
+            emailService.sendPaymentSuccessEmail(
+                    account.getEmail(),
+                    resolveFullName(account),
+                    history.getAmount().setScale(0, RoundingMode.HALF_UP).longValue(),
+                    String.valueOf(history.getId()));
+        } catch (Exception e) {
+            log.warn("Failed to send payment success email", e);
+        }
+    }
+
+    private void sendPaymentFailureEmail(TransactionHistory history, String reason) {
+        Account account = accountRepository.findById(history.getWallet().getUserId()).orElse(null);
+        if (account == null || account.getEmail() == null || account.getEmail().isBlank()) {
+            return;
+        }
+
+        try {
+            emailService.sendPaymentFailureEmail(account.getEmail(), resolveFullName(account), reason);
+        } catch (Exception e) {
+            log.warn("Failed to send payment failure email", e);
+        }
+    }
+
+    private String resolveFullName(Account account) {
+        return userProfileRepository.findById(account.getId())
+                .map(UserProfile::getFullName)
+                .orElse(account.getUsername());
     }
 }

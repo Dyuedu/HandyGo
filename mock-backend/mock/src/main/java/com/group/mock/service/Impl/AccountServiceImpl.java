@@ -33,6 +33,8 @@ import java.util.Optional;
 
 @Service
 public class AccountServiceImpl implements AccountService {
+    private static final String RESET_PASSWORD_TOKEN_PREFIX = "RESET_PASSWORD:";
+
     private final AccountRepository accountRepository;
     private final RoleRepository roleRepository;
     private final UserProfileRepository userProfileRepository;
@@ -174,6 +176,40 @@ public class AccountServiceImpl implements AccountService {
         stringRedisTemplate.opsForValue().set("OTP:" + account.getEmail(), otp, Duration.ofMinutes(15));
         
         emailService.sendVerificationEmail(account.getEmail(), otp);
+    }
+
+    @Override
+    public void forgotPassword(String email) {
+        Account account = accountRepository.findByEmail(email)
+                .orElseThrow(() -> new AuthServiceException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "Không tìm thấy tài khoản với email này"));
+
+        String resetToken = java.util.UUID.randomUUID().toString();
+        stringRedisTemplate.opsForValue().set(
+                RESET_PASSWORD_TOKEN_PREFIX + resetToken,
+                account.getEmail(),
+                Duration.ofMinutes(60));
+
+        UserProfile userProfile = userProfileRepository.findById(account.getId()).orElse(null);
+        String fullName = userProfile != null && userProfile.getFullName() != null
+                ? userProfile.getFullName()
+                : account.getUsername();
+        emailService.sendForgotPasswordEmail(account.getEmail(), fullName, resetToken);
+    }
+
+    @Override
+    @Transactional
+    public void resetPassword(String token, String newPassword) {
+        String cacheKey = RESET_PASSWORD_TOKEN_PREFIX + token;
+        String email = stringRedisTemplate.opsForValue().get(cacheKey);
+        if (email == null) {
+            throw new AuthServiceException(HttpStatus.BAD_REQUEST, "RESET_TOKEN_INVALID", "Token đặt lại mật khẩu không hợp lệ hoặc đã hết hạn");
+        }
+
+        Account account = accountRepository.findByEmail(email)
+                .orElseThrow(() -> new AuthServiceException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "Không tìm thấy tài khoản với email này"));
+        account.setPassword(passwordEncoder.encode(newPassword));
+        accountRepository.save(account);
+        stringRedisTemplate.delete(cacheKey);
     }
 
     @Override

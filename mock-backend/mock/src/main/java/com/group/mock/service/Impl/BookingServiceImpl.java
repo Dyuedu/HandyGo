@@ -26,6 +26,7 @@ import com.group.mock.repository.WalletRepository;
 import com.group.mock.repository.WorkerProfileRepository;
 import com.group.mock.service.BookingService;
 import com.group.mock.service.BookingStateTransitionValidator;
+import com.group.mock.service.EmailService;
 import com.group.mock.service.NotificationEventPublisher;
 import com.group.mock.service.VoucherAvailabilityHelper;
 import java.math.BigDecimal;
@@ -68,6 +69,7 @@ public class BookingServiceImpl implements BookingService {
     private final StringRedisTemplate stringRedisTemplate;
     private final BookingStateTransitionValidator transitionValidator;
     private final NotificationEventPublisher notificationEventPublisher;
+    private final EmailService emailService;
 
     @Override
     @Transactional
@@ -130,6 +132,8 @@ public class BookingServiceImpl implements BookingService {
         } catch (Exception e) {
             log.warn("Failed to send booking created notification", e);
         }
+
+        sendNewBookingEmail(worker, customer.getFullName(), request.getServiceCode());
 
         if (appliedVoucher != null) {
             VoucherUsage usage = new VoucherUsage();
@@ -559,5 +563,25 @@ public class BookingServiceImpl implements BookingService {
                 String.valueOf(wallet.getBalance().movePointRight(4).longValueExact()),
                 Duration.ofSeconds(300));
         stringRedisTemplate.delete(HISTORY_CACHE_KEY_PREFIX + wallet.getId());
+    }
+
+    private void sendNewBookingEmail(WorkerProfile worker, String customerName, String serviceCode) {
+        Account workerAccount = worker.getAccount();
+        if (workerAccount == null || workerAccount.getEmail() == null || workerAccount.getEmail().isBlank()) {
+            return;
+        }
+
+        String workerName = userProfileRepository.findById(worker.getId())
+                .map(UserProfile::getFullName)
+                .orElse(workerAccount.getUsername());
+        try {
+            emailService.sendNewBookingNotificationEmail(
+                    workerAccount.getEmail(),
+                    workerName,
+                    serviceCode,
+                    customerName);
+        } catch (Exception e) {
+            log.warn("Failed to send new booking email", e);
+        }
     }
 }
