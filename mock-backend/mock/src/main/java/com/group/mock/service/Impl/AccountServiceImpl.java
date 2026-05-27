@@ -27,7 +27,6 @@ import com.group.mock.service.CloudinaryUploadService;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.time.Duration;
 import java.util.Locale;
 import java.util.Optional;
 
@@ -54,9 +53,7 @@ public class AccountServiceImpl implements AccountService {
             WorkerLocationRepository workerLocationRepository,
             WalletRepository walletRepository,
             CloudinaryUploadService cloudinaryUploadService,
-            PasswordEncoder passwordEncoder,
-            org.springframework.data.redis.core.StringRedisTemplate stringRedisTemplate,
-            com.group.mock.service.EmailService emailService) {
+            PasswordEncoder passwordEncoder) {
         this.accountRepository = accountRepository;
         this.roleRepository = roleRepository;
         this.userProfileRepository = userProfileRepository;
@@ -76,6 +73,7 @@ public class AccountServiceImpl implements AccountService {
         account.setUsername(loginRequest.getUsername());
         account.setPassword(passwordEncoder.encode(loginRequest.getPassword()));
         account.setStatus(Status.ACTIVE);
+        accountRepository.save(account);
         accountRepository.save(account);
     }
 
