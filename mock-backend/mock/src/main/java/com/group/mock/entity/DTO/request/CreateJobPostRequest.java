@@ -2,6 +2,7 @@ package com.group.mock.entity.DTO.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import java.time.LocalDateTime;
 import lombok.Data;
 
 @Data
@@ -24,4 +25,7 @@ public class CreateJobPostRequest {
 
     @NotNull(message = "Longitude is required")
     private Double longitude;
+
+    @NotNull(message = "Scheduled date and time is required")
+    private LocalDateTime scheduledAt;
 }

@@ -2,6 +2,8 @@ package com.group.mock.service.Impl;
 
 import com.group.mock.entity.Account;
 import com.group.mock.entity.Booking;
+import com.group.mock.entity.JobPost;
+import com.group.mock.entity.WorkerProfile;
 import com.group.mock.entity.BookingStatusHistory;
 import com.group.mock.entity.DTO.request.CreateBookingRequest;
 import com.group.mock.entity.DTO.request.UpdateBookingPaymentRequest;
@@ -29,6 +31,7 @@ import com.group.mock.service.BookingStateTransitionValidator;
 import com.group.mock.service.EmailService;
 import com.group.mock.service.NotificationEventPublisher;
 import com.group.mock.service.VoucherAvailabilityHelper;
+import com.group.mock.util.AddressNormalizer;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.ZoneId;
@@ -37,6 +40,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.LocalDateTime;
 import java.time.Duration;
 import java.util.Collection;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -56,6 +60,7 @@ public class BookingServiceImpl implements BookingService {
     private static final String ROLE_WORKER = "ROLE_WORKER";
     private static final String BALANCE_CACHE_KEY_PREFIX = "cache:wallet:balance:";
     private static final String HISTORY_CACHE_KEY_PREFIX = "cache:wallet:history:";
+    private static final int DUPLICATE_CHECK_TIME_WINDOW_MINUTES = 30;
 
     private final BookingRepository bookingRepository;
     private final BookingStatusHistoryRepository bookingStatusHistoryRepository;
@@ -118,6 +123,9 @@ public class BookingServiceImpl implements BookingService {
         booking.setDiscountAmount(discount);
         booking.setFinalAmount(BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP));
 
+        // Check for duplicate bookings (same address + time window)
+        checkDuplicateBooking(request.getAddress(), request.getBookingDate());
+
         booking = bookingRepository.save(booking);
         recordHistory(booking, null, BookingStatus.PENDING, "Booking created");
 
@@ -142,6 +150,51 @@ public class BookingServiceImpl implements BookingService {
             usage.setStatus(VoucherUsageStatus.PENDING);
             usage.setAppliedDiscountAmount(discount);
             voucherUsageRepository.save(usage);
+        }
+
+        return bookingRepository.findDetailById(booking.getId()).orElse(booking);
+    }
+
+    @Override
+    @Transactional
+    public Booking createBookingFromJobPost(JobPost jobPost, WorkerProfile worker) {
+        if (jobPost == null || jobPost.getCustomer() == null || worker == null) {
+            throw new AuthServiceException(
+                    HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "Cannot create booking from job post");
+        }
+
+        UserProfile customer = jobPost.getCustomer();
+        LocalDateTime bookingDate = jobPost.getScheduledAt();
+        if (bookingDate == null) {
+            throw new AuthServiceException(
+                    HttpStatus.BAD_REQUEST, "JOBPOST_SCHEDULE_REQUIRED", "Job post has no scheduled time");
+        }
+
+        Booking booking = new Booking();
+        booking.setCustomer(customer);
+        booking.setWorker(worker);
+        booking.setServiceCode(jobPost.getJobType());
+        booking.setAddress(jobPost.getAddress());
+        booking.setBookingDate(bookingDate);
+        String desc = jobPost.getDescription();
+        booking.setDescription(
+                desc != null && !desc.isBlank() ? desc.trim() : jobPost.getTitle());
+        booking.setStatus(BookingStatus.PENDING);
+        booking.setTotalAmount(BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP));
+        booking.setDiscountAmount(BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP));
+        booking.setFinalAmount(BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP));
+
+        booking = bookingRepository.save(booking);
+        recordHistory(booking, null, BookingStatus.PENDING, "Booking created from job post");
+
+        try {
+            notificationEventPublisher.publishBookingCreated(
+                    worker.getId(),
+                    booking.getId().getMostSignificantBits(),
+                    customer.getFullName(),
+                    jobPost.getJobType());
+        } catch (Exception e) {
+            log.warn("Failed to send booking created notification for job post", e);
         }
 
         return bookingRepository.findDetailById(booking.getId()).orElse(booking);
@@ -192,6 +245,56 @@ public class BookingServiceImpl implements BookingService {
             log.warn("Failed to send booking rejected notification", e);
         }
         
+        return bookingRepository.findDetailById(bookingId).orElse(booking);
+    }
+
+    @Override
+    @Transactional
+    public Booking cancelBooking(String username, UUID bookingId) {
+        Account account = loadAccount(username);
+        requireRole(account, ROLE_USER, "Only customers can cancel bookings");
+
+        Booking booking =
+                bookingRepository.findById(bookingId).orElseThrow(bookingNotFound());
+        assertCustomer(account, booking);
+
+        if (booking.getStatus() != BookingStatus.PENDING) {
+            throw new AuthServiceException(
+                    HttpStatus.CONFLICT,
+                    "BOOKING_NOT_PENDING",
+                    "Chỉ có thể hủy khi đơn đang chờ thợ phản hồi");
+        }
+
+        LocalDateTime scheduled = booking.getBookingDate();
+        if (scheduled == null) {
+            throw new AuthServiceException(
+                    HttpStatus.BAD_REQUEST,
+                    "BOOKING_DATE_REQUIRED",
+                    "Vui lòng chọn ngày và giờ hẹn");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        long minutesUntil = Duration.between(now, scheduled).toMinutes();
+        if (minutesUntil < 30) {
+            throw new AuthServiceException(
+                    HttpStatus.CONFLICT,
+                    "BOOKING_CANCEL_TOO_LATE",
+                    "Bạn chỉ có thể hủy trước giờ hẹn ít nhất 30 phút");
+        }
+
+        transition(booking, BookingStatus.CANCELLED, "Cancelled by customer");
+
+        try {
+            String customerName = booking.getCustomer() != null ? booking.getCustomer().getFullName() : "Khách hàng";
+            notificationEventPublisher.publishBookingCancelled(
+                    booking.getWorker().getId(),
+                    bookingId.getMostSignificantBits(),
+                    customerName,
+                    booking.getServiceCode());
+        } catch (Exception e) {
+            log.warn("Failed to send booking cancelled notification", e);
+        }
+
         return bookingRepository.findDetailById(bookingId).orElse(booking);
     }
 
@@ -582,6 +685,49 @@ public class BookingServiceImpl implements BookingService {
                     customerName);
         } catch (Exception e) {
             log.warn("Failed to send new booking email", e);
+        }
+    }
+
+    /**
+     * Check if there are duplicate bookings with the same address within a time window.
+     * Duplicate: same normalized address + booking time within ±30 minutes
+     * Checks only PENDING and ACCEPTED bookings (excludes terminal states).
+     *
+     * @param address     the address to check
+     * @param bookingDate the booking date/time to check
+     * @throws AuthServiceException with 409 CONFLICT if duplicate found
+     */
+    private void checkDuplicateBooking(String address, LocalDateTime bookingDate) {
+        if (address == null || bookingDate == null) {
+            return;
+        }
+
+        // Calculate time window: ±30 minutes from booking date
+        LocalDateTime windowStart = bookingDate.minusMinutes(DUPLICATE_CHECK_TIME_WINDOW_MINUTES);
+        LocalDateTime windowEnd = bookingDate.plusMinutes(DUPLICATE_CHECK_TIME_WINDOW_MINUTES);
+
+        // Find all PENDING and ACCEPTED bookings in the time window
+        List<BookingStatus> statuses = List.of(BookingStatus.PENDING, BookingStatus.ACCEPTED);
+        List<Booking> bookingsInWindow = bookingRepository.findByStatusInAndBookingDateBetween(
+                statuses, windowStart, windowEnd);
+
+        if (bookingsInWindow.isEmpty()) {
+            return;
+        }
+
+        // Normalize the incoming address
+        String normalizedIncoming = AddressNormalizer.normalize(address);
+
+        // Check if any booking in the window has the same normalized address
+        for (Booking existing : bookingsInWindow) {
+            String normalizedExisting = AddressNormalizer.normalize(existing.getAddress());
+            if (normalizedIncoming.equals(normalizedExisting)) {
+                throw new AuthServiceException(
+                        HttpStatus.CONFLICT,
+                        "DUPLICATE_BOOKING",
+                        "A booking already exists at this address within ±30 minutes of the selected time. "
+                                + "Address: " + existing.getAddress() + ", Time: " + existing.getBookingDate());
+            }
         }
     }
 }

@@ -26,5 +26,19 @@ export function getNotificationTarget(notification) {
     return '/app/profile'
   }
 
+  if (type.startsWith('JOB_')) {
+    const jobPostId = data.jobPostId
+    if (jobPostId) {
+      if (type === 'JOB_POST_CANCELLED_NO_APPLICANTS') {
+        return '/app/job-posts/manage'
+      }
+      if (type === 'JOB_APPLICATION_NEW') {
+        return `/app/job-posts/${jobPostId}/applicants`
+      }
+      return `/app/job-posts/${jobPostId}`
+    }
+    return '/app/job-posts/map'
+  }
+
   return '/app/notifications'
 }

@@ -2,10 +2,12 @@ package com.group.mock.repository;
 
 import com.group.mock.entity.Booking;
 import com.group.mock.entity.enums.BookingStatus;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.time.LocalDateTime;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -67,4 +69,27 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
             @Param("workerId") UUID workerId, @Param("statuses") Collection<BookingStatus> statuses);
 
     boolean existsByWorker_IdAndStatusIn(UUID workerId, Collection<BookingStatus> statuses);
+
+    @Query(
+            "SELECT DISTINCT b FROM Booking b "
+                    + "LEFT JOIN FETCH b.customer "
+                    + "LEFT JOIN FETCH b.worker "
+                    + "WHERE b.status = com.group.mock.entity.enums.BookingStatus.PENDING "
+                    + "AND b.bookingDate < :now")
+    List<Booking> findPendingExpired(@Param("now") LocalDateTime now);
+    boolean existsByCustomer_IdAndWorker_IdAndStatus(UUID customerId, UUID workerId, BookingStatus status);
+
+    /**
+     * Find bookings with specific statuses within a time window.
+     * Used for duplicate booking detection.
+     */
+    @Query(
+            "SELECT b FROM Booking b "
+                    + "WHERE b.status IN :statuses "
+                    + "AND b.bookingDate BETWEEN :startDate AND :endDate "
+                    + "ORDER BY b.bookingDate ASC")
+    List<Booking> findByStatusInAndBookingDateBetween(
+            @Param("statuses") Collection<BookingStatus> statuses,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate);
 }

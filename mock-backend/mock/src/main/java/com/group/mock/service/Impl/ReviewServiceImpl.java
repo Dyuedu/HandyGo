@@ -3,13 +3,11 @@ package com.group.mock.service.Impl;
 import com.group.mock.entity.Account;
 import com.group.mock.entity.Booking;
 import com.group.mock.entity.Review;
-import com.group.mock.entity.WorkerProfile;
 import com.group.mock.entity.DTO.request.CreateReviewRequest;
 import com.group.mock.exception.AuthServiceException;
 import com.group.mock.repository.AccountRepository;
 import com.group.mock.repository.BookingRepository;
 import com.group.mock.repository.ReviewRepository;
-import com.group.mock.repository.WorkerProfileRepository;
 import com.group.mock.service.NotificationEventPublisher;
 import lombok.extern.slf4j.Slf4j;
 
@@ -33,7 +31,6 @@ public class ReviewServiceImpl implements ReviewService {
 
     private final BookingRepository bookingRepository;
     private final ReviewRepository reviewRepository;
-    private final WorkerProfileRepository workerProfileRepository;
     private final AccountRepository accountRepository;
     private final NotificationEventPublisher notificationEventPublisher;
 
@@ -61,7 +58,6 @@ public class ReviewServiceImpl implements ReviewService {
         review.setComment(request.getComment());
         Review saved = reviewRepository.save(review);
 
-        refreshWorkerAverageRating(booking.getWorker());
         // Send notification to worker about new review
         try {
             notificationEventPublisher.publishReviewCreated(
@@ -97,15 +93,6 @@ public class ReviewServiceImpl implements ReviewService {
     @Transactional(readOnly = true)
     public List<Review> getReviewsByWorkerId(UUID workerId) {
         return reviewRepository.findByBooking_Worker_IdOrderByCreatedAtDesc(workerId);
-    }
-
-    private void refreshWorkerAverageRating(WorkerProfile worker) {
-        Double average = reviewRepository.findAverageRatingByWorkerId(worker.getId());
-        if (average == null) {
-            average = 0.0;
-        }
-        worker.setAvgRating(average);
-        workerProfileRepository.save(worker);
     }
 
     private Account loadAccount(String username) {

@@ -53,6 +53,10 @@ export function declineBooking(bookingId) {
   return axiosClient.patch(`${BOOKINGS_BASE}/${bookingId}/decline`)
 }
 
+export function cancelBooking(bookingId) {
+  return axiosClient.patch(`${BOOKINGS_BASE}/${bookingId}/cancel`)
+}
+
 export function startProcessing(bookingId) {
   return axiosClient.patch(`${BOOKINGS_BASE}/${bookingId}/processing`)
 }

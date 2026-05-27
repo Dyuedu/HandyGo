@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { getAllOpenJobPosts, getOpenJobPostsByJobType } from '../../services/jobPostService'
 import { useNavigate } from 'react-router-dom'
 import { useLanguage } from '../../i18n/LanguageContext'
+import { formatBookingDateTime } from './utils/jobPostSchedule'
 import '../../styles/modules/jobpost.css'
 
 function JobPostDiscovery() {
@@ -56,7 +57,7 @@ function JobPostDiscovery() {
       ) : (
         <div className="discovery-grid">
           {jobPosts.map((jobPost) => (
-            <div key={jobPost.id} className="discovery-card" onClick={() => navigate(`/job-posts/${jobPost.id}`)}>
+            <div key={jobPost.id} className="discovery-card" onClick={() => navigate(`/app/job-posts/${jobPost.id}`)}>
               <div className="card-header">
                 <h3>{jobPost.title}</h3>
                 <span className="job-type-badge">{t(`jobpost.type.${jobPost.jobType}`)}</span>
@@ -66,6 +67,9 @@ function JobPostDiscovery() {
               <p className="card-description">{jobPost.description}</p>
 
               <div className="card-footer">
+                <span className="scheduled-date">
+                  {formatBookingDateTime(jobPost.scheduledAt, locale)}
+                </span>
                 <span className="created-date">{new Date(jobPost.createdAt).toLocaleDateString(locale)}</span>
                 <button className="btn-view">{t('jobpost.action.viewDetail')}</button>
               </div>

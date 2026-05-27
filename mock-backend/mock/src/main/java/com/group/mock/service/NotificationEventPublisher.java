@@ -76,6 +76,32 @@ public class NotificationEventPublisher {
         }
     }
 
+    public void publishBookingExpired(
+            UUID recipientId,
+            Long bookingId,
+            String customerName,
+            String serviceName,
+            String reason) {
+        try {
+            var notifData = notificationFactory.createBookingExpiredNotification(
+                    bookingId,
+                    customerName,
+                    serviceName,
+                    reason);
+
+            NotificationResponse response = notificationService.createNotification(
+                    recipientId,
+                    notifData.type,
+                    notifData.title,
+                    notifData.message,
+                    notifData.data);
+            webSocketHandler.sendNotificationToUser(recipientId.toString(), response);
+            log.info("Published BOOKING_EXPIRED notification for user: {}", recipientId);
+        } catch (Exception e) {
+            log.error("Error publishing booking expired notification", e);
+        }
+    }
+
     /**
      * Publish booking accepted notification
      */
@@ -208,6 +234,22 @@ public class NotificationEventPublisher {
             log.info("Published BOOKING_CONFIRMED notification for worker: {}", workerId);
         } catch (Exception e) {
             log.error("Error publishing booking confirmed notification", e);
+        }
+    }
+
+    public void publishJobPostCancelledNoApplicants(UUID customerId, UUID jobPostId, String jobTitle) {
+        try {
+            var notifData = notificationFactory.createJobPostCancelledNoApplicants(jobPostId, jobTitle);
+            NotificationResponse response = notificationService.createNotification(
+                    customerId,
+                    notifData.type,
+                    notifData.title,
+                    notifData.message,
+                    notifData.data);
+            webSocketHandler.sendNotificationToUser(customerId.toString(), response);
+            log.info("Published JOB_POST_CANCELLED_NO_APPLICANTS notification for customer: {}", customerId);
+        } catch (Exception e) {
+            log.error("Error publishing job post cancelled notification", e);
         }
     }
 
@@ -392,6 +434,71 @@ public class NotificationEventPublisher {
     /**
      * Publish review created notification
      */
+    public void publishJobPostNew(UUID workerId, java.util.UUID jobPostId, String jobTitle, String jobType) {
+        try {
+            var notifData = notificationFactory.createJobPostNotification(jobPostId, jobTitle, jobType);
+            NotificationResponse response = notificationService.createNotification(
+                    workerId, notifData.type, notifData.title, notifData.message, notifData.data);
+            webSocketHandler.sendNotificationToUser(workerId.toString(), response);
+        } catch (Exception e) {
+            log.error("Error publishing job post new notification", e);
+        }
+    }
+
+    public void publishJobApplicationNew(
+            UUID customerId, java.util.UUID jobPostId, java.util.UUID applicationId, String workerName, String jobTitle) {
+        try {
+            var notifData = notificationFactory.createJobApplicationNotification(
+                    NotificationFactory.JOB_APPLICATION_NEW,
+                    jobPostId,
+                    applicationId,
+                    jobTitle,
+                    null,
+                    workerName);
+            NotificationResponse response = notificationService.createNotification(
+                    customerId, notifData.type, notifData.title, notifData.message, notifData.data);
+            webSocketHandler.sendNotificationToUser(customerId.toString(), response);
+        } catch (Exception e) {
+            log.error("Error publishing job application new notification", e);
+        }
+    }
+
+    public void publishJobApplicationAccepted(
+            UUID workerId, java.util.UUID jobPostId, java.util.UUID applicationId, String jobTitle) {
+        try {
+            var notifData = notificationFactory.createJobApplicationNotification(
+                    NotificationFactory.JOB_APPLICATION_ACCEPTED,
+                    jobPostId,
+                    applicationId,
+                    jobTitle,
+                    null,
+                    null);
+            NotificationResponse response = notificationService.createNotification(
+                    workerId, notifData.type, notifData.title, notifData.message, notifData.data);
+            webSocketHandler.sendNotificationToUser(workerId.toString(), response);
+        } catch (Exception e) {
+            log.error("Error publishing job application accepted notification", e);
+        }
+    }
+
+    public void publishJobApplicationRejected(
+            UUID workerId, java.util.UUID jobPostId, java.util.UUID applicationId, String jobTitle) {
+        try {
+            var notifData = notificationFactory.createJobApplicationNotification(
+                    NotificationFactory.JOB_APPLICATION_REJECTED,
+                    jobPostId,
+                    applicationId,
+                    jobTitle,
+                    null,
+                    null);
+            NotificationResponse response = notificationService.createNotification(
+                    workerId, notifData.type, notifData.title, notifData.message, notifData.data);
+            webSocketHandler.sendNotificationToUser(workerId.toString(), response);
+        } catch (Exception e) {
+            log.error("Error publishing job application rejected notification", e);
+        }
+    }
+
     public void publishReviewCreated(UUID workerId, Long reviewId, String reviewerName, Integer rating, String comment) {
         try {
             var notifData = notificationFactory.createReviewNotification(reviewId, reviewerName, rating, comment);

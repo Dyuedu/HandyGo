@@ -1,5 +1,6 @@
 export { default as JobPostManagement } from './JobPostManagement'
 export { default as JobPostDetail } from './JobPostDetail'
+export { default as JobPostApplicants } from './JobPostApplicants'
 export { default as JobPostDiscovery } from './JobPostDiscovery'
 export { default as JobPostDiscoveryMap } from './JobPostDiscoveryMap'
 export { default as LocationPicker } from './LocationPicker'

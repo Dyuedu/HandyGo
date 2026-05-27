@@ -2,6 +2,7 @@ export {
   useAcceptBooking,
   useBookingDetail,
   useBookings,
+  useCancelBooking,
   useConfirmCompletion,
   useCreateBooking,
   useDeclineBooking,
