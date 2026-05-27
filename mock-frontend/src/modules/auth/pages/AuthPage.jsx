@@ -5,6 +5,8 @@ import { AuthSessionBar } from '../components/AuthSessionBar'
 import { AuthTabs } from '../components/AuthTabs'
 import '../../../styles/modules/auth/components/AuthForms.css'
 import { LoginForm } from '../components/LoginForm'
+import { VerifyEmailForm } from '../components/VerifyEmailForm'
+import { UnverifiedPrompt } from '../components/UnverifiedPrompt'
 import { RegisterUserForm } from '../../customer/components/RegisterUserForm'
 import { RegisterWorkerForm } from '../../worker/components/RegisterWorkerForm'
 import { useAuthForms } from '../hooks/useAuthForms'
@@ -43,7 +45,7 @@ export function AuthPage() {
         <AuthBrandPanel />
 
         <div className="form-panel">
-          <AuthTabs mode={auth.mode} onChange={auth.setMode} />
+          {(auth.mode !== 'verify' && auth.mode !== 'unverified') && <AuthTabs mode={auth.mode} onChange={auth.setMode} />}
 
           <div className="form-heading">
             <p className="eyebrow">{currentMode.eyebrow}</p>
@@ -82,6 +84,23 @@ export function AuthPage() {
               onSubmit={auth.handleRegisterWorker}
               submitting={auth.submitting}
               submitLabel={currentMode.submit}
+            />
+          )}
+
+          {auth.mode === 'verify' && (
+            <VerifyEmailForm
+              form={auth.verifyForm}
+              onChange={auth.setVerifyForm}
+              onSubmit={auth.handleVerifyEmail}
+              submitting={auth.submitting}
+              submitLabel={currentMode.submit}
+            />
+          )}
+
+          {auth.mode === 'unverified' && (
+            <UnverifiedPrompt
+              onResend={auth.handleResendVerification}
+              submitting={auth.submitting}
             />
           )}
         </div>

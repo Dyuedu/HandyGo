@@ -27,6 +27,8 @@ public class Account implements UserDetails {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
     private String username;
+    @jakarta.persistence.Column(unique = true)
+    private String email;
     private String password;
     private Status status;
     @ManyToOne

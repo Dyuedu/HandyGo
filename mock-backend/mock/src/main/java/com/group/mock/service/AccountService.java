@@ -9,6 +9,10 @@ import com.group.mock.entity.DTO.request.RegisterRequest;
 public interface AccountService extends UserDetailsService {
     void saveAccount(LoginRequest loginRequest);
     void register(RegisterRequest registerRequest);
+    void verifyEmail(String email, String otp);
+    String resendVerification(String username);
+    void forgotPassword(String email);
+    void resetPassword(String token, String newPassword);
     String getAccountRole(String username);
     String getWorkerVerificationStatus(String username);
     void deleteAccount();

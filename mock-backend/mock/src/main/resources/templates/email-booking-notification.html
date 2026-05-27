@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thông báo công việc mới - HandyGo</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fa;
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .header p {
+            margin: 10px 0 0;
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .greeting {
+            font-size: 18px;
+            font-weight: 500;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+        .notification-box {
+            background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+            border: 2px solid #3498db;
+            padding: 25px;
+            margin: 25px 0;
+            border-radius: 8px;
+        }
+        .job-details {
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 8px;
+        }
+        .detail-item {
+            display: flex;
+            margin: 15px 0;
+            align-items: flex-start;
+        }
+        .detail-icon {
+            font-size: 20px;
+            margin-right: 12px;
+            min-width: 24px;
+            color: #3498db;
+        }
+        .detail-content {
+            flex: 1;
+        }
+        .detail-label {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 3px;
+            font-size: 14px;
+        }
+        .detail-value {
+            color: #555;
+            font-size: 14px;
+        }
+        .customer-info {
+            background-color: #ecf0f1;
+            border-left: 4px solid #3498db;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 4px;
+        }
+        .customer-info h3 {
+            margin: 0 0 10px;
+            font-size: 16px;
+            color: #2c3e50;
+        }
+        .customer-info p {
+            margin: 5px 0;
+            color: #555;
+            font-size: 14px;
+        }
+        .action-buttons {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .action-button {
+            display: inline-block;
+            background-color: #3498db;
+            color: white;
+            padding: 14px 30px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            margin: 0 10px;
+            transition: background-color 0.3s ease;
+        }
+        .action-button:hover {
+            background-color: #2980b9;
+        }
+        .action-button.secondary {
+            background-color: #95a5a6;
+        }
+        .action-button.secondary:hover {
+            background-color: #7f8c8d;
+        }
+        .timer {
+            background-color: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 15px;
+            margin: 25px 0;
+            border-radius: 6px;
+            text-align: center;
+            color: #856404;
+            font-weight: 500;
+        }
+        .tips {
+            background-color: #f0f8ff;
+            border-left: 4px solid #3498db;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 4px;
+        }
+        .tips h3 {
+            margin: 0 0 10px;
+            font-size: 16px;
+            color: #2c3e50;
+        }
+        .tips ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .tips li {
+            margin: 8px 0;
+            color: #555;
+            font-size: 14px;
+        }
+        .divider {
+            height: 1px;
+            background-color: #e0e0e0;
+            margin: 20px 0;
+        }
+        .footer {
+            background-color: #f8f9fa;
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #e0e0e0;
+            font-size: 13px;
+            color: #777;
+        }
+        .footer p {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📋 Có công việc mới cho bạn!</h1>
+            <p>Có một bài đơn công việc từ <span th:text="${customerName}">khách hàng</span></p>
+        </div>
+
+        <div class="content">
+            <div class="greeting">
+                Xin chào <strong th:text="${workerName}">công nhân</strong>,
+            </div>
+
+            <div class="notification-box">
+                <p style="margin: 0; font-size: 16px;">
+                    🎉 Chúc mừng! <strong><span th:text="${customerName}">Khách hàng</span></strong> 
+                    vừa đăng một bài đơn công việc phù hợp với kỹ năng của bạn.
+                </p>
+            </div>
+
+            <div class="job-details">
+                <div class="detail-item">
+                    <div class="detail-icon">📝</div>
+                    <div class="detail-content">
+                        <div class="detail-label">Loại công việc:</div>
+                        <div class="detail-value" th:text="${jobTitle}">Sơn nhà</div>
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-icon">👤</div>
+                    <div class="detail-content">
+                        <div class="detail-label">Khách hàng:</div>
+                        <div class="detail-value" th:text="${customerName}">Nguyễn Văn A</div>
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-icon">⭐</div>
+                    <div class="detail-content">
+                        <div class="detail-label">Đánh giá khách hàng:</div>
+                        <div class="detail-value">4.8/5 ⭐ (25 đánh giá)</div>
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-icon">💰</div>
+                    <div class="detail-content">
+                        <div class="detail-label">Mức giá dự kiến:</div>
+                        <div class="detail-value">500.000 đ - 1.000.000 đ</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="customer-info">
+                <h3>👋 Thông tin khách hàng:</h3>
+                <p><strong>Tên:</strong> <span th:text="${customerName}">Nguyễn Văn A</span></p>
+                <p><strong>Địa điểm:</strong> Quận 1, TP.HCM</p>
+                <p><strong>Phạm vi công việc:</strong> Sơn lại tường và trần phòng khách</p>
+            </div>
+
+            <div class="timer">
+                ⏰ <strong>Hãy nhanh chóng gửi đơn ứng tuyển!</strong> 
+                Những công việc tốt có thể được đặt lại rất nhanh.
+            </div>
+
+            <div class="action-buttons">
+                <a th:href="${appUrl}" class="action-button">Xem chi tiết & Gửi đơn ứng tuyển</a>
+                <a href="#" class="action-button secondary">Lưu công việc</a>
+            </div>
+
+            <div class="tips">
+                <h3>💡 Mẹo để tăng khả năng được chốt:</h3>
+                <ul>
+                    <li><strong>Gửi đơn nhanh</strong> - Khách hàng có thể chọn công nhân đầu tiên gửi đơn</li>
+                    <li><strong>Viết lời nhắn chuyên nghiệp</strong> - Giải thích tại sao bạn phù hợp với công việc</li>
+                    <li><strong>Bổ sung portfolio</strong> - Thêm ảnh các công việc đã làm để tăng độ tin cậy</li>
+                    <li><strong>Đề xuất giá cạnh tranh</strong> - Giá phù hợp với thị trường nhưng vẫn công bằng</li>
+                </ul>
+            </div>
+
+            <div class="divider"></div>
+
+            <p style="font-size: 13px; color: #777;">
+                Bạn nhận được email này vì đã bật thông báo công việc mới. Nếu bạn muốn tắt thông báo, 
+                vui lòng truy cập phần cài đặt trong tài khoản HandyGo của mình.
+            </p>
+        </div>
+
+        <div class="footer">
+            <p><strong>© 2026 HandyGo. All rights reserved.</strong></p>
+            <p>Nền tảng kết nối khách hàng với các nhân viên dịch vụ</p>
+            <p>Email: support@handygo.com | Website: handygo.com</p>
+            <p style="margin-top: 15px; font-size: 12px;">
+                Bạn nhận được email này vì là công nhân trên HandyGo.
+                Đây là email tự động, vui lòng không trả lời.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

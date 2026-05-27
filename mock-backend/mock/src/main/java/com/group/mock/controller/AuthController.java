@@ -20,12 +20,17 @@ import org.springframework.web.bind.annotation.RestController;
 import com.group.mock.configuration.JwtProvider;
 import com.group.mock.configuration.RequestIdFilter;
 import com.group.mock.entity.DTO.request.GoogleLoginRequest;
+import com.group.mock.entity.DTO.request.ForgotPasswordRequest;
 import com.group.mock.entity.DTO.request.LoginRequest;
 import com.group.mock.entity.DTO.request.LogoutRequest;
 import com.group.mock.entity.DTO.request.RefreshTokenRequest;
 import com.group.mock.entity.DTO.request.RegisterRequest;
+import com.group.mock.entity.DTO.request.ResendVerificationRequest;
+import com.group.mock.entity.DTO.request.ResetPasswordRequest;
+import com.group.mock.entity.DTO.request.VerifyEmailRequest;
 import com.group.mock.entity.DTO.response.ApiResponse;
 import com.group.mock.entity.DTO.response.AuthTokenResponse;
+import com.group.mock.entity.DTO.response.ResendVerificationResponse;
 import com.group.mock.entity.Account;
 import com.group.mock.service.AccountService;
 import com.group.mock.service.LoginAttemptService;
@@ -186,7 +191,44 @@ public class AuthController {
             HttpServletRequest httpRequest
     ) {
         accountService.register(request);
-        return ResponseEntity.ok(ApiResponse.success(Map.of("message", "Đăng ký thành công"), requestId(httpRequest)));
+        return ResponseEntity.ok(ApiResponse.success(Map.of("message", "Đăng ký thành công, vui lòng kiểm tra email để xác thực"), requestId(httpRequest)));
+    }
+
+    @PostMapping("/verify-email")
+    public ResponseEntity<ApiResponse<Map<String, String>>> verifyEmail(
+            @Valid @RequestBody VerifyEmailRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        accountService.verifyEmail(request.getEmail(), request.getOtp());
+        return ResponseEntity.ok(ApiResponse.success(Map.of("message", "Xác thực email thành công, tài khoản đã được kích hoạt"), requestId(httpRequest)));
+    }
+
+    @PostMapping("/resend-verification")
+    public ResponseEntity<ApiResponse<ResendVerificationResponse>> resendVerification(
+            @Valid @RequestBody ResendVerificationRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        String email = accountService.resendVerification(request.getUsername());
+        ResendVerificationResponse response = new ResendVerificationResponse(email, "Đã gửi lại mã xác thực qua email");
+        return ResponseEntity.ok(ApiResponse.success(response, requestId(httpRequest)));
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ApiResponse<Map<String, String>>> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        accountService.forgotPassword(request.getEmail());
+        return ResponseEntity.ok(ApiResponse.success(Map.of("message", "Đã gửi email đặt lại mật khẩu"), requestId(httpRequest)));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<ApiResponse<Map<String, String>>> resetPassword(
+            @Valid @RequestBody ResetPasswordRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        accountService.resetPassword(request.getToken(), request.getNewPassword());
+        return ResponseEntity.ok(ApiResponse.success(Map.of("message", "Đặt lại mật khẩu thành công"), requestId(httpRequest)));
     }
 
     private String requestId(HttpServletRequest request) {

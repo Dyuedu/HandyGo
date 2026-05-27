@@ -2,11 +2,10 @@ package com.group.mock.service.Impl;
 
 import com.group.mock.entity.Account;
 import com.group.mock.entity.Booking;
-import com.group.mock.entity.JobPost;
-import com.group.mock.entity.WorkerProfile;
 import com.group.mock.entity.BookingStatusHistory;
 import com.group.mock.entity.DTO.request.CreateBookingRequest;
 import com.group.mock.entity.DTO.request.UpdateBookingPaymentRequest;
+import com.group.mock.entity.JobPost;
 import com.group.mock.entity.TransactionHistory;
 import com.group.mock.entity.UserProfile;
 import com.group.mock.entity.Voucher;
@@ -28,25 +27,25 @@ import com.group.mock.repository.WalletRepository;
 import com.group.mock.repository.WorkerProfileRepository;
 import com.group.mock.service.BookingService;
 import com.group.mock.service.BookingStateTransitionValidator;
+import com.group.mock.service.EmailService;
 import com.group.mock.service.NotificationEventPublisher;
 import com.group.mock.service.VoucherAvailabilityHelper;
 import com.group.mock.util.AddressNormalizer;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.time.LocalDateTime;
-import java.time.Duration;
 import java.util.Collection;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -73,6 +72,7 @@ public class BookingServiceImpl implements BookingService {
     private final StringRedisTemplate stringRedisTemplate;
     private final BookingStateTransitionValidator transitionValidator;
     private final NotificationEventPublisher notificationEventPublisher;
+    private final EmailService emailService;
 
     @Override
     @Transactional
@@ -121,13 +121,11 @@ public class BookingServiceImpl implements BookingService {
         booking.setDiscountAmount(discount);
         booking.setFinalAmount(BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP));
 
-        // Check for duplicate bookings (same address + time window)
         checkDuplicateBooking(request.getAddress(), request.getBookingDate());
 
         booking = bookingRepository.save(booking);
         recordHistory(booking, null, BookingStatus.PENDING, "Booking created");
 
-        // Send notification to worker about new booking
         try {
             notificationEventPublisher.publishBookingCreated(
                 worker.getId(),
@@ -138,6 +136,8 @@ public class BookingServiceImpl implements BookingService {
         } catch (Exception e) {
             log.warn("Failed to send booking created notification", e);
         }
+
+        sendNewBookingEmail(worker, customer.getFullName(), request.getServiceCode());
 
         if (appliedVoucher != null) {
             VoucherUsage usage = new VoucherUsage();
@@ -204,10 +204,8 @@ public class BookingServiceImpl implements BookingService {
                 bookingRepository.findById(bookingId).orElseThrow(bookingNotFound());
         assertWorker(account, booking);
         transition(booking, BookingStatus.ACCEPTED, "Accepted by technician");
-        
-        // Send notification to customer
-        try {
 
+        try {
             notificationEventPublisher.publishBookingAccepted(
                 booking.getCustomer().getId(),
                 bookingId.getMostSignificantBits(),
@@ -217,7 +215,7 @@ public class BookingServiceImpl implements BookingService {
         } catch (Exception e) {
             log.warn("Failed to send booking accepted notification", e);
         }
-        
+
         return bookingRepository.findDetailById(bookingId).orElse(booking);
     }
 
@@ -229,8 +227,7 @@ public class BookingServiceImpl implements BookingService {
                 bookingRepository.findById(bookingId).orElseThrow(bookingNotFound());
         assertWorker(account, booking);
         transition(booking, BookingStatus.DECLINED, "Declined by technician");
-        
-        // Send notification to customer
+
         try {
             notificationEventPublisher.publishBookingRejected(
                 booking.getCustomer().getId(),
@@ -240,7 +237,7 @@ public class BookingServiceImpl implements BookingService {
         } catch (Exception e) {
             log.warn("Failed to send booking rejected notification", e);
         }
-        
+
         return bookingRepository.findDetailById(bookingId).orElse(booking);
     }
 
@@ -664,25 +661,14 @@ public class BookingServiceImpl implements BookingService {
         stringRedisTemplate.delete(HISTORY_CACHE_KEY_PREFIX + wallet.getId());
     }
 
-    /**
-     * Check if there are duplicate bookings with the same address within a time window.
-     * Duplicate: same normalized address + booking time within ±30 minutes
-     * Checks only PENDING and ACCEPTED bookings (excludes terminal states).
-     *
-     * @param address     the address to check
-     * @param bookingDate the booking date/time to check
-     * @throws AuthServiceException with 409 CONFLICT if duplicate found
-     */
     private void checkDuplicateBooking(String address, LocalDateTime bookingDate) {
         if (address == null || bookingDate == null) {
             return;
         }
 
-        // Calculate time window: ±30 minutes from booking date
         LocalDateTime windowStart = bookingDate.minusMinutes(DUPLICATE_CHECK_TIME_WINDOW_MINUTES);
         LocalDateTime windowEnd = bookingDate.plusMinutes(DUPLICATE_CHECK_TIME_WINDOW_MINUTES);
 
-        // Find all PENDING and ACCEPTED bookings in the time window
         List<BookingStatus> statuses = List.of(BookingStatus.PENDING, BookingStatus.ACCEPTED);
         List<Booking> bookingsInWindow = bookingRepository.findByStatusInAndBookingDateBetween(
                 statuses, windowStart, windowEnd);
@@ -691,10 +677,8 @@ public class BookingServiceImpl implements BookingService {
             return;
         }
 
-        // Normalize the incoming address
         String normalizedIncoming = AddressNormalizer.normalize(address);
 
-        // Check if any booking in the window has the same normalized address
         for (Booking existing : bookingsInWindow) {
             String normalizedExisting = AddressNormalizer.normalize(existing.getAddress());
             if (normalizedIncoming.equals(normalizedExisting)) {
@@ -704,6 +688,26 @@ public class BookingServiceImpl implements BookingService {
                         "A booking already exists at this address within ±30 minutes of the selected time. "
                                 + "Address: " + existing.getAddress() + ", Time: " + existing.getBookingDate());
             }
+        }
+    }
+
+    private void sendNewBookingEmail(WorkerProfile worker, String customerName, String serviceCode) {
+        Account workerAccount = worker.getAccount();
+        if (workerAccount == null || workerAccount.getEmail() == null || workerAccount.getEmail().isBlank()) {
+            return;
+        }
+
+        String workerName = userProfileRepository.findById(worker.getId())
+                .map(UserProfile::getFullName)
+                .orElse(workerAccount.getUsername());
+        try {
+            emailService.sendNewBookingNotificationEmail(
+                    workerAccount.getEmail(),
+                    workerName,
+                    serviceCode,
+                    customerName);
+        } catch (Exception e) {
+            log.warn("Failed to send new booking email", e);
         }
     }
 }

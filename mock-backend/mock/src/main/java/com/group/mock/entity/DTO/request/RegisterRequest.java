@@ -17,6 +17,10 @@ public class RegisterRequest {
     @Pattern(regexp = "\\S+", message = "Tên đăng nhập không được chứa khoảng trắng")
     private String username;
 
+    @NotBlank(message = "Email là bắt buộc")
+    @jakarta.validation.constraints.Email(message = "Email không hợp lệ")
+    private String email;
+
     @NotBlank(message = "Mật khẩu là bắt buộc")
     @Pattern(
             regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9]).{8,}$",
