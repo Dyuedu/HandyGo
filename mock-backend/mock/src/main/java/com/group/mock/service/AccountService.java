@@ -11,6 +11,8 @@ public interface AccountService extends UserDetailsService {
     void register(RegisterRequest registerRequest);
     void verifyEmail(String email, String otp);
     void resendVerification(String username);
+    void forgotPassword(String email);
+    void resetPassword(String token, String newPassword);
     String getAccountRole(String username);
     String getWorkerVerificationStatus(String username);
     void deleteAccount();

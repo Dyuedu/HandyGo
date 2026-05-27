@@ -11,6 +11,8 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
+
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -146,7 +148,7 @@ public class EmailService {
             context.setVariable("fullName", fullName);
             context.setVariable("amount", String.format("%,d đ", amount));
             context.setVariable("bookingId", bookingId);
-            context.setVariable("transactionDate", java.time.LocalDateTime.now());
+            context.setVariable("transactionDate", LocalDateTime.now());
             String htmlContent = templateEngine.process("email-payment-success", context);
 
             MimeMessage message = mailSender.createMimeMessage();

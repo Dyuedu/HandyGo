@@ -20,11 +20,13 @@ import org.springframework.web.bind.annotation.RestController;
 import com.group.mock.configuration.JwtProvider;
 import com.group.mock.configuration.RequestIdFilter;
 import com.group.mock.entity.DTO.request.GoogleLoginRequest;
+import com.group.mock.entity.DTO.request.ForgotPasswordRequest;
 import com.group.mock.entity.DTO.request.LoginRequest;
 import com.group.mock.entity.DTO.request.LogoutRequest;
 import com.group.mock.entity.DTO.request.RefreshTokenRequest;
 import com.group.mock.entity.DTO.request.RegisterRequest;
 import com.group.mock.entity.DTO.request.ResendVerificationRequest;
+import com.group.mock.entity.DTO.request.ResetPasswordRequest;
 import com.group.mock.entity.DTO.request.VerifyEmailRequest;
 import com.group.mock.entity.DTO.response.ApiResponse;
 import com.group.mock.entity.DTO.response.AuthTokenResponse;
@@ -207,6 +209,24 @@ public class AuthController {
     ) {
         accountService.resendVerification(request.getUsername());
         return ResponseEntity.ok(ApiResponse.success(Map.of("message", "Đã gửi lại mã xác thực qua email"), requestId(httpRequest)));
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ApiResponse<Map<String, String>>> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        accountService.forgotPassword(request.getEmail());
+        return ResponseEntity.ok(ApiResponse.success(Map.of("message", "Đã gửi email đặt lại mật khẩu"), requestId(httpRequest)));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<ApiResponse<Map<String, String>>> resetPassword(
+            @Valid @RequestBody ResetPasswordRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        accountService.resetPassword(request.getToken(), request.getNewPassword());
+        return ResponseEntity.ok(ApiResponse.success(Map.of("message", "Đặt lại mật khẩu thành công"), requestId(httpRequest)));
     }
 
     private String requestId(HttpServletRequest request) {
