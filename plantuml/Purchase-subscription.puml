@@ -1,0 +1,60 @@
+@startuml
+title Purchase Subscription via VNPAY
+
+actor User as "Worker"
+participant SubscriptionPage as "Subscription Page (UI)"
+participant PaymentServiceFE as "paymentService.js"
+participant SubscriptionController as "SubscriptionController (Backend)"
+participant SubscriptionServiceBE as "SubscriptionService (Backend)"
+participant VNPayUtil as "VNPayUtil"
+participant VNPay as "VNPay Gateway"
+
+== 1. Khởi tạo giao dịch ==
+User -> SubscriptionPage: Chọn một gói đăng ký và nhấn "Mua"
+SubscriptionPage -> PaymentServiceFE: subscribeToPlan(planId, 'VNPAY')
+PaymentServiceFE -> SubscriptionController: POST /api/v1/subscriptions/subscribe
+activate SubscriptionController
+
+SubscriptionController -> SubscriptionServiceBE: createSubscriptionPayment(username, planId)
+activate SubscriptionServiceBE
+
+SubscriptionServiceBE -> SubscriptionServiceBE: Tạo một bản ghi giao dịch (e.g., SubscriptionOrder) với trạng thái "PENDING"
+SubscriptionServiceBE -> VNPayUtil: Tạo URL thanh toán VNPAY với thông tin đơn hàng
+VNPayUtil --> SubscriptionServiceBE: paymentUrl
+SubscriptionServiceBE --> SubscriptionController: { paymentUrl: "..." }
+deactivate SubscriptionServiceBE
+SubscriptionController --> PaymentServiceFE: { paymentUrl: "..." }
+deactivate SubscriptionController
+
+PaymentServiceFE -> SubscriptionPage: Nhận URL thanh toán
+SubscriptionPage -> User: Chuyển hướng đến trang VNPAY
+
+== 2. Người dùng thanh toán trên VNPAY ==
+User -> VNPay: Thực hiện thanh toán cho gói đăng ký
+VNPay -> VNPay: Xử lý giao dịch
+
+== 3. VNPAY gọi lại (Callback) ==
+VNPay -> PaymentController: GET /api/v1/payment/vnpay-callback?{params}
+activate PaymentController
+
+PaymentController -> SubscriptionServiceBE: handleVnpayCallback(params)
+activate SubscriptionServiceBE
+
+SubscriptionServiceBE -> VNPayUtil: Xác thực chữ ký (secure hash) của callback
+alt Chữ ký hợp lệ và giao dịch thành công (vnp_ResponseCode='00')
+    SubscriptionServiceBE -> SubscriptionServiceBE: Tìm lại giao dịch (SubscriptionOrder) trong hệ thống
+    SubscriptionServiceBE -> SubscriptionServiceBE: Cập nhật trạng thái giao dịch -> "COMPLETED"
+    SubscriptionServiceBE -> SubscriptionServiceBE: Kích hoạt gói đăng ký cho người dùng (cập nhật bảng Subscriptions)
+    SubscriptionServiceBE --> PaymentController: { RspCode: "00", Message: "Success" }
+else Giao dịch thất bại hoặc chữ ký không hợp lệ
+    SubscriptionServiceBE -> SubscriptionServiceBE: Cập nhật trạng thái giao dịch -> "FAILED"
+    SubscriptionServiceBE --> PaymentController: { RspCode: "xx", Message: "Failed" }
+end
+deactivate SubscriptionServiceBE
+
+PaymentController -> VNPay: Trả về kết quả JSON để VNPAY biết đã nhận được callback
+deactivate PaymentController
+
+note over User, VNPay: Người dùng được VNPAY chuyển hướng trở lại trang của ứng dụng (ví dụ: trang thông báo thanh toán thành công).
+
+@enduml

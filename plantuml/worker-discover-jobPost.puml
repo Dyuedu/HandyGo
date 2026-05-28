@@ -1,0 +1,57 @@
+@startuml
+title Worker Discovers Job Posts
+
+actor Worker as "Worker (User)"
+participant DiscoveryPage as "Job Discovery Page (UI)"
+participant JobPostServiceFE as "jobPostService.js"
+participant JobPostController as "JobPostController (Backend)"
+participant JobPostServiceBE as "JobPostService (Backend)"
+database JobPostRepo as "JobPostRepository"
+
+Worker -> DiscoveryPage: Mở trang tìm kiếm công việc
+alt Tìm kiếm tất cả
+    DiscoveryPage -> JobPostServiceFE: getAllOpenJobPosts()
+    JobPostServiceFE -> JobPostController: GET /api/v1/job-posts/discover/open
+else Lọc theo loại công việc
+    Worker -> DiscoveryPage: Chọn một jobType
+    DiscoveryPage -> JobPostServiceFE: getOpenJobPostsByJobType(jobType)
+    JobPostServiceFE -> JobPostController: GET /api/v1/job-posts/discover/by-type?jobType=...
+end
+
+activate JobPostController
+JobPostController -> JobPostServiceBE: getAllOpenJobPosts() hoặc getOpenJobPostsByJobType()
+activate JobPostServiceBE
+
+JobPostServiceBE -> JobPostRepo: findAllOpenJobPosts(now) hoặc findOpenJobPostsByJobType(jobType, now)
+activate JobPostRepo
+note right of JobPostRepo
+  Query:
+  SELECT j FROM JobPost j
+  WHERE j.status = 'OPEN'
+  AND j.scheduledAt > :now
+end note
+JobPostRepo --> JobPostServiceBE: Danh sách JobPost
+deactivate JobPostRepo
+
+JobPostServiceBE --> JobPostController: Trả về danh sách
+deactivate JobPostServiceBE
+JobPostController --> JobPostServiceFE: 200 OK
+deactivate JobPostController
+
+JobPostServiceFE --> DiscoveryPage: Dữ liệu Job Posts
+DiscoveryPage -> Worker: Hiển thị danh sách công việc
+
+== Người thợ xem chi tiết một công việc ==
+Worker -> DiscoveryPage: Nhấp vào một công việc
+DiscoveryPage -> JobPostServiceFE: getJobPostById(jobPostId)
+JobPostServiceFE -> JobPostController: GET /api/v1/job-posts/{id}
+note right of JobPostController: Đây là endpoint công khai
+JobPostController -> JobPostServiceBE: getJobPostById(id)
+JobPostServiceBE -> JobPostRepo: findById(id)
+JobPostRepo --> JobPostServiceBE: Chi tiết JobPost
+JobPostServiceBE --> JobPostController: Trả về JobPost
+JobPostController --> JobPostServiceFE: 200 OK
+JobPostServiceFE --> DiscoveryPage: Dữ liệu chi tiết
+DiscoveryPage -> Worker: Hiển thị chi tiết công việc
+
+@enduml

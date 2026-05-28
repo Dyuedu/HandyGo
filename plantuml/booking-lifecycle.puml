@@ -1,0 +1,29 @@
+@startuml
+title Booking Lifecycle (Fixed)
+
+state "PENDING" as Pending
+state "ACCEPTED" as Accepted
+state "PROCESSING" as Processing
+state "COMPLETED" as Completed
+state "CONFIRMED" as Confirmed
+state "CANCELLED" as Cancelled
+state "DECLINED" as Declined
+
+[*] --> Pending: Customer chấp nhận đơn ứng tuyển
+
+Pending --> Accepted: Worker chấp nhận (acceptBooking)
+Pending --> Declined: Worker từ chối (declineBooking)
+Pending --> Cancelled: Customer hủy (cancelBooking)
+
+Accepted --> Processing: Worker bắt đầu công việc (startProcessing)
+Accepted --> Cancelled: Customer hoặc Worker hủy (cancelBooking)
+
+Processing --> Completed: Worker hoàn thành & nhập giá (markCompleted)
+
+Completed --> Confirmed: Customer xác nhận hoàn thành (confirmCompletion)
+
+Confirmed --> [*]
+Cancelled --> [*]
+Declined --> [*]
+
+@enduml

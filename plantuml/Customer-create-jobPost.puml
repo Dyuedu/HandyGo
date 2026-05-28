@@ -1,0 +1,44 @@
+@startuml
+title Customer Creates a Job Post
+
+actor Customer as "Customer (User)"
+participant JobPostForm as "Job Post Form (UI)"
+participant JobPostServiceFE as "jobPostService.js"
+participant JobPostController as "JobPostController (Backend)"
+participant JobPostServiceBE as "JobPostService (Backend)"
+database JobPostRepo as "JobPostRepository"
+participant NotificationService as "Notification Service"
+
+Customer -> JobPostForm: Điền thông tin công việc (tiêu đề, mô tả, địa chỉ, thời gian hẹn,...)
+JobPostForm -> JobPostServiceFE: createJobPost(payload)
+JobPostServiceFE -> JobPostController: POST /api/v1/job-posts
+activate JobPostController
+
+JobPostController -> JobPostServiceBE: createJobPost(username, request)
+activate JobPostServiceBE
+
+JobPostServiceBE -> JobPostServiceBE: Kiểm tra vai trò người dùng (phải là ROLE_USER)
+JobPostServiceBE -> JobPostServiceBE: Kiểm tra thời gian hẹn (scheduledAt > now)
+
+alt Dữ liệu hợp lệ
+    JobPostServiceBE -> JobPostRepo: save(jobPost)
+    activate JobPostRepo
+    JobPostRepo --> JobPostServiceBE: JobPost đã lưu
+    deactivate JobPostRepo
+
+    JobPostServiceBE -> NotificationService: Gửi thông báo cho các Worker phù hợp
+    JobPostServiceBE --> JobPostController: Trả về JobPost
+    JobPostController --> JobPostServiceFE: 201 CREATED
+    JobPostServiceFE --> JobPostForm: Thành công
+    JobPostForm -> Customer: Hiển thị thông báo tạo thành công
+else Dữ liệu không hợp lệ
+    JobPostServiceBE --> JobPostController: Ném ra Exception (e.g., 400 Bad Request)
+    JobPostController --> JobPostServiceFE: Lỗi
+    JobPostServiceFE --> JobPostForm: Báo lỗi
+    JobPostForm -> Customer: Hiển thị thông báo lỗi
+end
+
+deactivate JobPostServiceBE
+deactivate JobPostController
+
+@enduml

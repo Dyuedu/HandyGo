@@ -1,0 +1,45 @@
+@startuml
+title Worker Applies for a Job Post
+
+actor Worker as "Worker (User)"
+participant JobDetailPage as "Job Detail Page (UI)"
+participant JobPostServiceFE as "jobPostService.js"
+participant JobApplicationController as "JobApplicationController (Backend)"
+participant JobApplicationService as "JobApplicationService (Backend)"
+database JobApplicationRepo as "JobApplicationRepository"
+database JobPostRepo as "JobPostRepository"
+
+Worker -> JobDetailPage: Nhấn nút "Ứng tuyển"
+JobDetailPage -> JobPostServiceFE: applyToJobPost(jobPostId)
+JobPostServiceFE -> JobApplicationController: POST /api/v1/job-posts/{jobPostId}/applications
+activate JobApplicationController
+
+JobApplicationController -> JobApplicationService: applyToJobPost(username, jobPostId)
+activate JobApplicationService
+
+JobApplicationService -> JobPostRepo: Tìm JobPost theo ID
+JobApplicationService -> JobApplicationService: Kiểm tra vai trò (phải là WORKER)
+JobApplicationService -> JobApplicationService: Kiểm tra công việc có "OPEN" không
+JobApplicationService -> JobApplicationService: Kiểm tra công việc đã hết hạn chưa (isExpired)
+
+alt Điều kiện hợp lệ
+    JobApplicationService -> JobApplicationRepo: save(application)
+    note right: Tạo một bản ghi JobApplication với status 'PENDING'
+    activate JobApplicationRepo
+    JobApplicationRepo --> JobApplicationService: Application đã lưu
+    deactivate JobApplicationRepo
+    JobApplicationService --> JobApplicationController: Trả về Application
+    JobApplicationController --> JobPostServiceFE: 201 CREATED
+    JobPostServiceFE --> JobDetailPage: Thành công
+    JobDetailPage -> Worker: Hiển thị thông báo "Đã ứng tuyển"
+else Điều kiện không hợp lệ (đã ứng tuyển, công việc hết hạn,...)
+    JobApplicationService --> JobApplicationController: Ném ra Exception (e.g., 409 CONFLICT, 410 GONE)
+    JobApplicationController --> JobPostServiceFE: Lỗi
+    JobPostServiceFE --> JobDetailPage: Báo lỗi
+    JobDetailPage -> Worker: Hiển thị thông báo lỗi tương ứng
+end
+
+deactivate JobApplicationService
+deactivate JobApplicationController
+
+@enduml

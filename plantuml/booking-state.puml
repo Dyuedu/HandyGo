@@ -1,0 +1,59 @@
+@startuml
+title Booking State Transitions Sequence
+
+actor User as "Customer / Worker"
+participant ActivityPage as "Activity Page (UI)"
+participant BookingServiceFE as "bookingService.js"
+participant BookingController as "BookingController (Backend)"
+participant BookingServiceBE as "BookingService (Backend)"
+database BookingRepo as "BookingRepository"
+
+== Worker chấp nhận Booking ==
+User -> ActivityPage: (Worker) Nhấn "Chấp nhận"
+ActivityPage -> BookingServiceFE: acceptBooking(bookingId)
+BookingServiceFE -> BookingController: PATCH /bookings/{id}/accept
+activate BookingController
+BookingController -> BookingServiceBE: acceptBooking(username, id)
+activate BookingServiceBE
+BookingServiceBE -> BookingRepo: Tìm Booking, kiểm tra trạng thái PENDING
+BookingServiceBE -> BookingRepo: Cập nhật status -> ACCEPTED
+BookingRepo --> BookingServiceBE
+BookingServiceBE --> BookingController
+deactivate BookingServiceBE
+BookingController --> BookingServiceFE
+deactivate BookingController
+BookingServiceFE --> ActivityPage: Thành công
+ActivityPage -> User: Cập nhật giao diện
+
+== Worker bắt đầu công việc ==
+User -> ActivityPage: (Worker) Nhấn "Bắt đầu"
+ActivityPage -> BookingServiceFE: startProcessing(bookingId)
+BookingServiceFE -> BookingController: PATCH /bookings/{id}/processing
+' ... luồng tương tự, cập nhật status -> PROCESSING ... '
+
+== Worker hoàn thành công việc ==
+User -> ActivityPage: (Worker) Nhấn "Hoàn thành", nhập tổng tiền
+ActivityPage -> BookingServiceFE: markCompleted(bookingId, {totalAmount})
+BookingServiceFE -> BookingController: PATCH /bookings/{id}/complete
+activate BookingController
+BookingController -> BookingServiceBE: markCompleted(username, id, request)
+activate BookingServiceBE
+BookingServiceBE -> BookingRepo: Tìm Booking, kiểm tra trạng thái
+BookingServiceBE -> BookingServiceBE: Tính toán finalAmount (có thể áp dụng voucher)
+BookingServiceBE -> BookingRepo: Cập nhật status -> COMPLETED, totalAmount, finalAmount
+BookingRepo --> BookingServiceBE
+BookingServiceBE --> BookingController
+deactivate BookingServiceBE
+BookingController --> BookingServiceFE
+deactivate BookingController
+BookingServiceFE --> ActivityPage: Thành công
+ActivityPage -> User: Cập nhật giao diện, chờ Customer xác nhận
+
+== Customer xác nhận hoàn thành ==
+User -> ActivityPage: (Customer) Nhấn "Xác nhận hoàn thành"
+ActivityPage -> BookingServiceFE: confirmCompletion(bookingId)
+BookingServiceFE -> BookingController: PATCH /bookings/{id}/confirm
+' ... luồng tương tự, cập nhật status -> CONFIRMED ... '
+note right of BookingController: Sau bước này, có thể trigger luồng thanh toán
+
+@enduml

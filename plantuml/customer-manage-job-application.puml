@@ -1,0 +1,48 @@
+@startuml
+title Customer Manages Job Applications
+
+actor Customer as "Customer (User)"
+participant ApplicantsPage as "Applicants Page (UI)"
+participant JobPostServiceFE as "jobPostService.js"
+participant JobApplicationController as "JobApplicationController (Backend)"
+participant JobApplicationService as "JobApplicationService (Backend)"
+database JobApplicationRepo as "JobApplicationRepository"
+database JobPostRepo as "JobPostRepository"
+database BookingRepo as "BookingRepository"
+
+Customer -> ApplicantsPage: Mở trang xem danh sách ứng viên
+ApplicantsPage -> JobPostServiceFE: getJobPostApplications(jobPostId)
+JobPostServiceFE -> JobApplicationController: GET /api/v1/job-posts/{jobPostId}/applications
+' ... Backend trả về danh sách ứng viên ... '
+ApplicantsPage -> Customer: Hiển thị danh sách ứng viên "PENDING"
+
+== Khách hàng Chấp nhận một ứng viên ==
+Customer -> ApplicantsPage: Nhấn nút "Chấp nhận"
+ApplicantsPage -> JobPostServiceFE: acceptJobApplication(jobPostId, applicationId)
+JobPostServiceFE -> JobApplicationController: PATCH /api/v1/job-posts/{jobPostId}/applications/{appId}/accept
+activate JobApplicationController
+
+JobApplicationController -> JobApplicationService: acceptApplication(username, jobPostId, applicationId)
+activate JobApplicationService
+
+JobApplicationService -> JobApplicationRepo: Tìm Application và JobPost
+JobApplicationService -> JobApplicationService: Kiểm tra Customer là chủ sở hữu JobPost
+JobApplicationService -> JobApplicationRepo: Cập nhật status Application -> 'ACCEPTED'
+JobApplicationService -> JobPostRepo: Cập nhật status JobPost -> 'ASSIGNED', gán assigned_worker_id
+JobApplicationService -> BookingRepo: Tạo một Booking mới từ thông tin JobPost
+JobApplicationService -> JobApplicationRepo: Cập nhật các Application 'PENDING' khác -> 'REJECTED'
+
+JobApplicationService --> JobApplicationController: Thành công
+JobApplicationController --> JobPostServiceFE: 200 OK
+JobPostServiceFE --> ApplicantsPage: Invalidate queries và chuyển hướng
+ApplicantsPage -> Customer: Chuyển đến trang Hoạt động (Activity)
+
+deactivate JobApplicationService
+deactivate JobApplicationController
+
+== Khách hàng Từ chối một ứng viên ==
+Customer -> ApplicantsPage: Nhấn nút "Từ chối"
+ApplicantsPage -> JobPostServiceFE: rejectJobApplication(jobPostId, applicationId)
+' ... Luồng tương tự, nhưng chỉ cập nhật status của application thành 'REJECTED' ... '
+
+@enduml

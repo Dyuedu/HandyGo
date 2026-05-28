@@ -1,0 +1,26 @@
+@startuml
+title Login Sequence Diagram
+
+actor User
+participant LoginPage as "Login Page (UI)"
+participant AuthService as "authService.js"
+participant AuthAPI as "Backend API (/api/auth)"
+
+User -> LoginPage: Nhập username và password
+LoginPage -> AuthService: login({username, password})
+AuthService -> AuthAPI: POST /login
+activate AuthAPI
+
+alt Credentials hợp lệ
+    AuthAPI --> AuthService: { accessToken, refreshToken }
+    AuthService --> LoginPage: Trả về tokens
+    LoginPage -> User: Đăng nhập thành công, lưu tokens
+else Credentials không hợp lệ
+    AuthAPI --> AuthService: Lỗi 401 Unauthorized
+    AuthService --> LoginPage: Báo lỗi
+    LoginPage -> User: Hiển thị thông báo lỗi
+end
+
+deactivate AuthAPI
+
+@enduml

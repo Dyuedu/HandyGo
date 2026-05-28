@@ -1,0 +1,32 @@
+@startuml
+title Registration Sequence Diagram
+
+actor User
+participant RegisterPage as "Register Page (UI)"
+participant AuthService as "authService.js"
+participant AuthAPI as "Backend API (/api/auth)"
+
+User -> RegisterPage: Điền thông tin đăng ký (username, email, password,...)
+alt Đăng ký với vai trò "USER"
+    RegisterPage -> AuthService: registerUser(payload)
+    AuthService -> AuthAPI: POST /register (role='USER')
+else Đăng ký với vai trò "WORKER"
+    RegisterPage -> AuthService: registerWorker(payload)
+    AuthService -> AuthAPI: POST /register (role='WORKER', kèm chứng chỉ nếu có)
+end
+
+activate AuthAPI
+
+alt Thông tin hợp lệ
+    AuthAPI --> AuthService: { success: true }
+    AuthService --> RegisterPage: Đăng ký thành công
+    RegisterPage -> User: Yêu cầu xác thực email
+else Thông tin không hợp lệ (trùng username/email)
+    AuthAPI --> AuthService: Lỗi 400 Bad Request
+    AuthService --> RegisterPage: Báo lỗi
+    RegisterPage -> User: Hiển thị thông báo lỗi
+end
+
+deactivate AuthAPI
+
+@enduml
