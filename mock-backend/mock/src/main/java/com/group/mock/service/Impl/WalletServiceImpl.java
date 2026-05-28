@@ -195,7 +195,7 @@ public class WalletServiceImpl implements WalletService {
                     notificationEventPublisher.publishSubscriptionUpgrade(
                         history.getWallet().getUserId(),
                         plan.getPlanName(),
-                        plan.getDurationDays()
+                        plan.getDurationDays().longValue()
                     );
                 } catch (Exception e) {
                     log.warn("Failed to send subscription upgrade notification", e);
